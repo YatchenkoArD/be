@@ -18,6 +18,7 @@ from app.api.v1.endpoints import auth
 from app.api.v1.endpoints import business
 from app.api.v1.endpoints import auth_web
 from app.api.v1.endpoints import reviews
+from app.api.v1.endpoints import services
 
 app = FastAPI(
     title="Beauty Platform API",
@@ -41,6 +42,7 @@ app.include_router(reviews.router, prefix="/api/v1", tags=["reviews"])
 app.include_router(web_router, include_in_schema=False)
 
 app.include_router(bookings.router, prefix="/api/v1/bookings", tags=["bookings"])
+app.include_router(services.router, prefix="/api/v1", tags=["services"])
 
 @app.get("/health")
 async def health_check():

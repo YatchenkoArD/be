@@ -167,3 +167,28 @@ async def update_master_web(
     await db.commit()
     
     return RedirectResponse(url="/business/my-salon?updated=1", status_code=302)
+@router.post("/master/{master_id}/toggle")
+async def toggle_master_web(
+    master_id: int,
+    request: Request,
+    db: AsyncSession = Depends(get_db)
+):
+    """Включение/отключение мастера."""
+    from app.web.auth import get_current_user_from_cookie
+    
+    user = await get_current_user_from_cookie(request, db)
+    if not user or user.role.value != "business":
+        return RedirectResponse(url="/login", status_code=302)
+    
+    master = (await db.execute(select(Master).where(Master.id == master_id))).scalar_one_or_none()
+    if not master:
+        return HTMLResponse(content="Мастер не найден", status_code=404)
+    
+    salon = (await db.execute(select(Salon).where(Salon.owner_id == user.id))).scalar_one_or_none()
+    if not salon or master.salon_id != salon.id:
+        return HTMLResponse(content="Нет доступа", status_code=403)
+    
+    master.is_active = not master.is_active
+    await db.commit()
+    
+    return RedirectResponse(url="/business/dashboard?tab=employees", status_code=302)

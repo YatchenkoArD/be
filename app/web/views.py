@@ -96,7 +96,7 @@ async def business_dashboard_page(
     db: AsyncSession = Depends(get_db)
 ):
     """Бизнес-панель с аналитикой."""
-    from app.web.pages.business_dashboard import render_business_dashboard
+    from app.web.pages.business import render_business_dashboard
     
     user = await get_current_user_from_cookie(request, db)
     if not user or user.role.value != "business":

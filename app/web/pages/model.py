@@ -5,8 +5,8 @@ from app.web.components.sidebar import render_sidebar
 from app.web.components.styles import get_base_styles
 
 
-def render_model_page() -> str:
-    """Страница 'Стань моделью' с тарифами."""
+def render_model_page(user=None) -> str:
+    """Страница 'Стань моделью' с тарифами и информацией."""
     
     html = f"""<!DOCTYPE html>
 <html lang="ru">
@@ -98,10 +98,15 @@ def render_model_page() -> str:
             padding: 0.5rem 0;
             font-size: 0.9rem;
             color: var(--color-body);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
         }}
         .plan-features li::before {{
-            content: "✅ ";
-            font-size: 0.8rem;
+            content: "✓";
+            color: #22c55e;
+            font-weight: 700;
+            font-size: 1rem;
         }}
         .how-it-works {{
             display: grid;
@@ -151,10 +156,55 @@ def render_model_page() -> str:
             color: var(--color-body);
             margin: 0;
         }}
+        .benefits {{
+            background: linear-gradient(135deg, #FFF8F6, #F8C8DC33);
+            padding: 4rem 0;
+            margin-top: 4rem;
+        }}
+        .benefits h2 {{
+            text-align: center;
+            font-size: 2rem;
+            margin-bottom: 2rem;
+            color: var(--color-heading);
+        }}
+        .benefits-grid {{
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1.5rem;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }}
+        @media (max-width: 600px) {{
+            .benefits-grid {{
+                grid-template-columns: 1fr;
+            }}
+        }}
+        .benefit-card {{
+            background: white;
+            border-radius: 1rem;
+            padding: 1.5rem;
+            display: flex;
+            gap: 1rem;
+            align-items: start;
+        }}
+        .benefit-icon {{
+            font-size: 2rem;
+            flex-shrink: 0;
+        }}
+        .benefit-card h3 {{
+            font-size: 1.05rem;
+            color: var(--color-heading);
+            margin-bottom: 0.25rem;
+        }}
+        .benefit-card p {{
+            font-size: 0.85rem;
+            color: var(--color-muted);
+        }}
     </style>
 </head>
 <body>
-    {render_header("model", None)}
+    {render_header("model", user)}
     {render_sidebar("model")}
     
     <main style="margin-right: 16rem;">
@@ -220,7 +270,7 @@ def render_model_page() -> str:
                     </div>
                 </div>
                 
-                <!-- Партнёр -->
+                <!-- Партнёр (Альфа-Банк) -->
                 <div class="partner-banner" style="max-width:60rem;margin:2rem auto 0">
                     <div class="alfa-logo">A</div>
                     <p>Оплачивай подписку <strong>Альфа‑Картой</strong> — получай <strong style="color:#EE3424">кешбэк 5%</strong> на все услуги мастеров</p>
@@ -252,8 +302,43 @@ def render_model_page() -> str:
             </div>
         </section>
         
-        {render_footer()}
+        <!-- Преимущества -->
+        <div class="benefits">
+            <h2>Почему быть моделью выгодно?</h2>
+            <div class="benefits-grid">
+                <div class="benefit-card">
+                    <div class="benefit-icon">💰</div>
+                    <div>
+                        <h3>Экономия до 70%</h3>
+                        <p>Платишь только часть стоимости, остальное — за наш счёт</p>
+                    </div>
+                </div>
+                <div class="benefit-card">
+                    <div class="benefit-icon">⭐</div>
+                    <div>
+                        <h3>Топ-мастера</h3>
+                        <p>Проверенные салоны и мастера с высоким рейтингом</p>
+                    </div>
+                </div>
+                <div class="benefit-card">
+                    <div class="benefit-icon">📅</div>
+                    <div>
+                        <h3>Приоритетная запись</h3>
+                        <p>Модели получают места в первую очередь</p>
+                    </div>
+                </div>
+                <div class="benefit-card">
+                    <div class="benefit-icon">🎁</div>
+                    <div>
+                        <h3>Бонусы и подарки</h3>
+                        <p>Косметика и уходовые средства от партнёров</p>
+                    </div>
+                </div>
+            </div>
+        </div>
     </main>
+    
+    {render_footer()}
 </body>
 </html>"""
     
