@@ -52,7 +52,7 @@ async def get_my_schedule(
     }
 
 
-@router.post("/master/create-web")
+@router.post("/create-web")
 async def create_master_web(
     request: Request,
     full_name: str = Form(...),
@@ -98,7 +98,7 @@ async def create_master_web(
         salon_id=salon.id,
         specialization=specialization,
         experience_years=experience_years,
-        rating=0.0  # Исправлено: новый мастер получает рейтинг 0.0, а не 5.0
+        rating=0.0
     )
     db.add(master)
     await db.commit()
@@ -106,33 +106,7 @@ async def create_master_web(
     return RedirectResponse(url="/business/my-salon?added=1", status_code=302)
 
 
-@router.post("/master/{master_id}/delete")
-async def delete_master_web(
-    master_id: int,
-    request: Request,
-    db: AsyncSession = Depends(get_db)
-):
-    """Удаление мастера владельцем салона."""
-    from app.web.auth import get_current_user_from_cookie
-    
-    user = await get_current_user_from_cookie(request, db)
-    if not user or user.role.value != "business":
-        return RedirectResponse(url="/login", status_code=302)
-    
-    master = (await db.execute(select(Master).where(Master.id == master_id))).scalar_one_or_none()
-    if not master:
-        return HTMLResponse(content="Мастер не найден", status_code=404)
-    
-    # Проверяем, что мастер принадлежит салону владельца
-    salon = (await db.execute(select(Salon).where(Salon.owner_id == user.id))).scalar_one_or_none()
-    if not salon or master.salon_id != salon.id:
-        return HTMLResponse(content="Нет доступа", status_code=403)
-    
-    await db.delete(master)
-    await db.commit()
-    
-    return RedirectResponse(url="/business/my-salon?deleted=1", status_code=302)
-@router.post("/master/{master_id}/update")
+@router.post("/{master_id}/update")
 async def update_master_web(
     master_id: int,
     request: Request,
@@ -167,7 +141,37 @@ async def update_master_web(
     await db.commit()
     
     return RedirectResponse(url="/business/my-salon?updated=1", status_code=302)
-@router.post("/master/{master_id}/toggle")
+
+
+@router.post("/{master_id}/delete")
+async def delete_master_web(
+    master_id: int,
+    request: Request,
+    db: AsyncSession = Depends(get_db)
+):
+    """Удаление мастера владельцем салона."""
+    from app.web.auth import get_current_user_from_cookie
+    
+    user = await get_current_user_from_cookie(request, db)
+    if not user or user.role.value != "business":
+        return RedirectResponse(url="/login", status_code=302)
+    
+    master = (await db.execute(select(Master).where(Master.id == master_id))).scalar_one_or_none()
+    if not master:
+        return HTMLResponse(content="Мастер не найден", status_code=404)
+    
+    # Проверяем, что мастер принадлежит салону владельца
+    salon = (await db.execute(select(Salon).where(Salon.owner_id == user.id))).scalar_one_or_none()
+    if not salon or master.salon_id != salon.id:
+        return HTMLResponse(content="Нет доступа", status_code=403)
+    
+    await db.delete(master)
+    await db.commit()
+    
+    return RedirectResponse(url="/business/my-salon?deleted=1", status_code=302)
+
+
+@router.post("/{master_id}/toggle")
 async def toggle_master_web(
     master_id: int,
     request: Request,

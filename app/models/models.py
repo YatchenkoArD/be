@@ -55,6 +55,7 @@ class User(Base):
     owned_salon: Mapped[Optional["Salon"]] = relationship(back_populates="owner", uselist=False)
     bookings: Mapped[List["Booking"]] = relationship(back_populates="client", foreign_keys="Booking.client_id")
     reviews: Mapped[List["Review"]] = relationship(back_populates="client")
+    favorites: Mapped[List["Favorite"]] = relationship(back_populates="user")
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
@@ -82,7 +83,7 @@ class Salon(Base):
 
     working_hours: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     business_tier: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
-    timezone: Mapped[str] = mapped_column(String(50), default="Europe/Moscow", server_default="Europe/Moscow", nullable=False)  # ← НОВОЕ ПОЛЕ
+    timezone: Mapped[str] = mapped_column(String(50), default="Europe/Moscow", server_default="Europe/Moscow", nullable=False)
 
     masters: Mapped[List["Master"]] = relationship(back_populates="salon")
     promotions: Mapped[List["Promotion"]] = relationship(back_populates="salon")
@@ -196,3 +197,17 @@ class Review(Base):
     __table_args__ = (
         CheckConstraint('rating >= 1 AND rating <= 5', name='check_rating_range'),
     )
+
+# ========== НОВАЯ МОДЕЛЬ: Избранное ==========
+class Favorite(Base):
+    __tablename__ = "favorites"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    salon_id: Mapped[Optional[int]] = mapped_column(ForeignKey("salons.id"), nullable=True)
+    master_id: Mapped[Optional[int]] = mapped_column(ForeignKey("masters.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    user: Mapped["User"] = relationship(back_populates="favorites")
+    salon: Mapped[Optional["Salon"]] = relationship()
+    master: Mapped[Optional["Master"]] = relationship()

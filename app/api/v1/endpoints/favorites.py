@@ -1,0 +1,102 @@
+# app/api/v1/endpoints/favorites.py
+from fastapi import APIRouter, Depends, Request
+from fastapi.responses import RedirectResponse, HTMLResponse
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+
+from app.db.session import get_db
+from app.models.models import Favorite, Salon, Master
+
+router = APIRouter()
+
+
+@router.post("/favorites/toggle-salon/{salon_id}")
+async def toggle_favorite_salon(
+    salon_id: int,
+    request: Request,
+    db: AsyncSession = Depends(get_db)
+):
+    """Добавить/убрать салон из избранного."""
+    from app.web.auth import get_current_user_from_cookie
+    
+    user = await get_current_user_from_cookie(request, db)
+    if not user:
+        return RedirectResponse(url="/login", status_code=302)
+    
+    existing = (await db.execute(
+        select(Favorite).where(
+            Favorite.user_id == user.id,
+            Favorite.salon_id == salon_id
+        )
+    )).scalar_one_or_none()
+    
+    if existing:
+        await db.delete(existing)
+        await db.commit()
+        return RedirectResponse(url="/favorites?removed=1", status_code=302)
+    else:
+        salon = (await db.execute(select(Salon).where(Salon.id == salon_id, Salon.is_active == True))).scalar_one_or_none()
+        if not salon:
+            return HTMLResponse(content="Салон не найден", status_code=404)
+        
+        fav = Favorite(user_id=user.id, salon_id=salon_id)
+        db.add(fav)
+        await db.commit()
+        return RedirectResponse(url="/favorites?added=1", status_code=302)
+
+
+@router.post("/favorites/toggle-master/{master_id}")
+async def toggle_favorite_master(
+    master_id: int,
+    request: Request,
+    db: AsyncSession = Depends(get_db)
+):
+    """Добавить/убрать мастера из избранного."""
+    from app.web.auth import get_current_user_from_cookie
+    
+    user = await get_current_user_from_cookie(request, db)
+    if not user:
+        return RedirectResponse(url="/login", status_code=302)
+    
+    existing = (await db.execute(
+        select(Favorite).where(
+            Favorite.user_id == user.id,
+            Favorite.master_id == master_id
+        )
+    )).scalar_one_or_none()
+    
+    if existing:
+        await db.delete(existing)
+        await db.commit()
+        return RedirectResponse(url="/favorites?removed=1", status_code=302)
+    else:
+        master = (await db.execute(select(Master).where(Master.id == master_id, Master.is_active == True))).scalar_one_or_none()
+        if not master:
+            return HTMLResponse(content="Мастер не найден", status_code=404)
+        
+        fav = Favorite(user_id=user.id, master_id=master_id)
+        db.add(fav)
+        await db.commit()
+        return RedirectResponse(url="/favorites?added=1", status_code=302)
+
+
+@router.get("/favorites/my")
+async def get_my_favorites(
+    request: Request,
+    db: AsyncSession = Depends(get_db)
+):
+    """Возвращает списки id избранных салонов и мастеров."""
+    from app.web.auth import get_current_user_from_cookie
+    
+    user = await get_current_user_from_cookie(request, db)
+    if not user:
+        return {"salon_ids": [], "master_ids": []}
+    
+    favorites = (await db.execute(
+        select(Favorite).where(Favorite.user_id == user.id)
+    )).scalars().all()
+    
+    salon_ids = [f.salon_id for f in favorites if f.salon_id]
+    master_ids = [f.master_id for f in favorites if f.master_id]
+    
+    return {"salon_ids": salon_ids, "master_ids": master_ids}

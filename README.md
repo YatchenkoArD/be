@@ -25,3 +25,4 @@ python main.py
 - GET /api/v1/users/ - список пользователей 
 - GET /api/v1/services/ - список услуг 
 - GET /api/v1/appointments/ - список записей 
+## надо будет сделать Конвертации времени сейчас у нас строка

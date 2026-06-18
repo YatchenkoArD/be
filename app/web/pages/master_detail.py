@@ -8,7 +8,7 @@ from app.web.components.sidebar import render_sidebar
 from app.web.components.styles import get_base_styles
 
 
-async def render_master_detail(db: AsyncSession, master_id: int) -> str:
+async def render_master_detail(db: AsyncSession, master_id: int, user=None) -> str:
     """Страница конкретного мастера."""
     
     result = await db.execute(select(Master).where(Master.id == master_id))
@@ -19,8 +19,8 @@ async def render_master_detail(db: AsyncSession, master_id: int) -> str:
     
     # Получаем пользователя (имя мастера)
     user_result = await db.execute(select(User).where(User.id == master.user_id))
-    user = user_result.scalar_one_or_none()
-    master_name = user.full_name if user else "Мастер"
+    master_user = user_result.scalar_one_or_none()
+    master_name = master_user.full_name if master_user else "Мастер"
     
     # Получаем услуги мастера
     services_result = await db.execute(
@@ -49,7 +49,7 @@ async def render_master_detail(db: AsyncSession, master_id: int) -> str:
     {get_base_styles()}
 </head>
 <body>
-    {render_header("salons", None)}
+    {render_header("salons", user)}
     {render_sidebar("salons")}
     
     <main style="margin-right: 16rem; padding-top: 2rem;">
@@ -65,6 +65,9 @@ async def render_master_detail(db: AsyncSession, master_id: int) -> str:
                         <h1 class="text-display" style="font-size:2rem">{master_name}</h1>
                         <p style="font-size:1.1rem;color:var(--color-muted)">{master.specialization}</p>
                         <p style="margin-top:0.5rem">⭐ {master.rating} · Опыт {master.experience_years} лет</p>
+                        <form action="/api/v1/favorites/toggle-master/{master.id}" method="post" style="display:inline;margin-top:0.5rem">
+                            <button type="submit" class="btn-outline" style="font-size:0.8rem;padding:0.4rem 0.8rem" title="Добавить мастера в избранное">⭐ В избранное</button>
+                        </form>
                     </div>
                 </div>
             </div>
@@ -75,7 +78,7 @@ async def render_master_detail(db: AsyncSession, master_id: int) -> str:
             </div>
             
             <div style="margin-top:2rem;text-align:center">
-                <button class="btn-primary" style="font-size:1rem;padding:1rem 2rem">Записаться</button>
+                <a href="/salons/{master.salon_id}" class="btn-primary" style="font-size:1rem;padding:1rem 2rem">Записаться</a>
             </div>
         </div>
     </main>

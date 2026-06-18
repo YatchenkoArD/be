@@ -5,8 +5,36 @@ from app.web.components.sidebar import render_sidebar
 from app.web.components.styles import get_base_styles
 
 
-def render_profile_page(user=None) -> str:
+def render_profile_page(user=None, error=None, success=None) -> str:
     """Страница профиля клиента."""
+    
+    # Обработка сообщений об ошибках и успехе
+    error_message = ""
+    success_message = ""
+    
+    if error:
+        error_messages = {
+            "email_taken": "Этот email уже используется другим пользователем",
+            "wrong_password": "Неверный текущий пароль",
+            "password_mismatch": "Новые пароли не совпадают",
+            "password_too_short": "Пароль должен быть не менее 6 символов"
+        }
+        error_message = f"""
+        <div class="alert alert-error" style="margin-bottom:1rem">
+            {error_messages.get(error, "Произошла ошибка")}
+        </div>
+        """
+    
+    if success:
+        success_messages = {
+            "updated": "Профиль успешно обновлен",
+            "password_updated": "Пароль успешно изменен"
+        }
+        success_message = f"""
+        <div class="alert alert-success" style="margin-bottom:1rem">
+            {success_messages.get(success, "Операция выполнена успешно")}
+        </div>
+        """
     
     if user:
         name = user.full_name or "Пользователь"
@@ -18,6 +46,9 @@ def render_profile_page(user=None) -> str:
             "admin": "Администратор",
         }.get(user.role.value if user.role else "client", "Клиент")
         phone = user.phone or "—"
+        email = user.email or ""
+        avatar_url = user.avatar_url or ""
+        portfolio_desc = getattr(user, 'portfolio_desc', '') or ""
         avatar_letter = name[0].upper() if name else "?"
         login_block = ""
         stats = f"""
@@ -41,16 +72,57 @@ def render_profile_page(user=None) -> str:
         edit_form = f"""
         <div class="card" style="margin-top:1.5rem">
             <h3 style="margin-bottom:1rem">Редактировать профиль</h3>
-            <form action="/api/v1/users/me" method="post">
+            {error_message}
+            {success_message}
+            <form action="/api/v1/users/me/update-form" method="post">
                 <div style="margin-bottom:1rem">
-                    <label style="display:block;font-weight:500;margin-bottom:0.5rem">Имя</label>
-                    <input type="text" name="full_name" value="{name}" style="width:100%;padding:0.75rem;border:1px solid var(--color-border);border-radius:0.5rem;font-size:0.9rem">
+                    <label style="display:block;font-weight:500;margin-bottom:0.5rem">Имя *</label>
+                    <input type="text" name="full_name" value="{name}" required 
+                           style="width:100%;padding:0.75rem;border:1px solid var(--color-border);border-radius:0.5rem;font-size:0.9rem">
                 </div>
                 <div style="margin-bottom:1rem">
                     <label style="display:block;font-weight:500;margin-bottom:0.5rem">Телефон</label>
-                    <input type="tel" name="phone" value="{phone}" style="width:100%;padding:0.75rem;border:1px solid var(--color-border);border-radius:0.5rem;font-size:0.9rem">
+                    <input type="tel" name="phone" value="{phone}" 
+                           style="width:100%;padding:0.75rem;border:1px solid var(--color-border);border-radius:0.5rem;font-size:0.9rem">
+                </div>
+                <div style="margin-bottom:1rem">
+                    <label style="display:block;font-weight:500;margin-bottom:0.5rem">Email</label>
+                    <input type="email" name="email" value="{email}" 
+                           style="width:100%;padding:0.75rem;border:1px solid var(--color-border);border-radius:0.5rem;font-size:0.9rem">
+                </div>
+                <div style="margin-bottom:1rem">
+                    <label style="display:block;font-weight:500;margin-bottom:0.5rem">URL аватара</label>
+                    <input type="text" name="avatar_url" value="{avatar_url}" 
+                           style="width:100%;padding:0.75rem;border:1px solid var(--color-border);border-radius:0.5rem;font-size:0.9rem">
+                </div>
+                <div style="margin-bottom:1rem">
+                    <label style="display:block;font-weight:500;margin-bottom:0.5rem">Описание портфолио</label>
+                    <textarea name="portfolio_desc" rows="4" 
+                              style="width:100%;padding:0.75rem;border:1px solid var(--color-border);border-radius:0.5rem;font-size:0.9rem">{portfolio_desc}</textarea>
                 </div>
                 <button type="submit" class="btn-primary">💾 Сохранить</button>
+            </form>
+        </div>
+        
+        <div class="card" style="margin-top:1.5rem">
+            <h3 style="margin-bottom:1rem">Изменить пароль</h3>
+            <form action="/api/v1/users/me/password-form" method="post">
+                <div style="margin-bottom:1rem">
+                    <label style="display:block;font-weight:500;margin-bottom:0.5rem">Текущий пароль *</label>
+                    <input type="password" name="current_password" required 
+                           style="width:100%;padding:0.75rem;border:1px solid var(--color-border);border-radius:0.5rem;font-size:0.9rem">
+                </div>
+                <div style="margin-bottom:1rem">
+                    <label style="display:block;font-weight:500;margin-bottom:0.5rem">Новый пароль *</label>
+                    <input type="password" name="new_password" required 
+                           style="width:100%;padding:0.75rem;border:1px solid var(--color-border);border-radius:0.5rem;font-size:0.9rem">
+                </div>
+                <div style="margin-bottom:1rem">
+                    <label style="display:block;font-weight:500;margin-bottom:0.5rem">Подтвердите новый пароль *</label>
+                    <input type="password" name="confirm_password" required 
+                           style="width:100%;padding:0.75rem;border:1px solid var(--color-border);border-radius:0.5rem;font-size:0.9rem">
+                </div>
+                <button type="submit" class="btn-primary">🔒 Изменить пароль</button>
             </form>
         </div>
         """
@@ -120,6 +192,35 @@ def render_profile_page(user=None) -> str:
             font-size: 0.8rem;
             color: var(--color-muted);
             margin-top: 0.25rem;
+        }}
+        .alert {{
+            padding: 1rem;
+            border-radius: 0.5rem;
+            border: 1px solid;
+        }}
+        .alert-error {{
+            background: #fee2e2;
+            border-color: #fecaca;
+            color: #991b1b;
+        }}
+        .alert-success {{
+            background: #dcfce7;
+            border-color: #bbf7d0;
+            color: #166534;
+        }}
+        .btn-primary {{
+            background: var(--color-primary);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }}
+        .btn-primary:hover {{
+            opacity: 0.9;
         }}
     </style>
 </head>

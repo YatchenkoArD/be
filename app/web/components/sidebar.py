@@ -1,7 +1,7 @@
 # app/web/components/sidebar.py
 
 def render_sidebar(current_page: str = "home") -> str:
-    """Боковая панель навигации (как в главная.txt)."""
+    """Боковая панель навигации."""
     nav_items = [
         ("/", "Главная", "home", "🏠"),
         ("/salons", "Салоны", "salons", "🏢"),
@@ -25,7 +25,7 @@ def render_sidebar(current_page: str = "home") -> str:
             icon_str = icon[0] if icon else ""
             active_class = "background: var(--color-accent-light); color: var(--color-heading);" if current == page_id else "color: var(--color-muted);"
             html += f"""
-            <a href="{url}" style="display: flex; align-items: center; gap: 0.75rem; padding: 0.625rem 0.75rem; border-radius: 0.75rem; font-size: 0.875rem; font-weight: 500; text-decoration: none; transition: all 0.2s; {active_class}">
+            <a href="{url}" style="display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1rem; border-radius: 0.75rem; font-size: 1rem; font-weight: 500; text-decoration: none; transition: all 0.2s; {active_class}">
                 <span>{icon_str}</span>
                 <span>{title}</span>
             </a>
@@ -46,7 +46,7 @@ def render_sidebar(current_page: str = "home") -> str:
             </div>
             
             <div style="border-top: 1px solid var(--color-border); margin: 1rem 0; padding-top: 1rem;">
-                <p style="font-size: 0.6875rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-muted); padding: 0 0.75rem; margin-bottom: 0.5rem;">Клиенту</p>
+                <p style="font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-muted); padding: 0 0.75rem; margin-bottom: 0.5rem;">Клиенту</p>
                 {render_items(profile_items, current_page)}
             </div>
             
@@ -57,7 +57,7 @@ def render_sidebar(current_page: str = "home") -> str:
         
         <!-- Выход -->
         <div style="padding: 1rem 0.75rem; border-top: 1px solid var(--color-border);">
-            <button onclick="location.href='/logout'" style="display: flex; align-items: center; gap: 0.75rem; width: 100%; padding: 0.625rem 0.75rem; border: none; background: transparent; border-radius: 0.75rem; font-size: 0.875rem; color: var(--color-primary); cursor: pointer; transition: background 0.2s;">
+            <button onclick="location.href='/logout'" style="display: flex; align-items: center; gap: 0.75rem; width: 100%; padding: 0.75rem 1rem; border: none; background: transparent; border-radius: 0.75rem; font-size: 1rem; color: var(--color-primary); cursor: pointer; transition: background 0.2s;">
                 🚪 Выход
             </button>
         </div>

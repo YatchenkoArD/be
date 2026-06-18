@@ -68,6 +68,7 @@ async def render_salon_detail(db: AsyncSession, salon_id: int, user=None) -> str
                 <div class="master-info">
                     <h3>{user_name}</h3>
                     <span class="master-spec">{m.specialization} · ⭐{m.rating} · Опыт {m.experience_years} лет</span>
+                    <button id="fav-master-{m.id}" onclick="toggleFavorite('master', {m.id})" class="fav-btn" style="font-size:0.9rem;margin-top:0.2rem" title="Добавить в избранное">🤍</button>
                 </div>
             </div>
             
@@ -160,7 +161,7 @@ async def render_salon_detail(db: AsyncSession, salon_id: int, user=None) -> str
     <style>
         .salon-hero {{ background: linear-gradient(135deg, #FFF8F6, #F8C8DC33); padding: 3rem 0; margin-bottom: 2rem; }}
         .salon-hero h1 {{ font-size: 2.5rem; margin-bottom: 0.5rem; }}
-        .salon-hero .meta {{ display: flex; gap: 1.5rem; color: var(--color-muted); font-size: 0.9rem; }}
+        .salon-hero .meta {{ display: flex; gap: 1.5rem; color: var(--color-muted); font-size: 0.9rem; flex-wrap:wrap; align-items:center }}
         .master-card {{ background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 1rem; padding: 1.5rem; margin-bottom: 1.25rem; transition: border-color 0.2s; }}
         .master-card:hover {{ border-color: var(--color-primary); }}
         .master-header {{ display: flex; gap: 1rem; align-items: start; margin-bottom: 1rem; }}
@@ -205,6 +206,20 @@ async def render_salon_detail(db: AsyncSession, salon_id: int, user=None) -> str
         .rating-input input:checked ~ label,
         .rating-input label:hover,
         .rating-input label:hover ~ label {{ opacity: 1; }}
+        .fav-btn {{
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1.2rem;
+            transition: transform 0.2s;
+            padding: 0.2rem;
+        }}
+        .fav-btn:hover {{
+            transform: scale(1.2);
+        }}
+        .fav-btn.liked {{
+            color: #ef4444;
+        }}
     </style>
 </head>
 <body>
@@ -220,6 +235,7 @@ async def render_salon_detail(db: AsyncSession, salon_id: int, user=None) -> str
                     <span>📍 {salon.address or 'Адрес не указан'}</span>
                     <span>📞 {salon.phone or '—'}</span>
                     <span>⭐ {salon.rating} ({salon.reviews_count} отзывов)</span>
+                    <button id="fav-salon-{salon.id}" onclick="toggleFavorite('salon', {salon.id})" class="fav-btn" title="Добавить в избранное">🤍</button>
                 </div>
                 <p style="margin-top:0.75rem;color:var(--color-body)">{salon.description or ''}</p>
             </div>
@@ -252,6 +268,45 @@ async def render_salon_detail(db: AsyncSession, salon_id: int, user=None) -> str
         let selectedMasterId = null;
         let selectedServiceId = null;
         
+        // === ИЗБРАННОЕ ===
+        async function checkFavorites() {{
+            try {{
+                const response = await fetch('/api/v1/favorites/my');
+                const data = await response.json();
+                data.salon_ids.forEach(id => {{
+                    const btn = document.getElementById('fav-salon-' + id);
+                    if (btn) {{ btn.textContent = '❤️'; btn.classList.add('liked'); }}
+                }});
+                data.master_ids.forEach(id => {{
+                    const btn = document.getElementById('fav-master-' + id);
+                    if (btn) {{ btn.textContent = '❤️'; btn.classList.add('liked'); }}
+                }});
+            }} catch(e) {{}}
+        }}
+        
+        async function toggleFavorite(type, id) {{
+            const btn = document.getElementById('fav-' + type + '-' + id);
+            const isLiked = btn.classList.contains('liked');
+            
+            try {{
+                const response = await fetch(`/api/v1/favorites/toggle-${{type}}/${{id}}`, {{ method: 'POST' }});
+                if (response.ok) {{
+                    if (isLiked) {{
+                        btn.textContent = '🤍';
+                        btn.classList.remove('liked');
+                    }} else {{
+                        btn.textContent = '❤️';
+                        btn.classList.add('liked');
+                    }}
+                }}
+            }} catch(e) {{
+                alert('Ошибка. Попробуйте позже.');
+            }}
+        }}
+        
+        checkFavorites();
+        
+        // === СЛОТЫ ===
         async function showSlots(btn, masterId, serviceId, serviceName, price, duration) {{
             document.querySelectorAll('.service-select-btn').forEach(b => b.textContent = 'Выбрать');
             document.querySelectorAll('.service-card').forEach(c => c.classList.remove('selected'));

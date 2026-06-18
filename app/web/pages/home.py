@@ -62,7 +62,7 @@ async def render_home_page(db: AsyncSession, user=None) -> str:
         <section style="position: relative; background: linear-gradient(135deg, #FFF8F6, #F8C8DC33, #F28C6F22); overflow: hidden; padding: 8rem 0 6rem 0;">
             <div class="section-container" style="position: relative; z-index: 10;">
                 <div class="badge" style="margin-bottom: 1rem;">Запись в пару кликов</div>
-                <h1 class="text-display" style="font-size: 3.5rem; line-height: 1.2; max-width: 40rem; margin-bottom: 1rem;">Красота — рядом с вами</h1>
+                <h1 class="text-display" style="font-size: 6rem; line-height: 1.1;">Красота — рядом<br>с вами</h1>
                 <p style="font-size: 1.1rem; max-width: 32rem; margin-bottom: 2rem; color: var(--color-body);">Выберите услугу, салон и время — готово. Никаких звонков, всё онлайн.</p>
                 
                 <a href="/salons" style="display: flex; align-items: center; gap: 0.75rem; background: white; border: 2px solid transparent; border-radius: 1rem; padding: 1rem 1.5rem; width: 100%; max-width: 40rem; cursor: pointer; box-shadow: 0 10px 25px rgba(0,0,0,0.08); text-decoration: none; transition: all 0.2s;">

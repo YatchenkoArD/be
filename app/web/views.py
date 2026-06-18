@@ -78,9 +78,10 @@ async def bookings_page(
 async def favorites_page(request: Request, db: AsyncSession = Depends(get_db)):
     """Страница 'Избранное'."""
     user = await get_current_user_from_cookie(request, db)
+    if not user:
+        return RedirectResponse(url="/login?redirect=/favorites", status_code=302)
     from app.web.pages.favorites import render_favorites_page
-    return HTMLResponse(content=render_favorites_page(user))
-
+    return HTMLResponse(content=await render_favorites_page(db, user))
 
 @router.get("/settings", response_class=HTMLResponse)
 async def settings_page(request: Request, db: AsyncSession = Depends(get_db)):
