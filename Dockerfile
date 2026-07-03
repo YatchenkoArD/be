@@ -40,6 +40,17 @@ RUN groupadd -r app && useradd -r -g app -d /app app
 
 WORKDIR /app
 
+# Базовый python:3.11-slim несёт СВОЙ pip/setuptools/wheel в /usr/local —
+# в рантайме не нужны и тянут HIGH-CVE (wheel, jaraco.context). Вычищаем.
+# Приложение работает из /opt/venv, поэтому это безопасно.
+RUN rm -rf /usr/local/lib/python3.11/site-packages/setuptools* \
+           /usr/local/lib/python3.11/site-packages/pip* \
+           /usr/local/lib/python3.11/site-packages/wheel* \
+           /usr/local/lib/python3.11/site-packages/pkg_resources \
+           /usr/local/lib/python3.11/site-packages/_distutils_hack \
+           /usr/local/lib/python3.11/site-packages/jaraco* \
+           /usr/local/bin/pip /usr/local/bin/pip3 /usr/local/bin/pip3.11 /usr/local/bin/wheel
+
 COPY --from=builder /opt/venv /opt/venv
 COPY . .
 
