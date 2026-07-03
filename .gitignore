@@ -11,3 +11,6 @@ alembic/versions/*.pyc
 # Приватные ключи JWT и любые PEM — никогда в git
 keys/
 *.pem
+
+# локальный оверрайд портов (не коммитить)
+docker-compose.override.yml

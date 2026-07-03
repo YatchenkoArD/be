@@ -66,12 +66,14 @@ app.include_router(services.router, prefix="/api/v1", tags=["services"])
 app.include_router(favorites.router, prefix="/api/v1", tags=["favorites"])
 app.include_router(admin.router, prefix="/api/v1/admin", tags=["admin"])
 
-# 3. Веб-роутер (страницы) — ПОСЛЕ API
-app.include_router(web_router, include_in_schema=False)
-
-@app.get("/health")
+# Healthcheck — регистрируем ДО веб-роутера, иначе его перехватывает
+# catch-all страниц (`/{path:path}`) и /health отдаёт 404.
+@app.get("/health", include_in_schema=False)
 async def health_check():
     return {"status": "ok"}
+
+# 3. Веб-роутер (страницы) — ПОСЛЕ API
+app.include_router(web_router, include_in_schema=False)
 
 @app.get("/api/v1/salons", response_model=List[SalonResponse])
 async def get_salons(db: AsyncSession = Depends(get_db)):

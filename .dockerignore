@@ -1,0 +1,27 @@
+# Секреты и локальное — НЕ в образ
+.env
+.env.*
+keys/
+*.pem
+
+# Виртуальные окружения и кэши
+.venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Git и CI
+.git/
+.github/
+.gitignore
+.pre-commit-config.yaml
+.gitleaks.toml
+
+# Локальные оверрайды и артефакты
+docker-compose.override.yml
+smoke_test.sh
+*.md
+project_structure.txt

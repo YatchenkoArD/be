@@ -5,6 +5,7 @@
 fastapi==0.138.1
 starlette==1.3.1              # SCA: auth-bypass (Host) / SSRF закрыты
 uvicorn[standard]==0.34.0
+gunicorn==23.0.0              # прод-запуск: gunicorn -k uvicorn.workers.UvicornWorker
 python-multipart==0.0.32      # SCA: было 0.0.6 (path traversal / param pollution)
 
 # Конфигурация / валидация (согласованные версии — чинит прежний ResolutionImpossible)

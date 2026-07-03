@@ -1,0 +1,57 @@
+# ─────────────────────────────────────────────────────────────
+# Stage 1 — builder: ставим зависимости в изолированный venv
+# ─────────────────────────────────────────────────────────────
+FROM python:3.11-slim AS builder
+
+ENV PIP_NO_CACHE_DIR=1 \
+    PYTHONDONTWRITEBYTECODE=1
+
+WORKDIR /app
+
+# build-essential нужен на случай сборки колёс (asyncpg/argon2-cffi/cryptography);
+# на slim (glibc) чаще есть готовые wheels, но подстрахуемся.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+COPY requirements.txt .
+RUN pip install --upgrade pip \
+    && pip install -r requirements.txt \
+    # Убираем build-тулинг из venv — в рантайме не нужен, а именно он тянет
+    # HIGH-CVE (wheel, jaraco.context). Удаляем явно по имени (надёжнее find).
+    && pip uninstall -y jaraco.context wheel setuptools pip \
+    && rm -rf /opt/venv/lib/python*/site-packages/pkg_resources \
+              /opt/venv/lib/python*/site-packages/_distutils_hack
+
+# ─────────────────────────────────────────────────────────────
+# Stage 2 — runtime: только venv + код, без компиляторов, non-root
+# ─────────────────────────────────────────────────────────────
+FROM python:3.11-slim AS runtime
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PATH="/opt/venv/bin:$PATH"
+
+# непривилегированный пользователь
+RUN groupadd -r app && useradd -r -g app -d /app app
+
+WORKDIR /app
+
+COPY --from=builder /opt/venv /opt/venv
+COPY . .
+
+# .env и keys/ НЕ копируются (см. .dockerignore) — секреты монтируются в рантайме
+RUN chown -R app:app /app
+USER app
+
+EXPOSE 8000
+
+# Liveness: /health (починен — регистрируется до catch-all веб-роутера)
+HEALTHCHECK --interval=30s --timeout=5s --start-period=25s --retries=3 \
+    CMD python -c "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health').status==200 else 1)"
+
+# Прод-запуск: gunicorn с uvicorn-воркерами. Кол-во воркеров — через env WEB_CONCURRENCY.
+CMD ["sh", "-c", "gunicorn app.main:app -k uvicorn.workers.UvicornWorker -w ${WEB_CONCURRENCY:-2} -b 0.0.0.0:8000 --access-logfile - --error-logfile -"]

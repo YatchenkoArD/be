@@ -1,0 +1,14 @@
+# Caddy: авто-HTTPS (Let's Encrypt) для {$DOMAIN}, reverse-proxy на app:8000.
+# Для локальной проверки DOMAIN=localhost → Caddy выдаст локальный самоподписанный
+# сертификат (tls internal). Для прода DOMAIN=<реальный домен> → Let's Encrypt.
+{$DOMAIN:localhost} {
+    encode gzip
+    reverse_proxy app:8000
+
+    # Доп. защита заголовками на уровне прокси (в приложении они тоже есть)
+    header {
+        -Server
+        Referrer-Policy "strict-origin-when-cross-origin"
+        X-Content-Type-Options "nosniff"
+    }
+}

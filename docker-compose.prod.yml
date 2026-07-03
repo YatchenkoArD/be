@@ -1,0 +1,73 @@
+# Прод-стек: app (gunicorn) + PostgreSQL + Redis + Caddy (авто-TLS).
+# Запуск:
+#   1) заполнить .env (SECRET_KEY, POSTGRES_PASSWORD, DOMAIN, CORS_ORIGINS)
+#   2) сгенерировать боевые ключи: python -m app.scripts.gen_keys (в ./keys)
+#   3) миграции:  docker compose -f docker-compose.prod.yml run --rm app alembic upgrade head
+#   4) docker compose -f docker-compose.prod.yml up -d
+services:
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-beauty_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+      POSTGRES_DB: ${POSTGRES_DB:-beauty_platform}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-beauty_user} -d ${POSTGRES_DB:-beauty_platform}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  app:
+    build: .
+    image: rumi-app:latest
+    env_file: .env
+    environment:
+      # переопределяем локальные значения из .env под контейнерную сеть
+      ENVIRONMENT: production
+      COOKIE_SECURE: "true"
+      POSTGRES_HOST: db
+      POSTGRES_PORT: "5432"
+      REDIS_URL: redis://redis:6379/0
+      CORS_ORIGINS: '["https://${DOMAIN:-localhost}"]'
+      WEB_CONCURRENCY: "2"
+    volumes:
+      - ./keys:/app/keys:ro           # RS256-ключи монтируем, не пекём в образ
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN:-localhost}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - app
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:
