@@ -49,6 +49,18 @@ class Settings(BaseSettings):
     # SQL-эхо в логи. В проде ДОЛЖНО быть False (иначе параметры запросов утекают).
     SQL_ECHO: bool = False
 
+    # --- OTP-сервис (подтверждение телефона при регистрации) ---
+    # Базовый URL отдельного микросервиса otp-service (см. его README про деплой на Amvera).
+    OTP_SERVICE_URL: str = "http://localhost:8000"
+    OTP_SERVICE_API_KEY: str = "change_me"
+    OTP_METHOD: str = "flash_call"  # flash_call (дешевле) или sms
+
+    # Временный рубильник: пока нет официального подключения SMS/otp-service,
+    # OTP_ENABLED=false пропускает реальную отправку/проверку кода (otp_client
+    # возвращает фиктивный request_id и считает любой код верным). Код-путь
+    # с otp-service остаётся нетронутым — включится обратно простой сменой флага.
+    OTP_ENABLED: bool = True
+
     @field_validator("COOKIE_SECURE")
     @classmethod
     def _force_secure_in_prod(cls, v: bool, info) -> bool:

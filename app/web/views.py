@@ -368,6 +368,9 @@ async def register_page(request: Request):
         "phone_exists": "Пользователь с таким телефоном уже зарегистрирован",
         "weak_password": "Пароль не отвечает требованиям сложности",
         "bad_phone": "Неверный формат телефона. Пример: +7 (999) 123-45-67",
+        "no_code": "Получите код подтверждения на телефон перед регистрацией",
+        "bad_code": "Неверный или истёкший код подтверждения",
+        "otp_unavailable": "Сервис отправки кода временно недоступен, попробуйте позже",
     }
     banner = _alert(errors.get(q.get("error", ""), ""))
 
@@ -381,11 +384,20 @@ async def register_page(request: Request):
     <div style="text-align:center;margin-bottom:1.5rem;font-size:1.5rem;font-weight:800"><span style="color:var(--color-primary)">руми.</span></div>
     <h1 style="font-size:1.5rem;color:var(--color-heading);text-align:center;margin-bottom:1.5rem">Регистрация</h1>
     {banner}
-    <form action="/api/v1/auth/register-web" method="post">
+    <form action="/api/v1/auth/register-web" method="post" id="registerForm">
         <label style="display:block;font-size:0.875rem;font-weight:500;margin-bottom:0.5rem;color:var(--color-heading)">Имя</label>
         <input type="text" name="full_name" value="{full_name}" placeholder="Ваше имя" style="width:100%;padding:0.75rem;border:1px solid var(--color-border);border-radius:0.5rem;font-size:0.875rem;margin-bottom:1rem">
         <label style="display:block;font-size:0.875rem;font-weight:500;margin-bottom:0.5rem;color:var(--color-heading)">Телефон</label>
-        <input type="tel" name="phone" value="{phone}" placeholder="+7 (___) ___-__-__" inputmode="tel" class="phone-input" required style="width:100%;padding:0.75rem;border:1px solid var(--color-border);border-radius:0.5rem;font-size:0.875rem;margin-bottom:1rem">
+        <div style="display:flex;gap:0.5rem;margin-bottom:1rem">
+            <input type="tel" id="phone" name="phone" value="{phone}" placeholder="+7 (___) ___-__-__" inputmode="tel" class="phone-input" required style="flex:1;padding:0.75rem;border:1px solid var(--color-border);border-radius:0.5rem;font-size:0.875rem">
+            <button type="button" id="sendCodeBtn" style="white-space:nowrap;padding:0 1rem;border:1px solid var(--color-primary);border-radius:0.5rem;background:white;color:var(--color-primary);font-size:0.8rem;font-weight:500;cursor:pointer">Получить код</button>
+        </div>
+        <div id="codeGroup" style="display:none;margin-bottom:1rem">
+            <label style="display:block;font-size:0.875rem;font-weight:500;margin-bottom:0.5rem;color:var(--color-heading)">Код из SMS / звонка</label>
+            <input type="text" id="code" name="code" placeholder="1234" inputmode="numeric" autocomplete="one-time-code" style="width:100%;padding:0.75rem;border:1px solid var(--color-border);border-radius:0.5rem;font-size:0.875rem">
+            <p id="codeHint" style="font-size:0.75rem;color:var(--color-muted);margin-top:0.375rem"></p>
+        </div>
+        <input type="hidden" id="request_id" name="request_id" value="">
         <label style="display:block;font-size:0.875rem;font-weight:500;margin-bottom:0.5rem;color:var(--color-heading)">Пароль</label>
         <input type="password" id="pw" name="password" required minlength="8" style="width:100%;padding:0.75rem;border:1px solid var(--color-border);border-radius:0.5rem;font-size:0.875rem;margin-bottom:0.5rem">
         <ul style="list-style:none;padding:0;margin:0 0 1rem;font-size:0.75rem;color:var(--color-muted)">
@@ -398,6 +410,46 @@ async def register_page(request: Request):
     </form>
     <div style="text-align:center;margin-top:1rem;font-size:0.875rem"><a href="/login">Вход</a> · <a href="/">На главную</a></div>
 </div>
+<script>
+(function() {{
+  var btn = document.getElementById('sendCodeBtn');
+  btn.addEventListener('click', async function() {{
+    var phone = document.getElementById('phone').value;
+    if (!phone) {{ alert('Сначала введите номер телефона'); return; }}
+    btn.disabled = true;
+    btn.textContent = 'Отправляем...';
+    try {{
+      var res = await fetch('/api/v1/auth/register/send-code', {{
+        method: 'POST',
+        headers: {{ 'Content-Type': 'application/json' }},
+        body: JSON.stringify({{ phone: phone }})
+      }});
+      var data = await res.json();
+      if (res.ok) {{
+        document.getElementById('request_id').value = data.request_id;
+        document.getElementById('codeGroup').style.display = 'block';
+        document.getElementById('codeHint').textContent = 'Код отправлен на ' + data.masked_phone;
+        btn.textContent = 'Отправить ещё раз';
+      }} else {{
+        alert(data.detail || 'Не удалось отправить код');
+        btn.textContent = 'Получить код';
+      }}
+    }} catch (e) {{
+      alert('Ошибка соединения с сервером');
+      btn.textContent = 'Получить код';
+    }} finally {{
+      btn.disabled = false;
+    }}
+  }});
+
+  document.getElementById('registerForm').addEventListener('submit', function(e) {{
+    if (!document.getElementById('request_id').value) {{
+      e.preventDefault();
+      alert('Сначала получите и введите код из SMS/звонка');
+    }}
+  }});
+}})();
+</script>
 """
     tail = _PHONE_FORMAT_SCRIPT + _PASSWORD_HINT_SCRIPT + "\n</body>\n</html>"
     return HTMLResponse(content=body + tail)

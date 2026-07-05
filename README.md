@@ -26,10 +26,57 @@ python -m app.scripts.gen_keys    # сгенерировать пару RS256-к
 ```bash
 docker compose up -d db redis     # PostgreSQL + Redis
 alembic upgrade head              # миграции
-python main.py
+uvicorn app.main:app --reload
 ```
 
+> SMS-подтверждение телефона (otp-service) пока официально не подключено —
+> `OTP_ENABLED=false` в `.env.example` временно пропускает проверку кода при
+> регистрации. Когда otp-service будет развёрнут — поставить `OTP_ENABLED=true`.
+
 Dev-данные (`python -m app.scripts.seed_data`) создаются с паролем `Seedpass1`.
+
+## Прод-деплой (Timeweb, один VPS)
+
+Стек: `app` (gunicorn) + `arq-worker` + `otp` (микросервис otp-service,
+подтверждение телефона по SMS/flash-call) + `redis` + `caddy` (авто-HTTPS).
+PostgreSQL — **управляемая БД Timeweb**, не контейнер: два логических
+БД (`beauty_platform`, `otp_service`) на одном кластере, бэкапы уже
+включены на стороне Timeweb.
+
+otp-service должен быть склонирован рядом (сосед этого репозитория):
+
+```
+/opt/beauty_platform/
+/opt/otp-service/
+```
+
+Запуск:
+```bash
+cp .env.example .env              # SECRET_KEY, POSTGRES_* (хост управляемой БД!), DOMAIN, OTP_SERVICE_API_KEY
+python -m app.scripts.gen_keys
+docker compose -f docker-compose.prod.yml run --rm app alembic upgrade head
+docker compose -f docker-compose.prod.yml up -d --build
+```
+
+`OTP_SERVICE_API_KEY` в `.env` этого репозитория должен совпадать с
+`API_KEY` в `otp-service/.env` — это общий секрет для внутреннего вызова
+(сервис `otp` не публикуется в интернет, см. его README).
+
+### Бэкапы в S3 (доп. подстраховка)
+
+Managed PostgreSQL Timeweb уже делает ежедневные бэкапы сам. `backup_to_s3.sh`
+дублирует дампы обеих БД в S3 (VK Cloud, подключается в панели Timeweb) —
+на случай проблем с самим Timeweb. Настройка:
+
+```bash
+chmod +x backup_to_s3.sh
+crontab -e
+# добавить строку (ежедневно в 03:00):
+0 3 * * * cd /opt/beauty_platform && ./backup_to_s3.sh >> /var/log/db_backup.log 2>&1
+```
+
+Требует `postgresql-client` и `awscli` на хосте (`apt install postgresql-client awscli`)
+и заполненные `S3_ENDPOINT`/`S3_BUCKET`/`S3_ACCESS_KEY`/`S3_SECRET_KEY` в `.env`.
 
 ## Безопасность
 

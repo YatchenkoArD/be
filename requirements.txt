@@ -30,6 +30,9 @@ argon2-cffi==23.1.0           # Argon2id как основная схема хе
 slowapi==0.1.9
 redis==5.2.1
 
+# HTTP-клиент для вызова otp-service
+httpx==0.28.1
+
 # Прочее
 geopy==2.4.1                  # геопоиск салонов (раньше отсутствовал в requirements)
 tzdata==2026.2

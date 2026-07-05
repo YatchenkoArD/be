@@ -23,6 +23,7 @@ from app.core.limiter import (
     register_login_failure,
     reset_login_failures,
 )
+from app.services import otp_client
 
 router = APIRouter()
 
@@ -100,6 +101,8 @@ async def register_web(
     phone: str = Form(...),
     password: str = Form(...),
     full_name: str = Form(""),
+    request_id: str = Form(""),
+    code: str = Form(""),
     db: AsyncSession = Depends(get_db),
 ):
     """Регистрация через веб-форму. Роль всегда CLIENT (назначает сервер)."""
@@ -120,6 +123,17 @@ async def register_web(
     existing = await db.execute(select(User).where(User.phone == norm_phone))
     if existing.scalar_one_or_none():
         return RedirectResponse(url=f"/register?error=phone_exists&{keep}", status_code=302)
+
+    if not request_id or not code:
+        return RedirectResponse(url=f"/register?error=no_code&{keep}", status_code=302)
+
+    try:
+        code_valid = await otp_client.verify_code(request_id, code, norm_phone)
+    except otp_client.OTPServiceError:
+        return RedirectResponse(url=f"/register?error=otp_unavailable&{keep}", status_code=302)
+
+    if not code_valid:
+        return RedirectResponse(url=f"/register?error=bad_code&{keep}", status_code=302)
 
     user = User(
         phone=norm_phone,

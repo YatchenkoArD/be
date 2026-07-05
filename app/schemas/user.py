@@ -34,11 +34,27 @@ class UserBase(BaseModel):
     email: Optional[EmailStr] = None
 
 
+class SendCodeRequest(BaseModel):
+    """Запрос кода подтверждения телефона перед регистрацией."""
+    phone: str
+
+    @field_validator("phone")
+    @classmethod
+    def _check_phone(cls, v: str) -> str:
+        return _normalize_phone(v)
+
+
 class RegisterRequest(BaseModel):
-    """Регистрация. Роль НЕ принимается от клиента — всегда CLIENT на сервере."""
+    """Регистрация. Роль НЕ принимается от клиента — всегда CLIENT на сервере.
+
+    request_id/code — результат SendCodeRequest, подтверждают, что телефон
+    реально принадлежит пользователю (проверяются в otp-service).
+    """
     phone: str
     password: str
     full_name: Optional[str] = None
+    request_id: str
+    code: str
 
     @field_validator("phone")
     @classmethod

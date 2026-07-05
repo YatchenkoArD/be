@@ -3,7 +3,9 @@
 # Запуск:  ./smoke_test.sh            (основные проверки)
 #          ./smoke_test.sh --audit    (+ pip-audit, медленнее, нужен venv)
 #
-# Требует: запущенные app (127.0.0.1:8000), beauty_db, beauty_redis.
+# Требует: запущенные app (127.0.0.1:8000), beauty_db, beauty_redis,
+# а также otp-service с SMS_MODE=mock (регистрация подтверждает телефон
+# кодом — в mock-режиме otp-service отдаёт код прямо в ответе для тестов).
 
 B="${BASE_URL:-http://127.0.0.1:8000}"
 DBPASS="$(grep -E '^POSTGRES_PASSWORD=' .env 2>/dev/null | cut -d= -f2)"
@@ -26,6 +28,15 @@ section(){ echo; echo "── $1"; }
 code()  { curl -s -o /dev/null -w '%{http_code}' "$@"; }
 reset_limits(){ docker exec beauty_redis redis-cli flushall >/dev/null 2>&1; }
 
+# Регистрация теперь требует подтверждения телефона кодом из otp-service.
+# В mock-режиме (SMS_MODE=mock) otp-service возвращает код прямо в ответе
+# (поле dev_code) — только для тестов/локальной разработки.
+get_code() {
+  local resp
+  resp=$(curl -s -X POST "$B/api/v1/auth/register/send-code" -H 'Content-Type: application/json' -d "{\"phone\":\"$1\"}")
+  python3 -c "import sys,json;d=json.loads(sys.argv[1]);print(d.get('request_id',''));print(d.get('dev_code',''))" "$resp" 2>/dev/null
+}
+
 # ── preconditions ────────────────────────────────────────────────────────────
 echo "Базовый URL: $B   | телефоны прогона: $(phone 0)…"
 if [ "$(code "$B/")" != "200" ]; then echo "${red}Приложение недоступно на $B${rst}"; exit 1; fi
@@ -33,18 +44,22 @@ reset_limits
 
 # ── 1. Политика паролей ─────────────────────────────────────────────────────
 section "1. Политика сложности пароля (бриф 3.2)"
+read -r RID1 CODE1 <<< "$(get_code "$(phone 1)")"
 expect "слабый (нет заглавной) anna123456 → 422" 422 \
-  "$(code -X POST $B/api/v1/auth/register -H 'Content-Type: application/json' -d "{\"phone\":\"$(phone 1)\",\"password\":\"anna123456\"}")"
+  "$(code -X POST $B/api/v1/auth/register -H 'Content-Type: application/json' -d "{\"phone\":\"$(phone 1)\",\"password\":\"anna123456\",\"request_id\":\"$RID1\",\"code\":\"$CODE1\"}")"
+read -r RID2 CODE2 <<< "$(get_code "$(phone 2)")"
 expect "из стоп-листа master123 → 422" 422 \
-  "$(code -X POST $B/api/v1/auth/register -H 'Content-Type: application/json' -d "{\"phone\":\"$(phone 2)\",\"password\":\"master123\"}")"
-_R=$(curl -s -w $'\n%{http_code}' -X POST $B/api/v1/auth/register -H 'Content-Type: application/json' -d "{\"phone\":\"$(phone 3)\",\"password\":\"Goodpass1\"}")
+  "$(code -X POST $B/api/v1/auth/register -H 'Content-Type: application/json' -d "{\"phone\":\"$(phone 2)\",\"password\":\"master123\",\"request_id\":\"$RID2\",\"code\":\"$CODE2\"}")"
+read -r RID3 CODE3 <<< "$(get_code "$(phone 3)")"
+_R=$(curl -s -w $'\n%{http_code}' -X POST $B/api/v1/auth/register -H 'Content-Type: application/json' -d "{\"phone\":\"$(phone 3)\",\"password\":\"Goodpass1\",\"request_id\":\"$RID3\",\"code\":\"$CODE3\"}")
 _RC=$(printf '%s' "$_R" | tail -1); _RB=$(printf '%s' "$_R" | sed '$d')
 [ "$_RC" = 200 ] && ok "валидный Goodpass1 → 200" || bad "валидный Goodpass1 [body: $_RB]" 200 "$_RC"
 
 # ── 2. Privilege escalation ──────────────────────────────────────────────────
 section "2. Нет privilege escalation в регистрации (A01 #1)"
+read -r RID4 CODE4 <<< "$(get_code "$(phone 4)")"
 ROLE=$(curl -s -X POST $B/api/v1/auth/register -H 'Content-Type: application/json' \
-  -d "{\"phone\":\"$(phone 4)\",\"password\":\"Goodpass1\",\"role\":\"business\"}" \
+  -d "{\"phone\":\"$(phone 4)\",\"password\":\"Goodpass1\",\"role\":\"business\",\"request_id\":\"$RID4\",\"code\":\"$CODE4\"}" \
   | python3 -c "import sys,json;print(json.load(sys.stdin).get('user',{}).get('role'))" 2>/dev/null)
 expect "role:business игнорируется → client" "client" "$ROLE"
 
@@ -131,8 +146,9 @@ KEYCNT=$(docker exec beauty_redis redis-cli keys "login_fail:*" 2>/dev/null | gr
 section "10. CSRF: проверка Origin для cookie-мутаций"
 expect "чужой Origin + cookie → 403" 403 \
   "$(code -X POST $B/api/v1/auth/register-web -H 'Origin: http://evil.com' -H 'Cookie: access_token=x' -d "phone=$(fphone 10)&password=Goodpass1")"
+read -r RID11 CODE11 <<< "$(get_code "$(phone 11)")"
 expect "свой Origin → не 403 (источник принят)" 302 \
-  "$(code -X POST $B/api/v1/auth/register-web -H "Origin: $B" -d "phone=$(fphone 11)&password=Goodpass1")"
+  "$(code -X POST $B/api/v1/auth/register-web -H "Origin: $B" --data-urlencode "phone=$(phone 11)" --data-urlencode "password=Goodpass1" --data-urlencode "request_id=$RID11" --data-urlencode "code=$CODE11")"
 
 # ── 11. Security-заголовки ───────────────────────────────────────────────────
 section "11. Security-заголовки"

@@ -1,25 +1,15 @@
-# Прод-стек: app (gunicorn) + PostgreSQL + Redis + Caddy (авто-TLS).
+# Прод-стек: app (gunicorn) + otp-service + Redis + Caddy (авто-TLS).
+# PostgreSQL — управляемая БД Timeweb (НЕ контейнер): host/port/user/pass
+# берутся из .env (POSTGRES_HOST должен указывать на хост из панели Timeweb).
 # Запуск:
-#   1) заполнить .env (SECRET_KEY, POSTGRES_PASSWORD, DOMAIN, CORS_ORIGINS)
+#   1) заполнить .env (SECRET_KEY, POSTGRES_*, DOMAIN, CORS_ORIGINS,
+#      OTP_SERVICE_API_KEY — тот же секрет, что в otp-service/.env)
 #   2) сгенерировать боевые ключи: python -m app.scripts.gen_keys (в ./keys)
 #   3) миграции:  docker compose -f docker-compose.prod.yml run --rm app alembic upgrade head
 #   4) docker compose -f docker-compose.prod.yml up -d
+#
+# Ожидается, что otp-service склонирован рядом: ../otp-service
 services:
-  db:
-    image: postgres:15-alpine
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-beauty_user}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
-      POSTGRES_DB: ${POSTGRES_DB:-beauty_platform}
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-beauty_user} -d ${POSTGRES_DB:-beauty_platform}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
-
   redis:
     image: redis:7-alpine
     command: ["redis-server", "--save", "", "--appendonly", "no"]
@@ -30,6 +20,19 @@ services:
       retries: 5
     restart: unless-stopped
 
+  otp:
+    build: ../otp-service
+    image: otp-service:latest
+    env_file: ../otp-service/.env
+    # Порт наружу не публикуем — сервис дёргает только backend app
+    # изнутри docker-сети (http://otp:8000), из интернета недоступен.
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health').status==200 else 1)"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   app:
     build: .
     image: rumi-app:latest
@@ -38,17 +41,16 @@ services:
       # переопределяем локальные значения из .env под контейнерную сеть
       ENVIRONMENT: production
       COOKIE_SECURE: "true"
-      POSTGRES_HOST: db
-      POSTGRES_PORT: "5432"
       REDIS_URL: redis://redis:6379/0
       CORS_ORIGINS: '["https://${DOMAIN:-localhost}"]'
       WEB_CONCURRENCY: "2"
+      OTP_SERVICE_URL: http://otp:8000
     volumes:
       - ./keys:/app/keys:ro           # RS256-ключи монтируем, не пекём в образ
     depends_on:
-      db:
-        condition: service_healthy
       redis:
+        condition: service_healthy
+      otp:
         condition: service_healthy
     restart: unless-stopped
 
@@ -60,14 +62,10 @@ services:
     command: ["arq", "app.core.worker.WorkerSettings"]
     environment:
       ENVIRONMENT: production
-      POSTGRES_HOST: db
-      POSTGRES_PORT: "5432"
       REDIS_URL: redis://redis:6379/0
     volumes:
       - ./keys:/app/keys:ro           # понадобятся задачам, работающим с БД/токенами
     depends_on:
-      db:
-        condition: service_healthy
       redis:
         condition: service_healthy
     # HEALTHCHECK из Dockerfile проверяет /health веб-приложения — для
@@ -96,6 +94,5 @@ services:
     restart: unless-stopped
 
 volumes:
-  pgdata:
   caddy_data:
   caddy_config:
