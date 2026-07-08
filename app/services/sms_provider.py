@@ -12,6 +12,11 @@ from app.core.config import settings
 logger = logging.getLogger(__name__)
 
 
+def _mask_phone(phone: str) -> str:
+    # Живые логи не должны быть вторым хранилищем номеров (152-ФЗ)
+    return phone[:-4] + "**" + phone[-2:] if len(phone) > 6 else phone
+
+
 class BaseSMSProvider:
     async def send(self, phone: str, code: str, method: str) -> bool:
         raise NotImplementedError
@@ -55,7 +60,7 @@ class SMSCProvider(BaseSMSProvider):
                 if "error" in data:
                     logger.error("SMSC error: %s", data)
                     return False
-                logger.info("SMSC: %s отправлен на %s", method, phone)
+                logger.info("SMSC: %s отправлен на %s", method, _mask_phone(phone))
                 return True
         except Exception:
             logger.exception("SMSC request failed")
@@ -82,7 +87,7 @@ class SMSRuProvider(BaseSMSProvider):
                 if data.get("status") != "OK":
                     logger.error("SMS.ru error: %s", data)
                     return False
-                logger.info("SMS.ru: SMS отправлен на %s", phone)
+                logger.info("SMS.ru: SMS отправлен на %s", _mask_phone(phone))
                 return True
         except Exception:
             logger.exception("SMS.ru request failed")

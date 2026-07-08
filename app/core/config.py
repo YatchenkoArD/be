@@ -88,6 +88,18 @@ class Settings(BaseSettings):
                 "принят. Если это осознанно (SMS-провайдер ещё не подключён), "
                 "задайте OTP_DISABLED_ACK=true; иначе включите OTP_ENABLED."
             )
+        if (
+            self.ENVIRONMENT == "production"
+            and self.OTP_ENABLED
+            and self.SMS_MODE == "mock"
+        ):
+            raise ValueError(
+                "SMS_MODE=mock в production при включённом OTP: коды не уходят "
+                "на телефон, а возвращаются в ответе /send-code любому, кто их "
+                "запросил (dev_code) — проверка телефона превращается в бутафорию. "
+                "Настройте SMS_MODE=live с кредами SMSC, либо отключите OTP "
+                "осознанно (OTP_ENABLED=false + OTP_DISABLED_ACK=true)."
+            )
         return self
 
     @field_validator("COOKIE_SECURE")

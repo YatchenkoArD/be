@@ -67,9 +67,12 @@ async def send_code(phone: str) -> dict:
         "request_id": request_id,
         "masked_phone": _mask_phone(phone),
         "expires_in_seconds": settings.OTP_TTL_MINUTES * 60,
-        # Код в открытом виде — ТОЛЬКО в mock-режиме (иначе взять его неоткуда,
-        # кроме лога), для разработки/smoke-тестов, пока провайдер не подключён.
-        "dev_code": code if settings.SMS_MODE == "mock" else None,
+        # Код в открытом виде — ТОЛЬКО в mock-режиме и НИКОГДА в production
+        # (вторая линия к guard'у в config: иначе код на чужой номер получает
+        # любой, кто его запросил). Для разработки/smoke-тестов.
+        "dev_code": code
+        if settings.SMS_MODE == "mock" and settings.ENVIRONMENT != "production"
+        else None,
     }
 
 
