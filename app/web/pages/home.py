@@ -6,11 +6,16 @@ from app.web.components.header import render_header
 from app.web.components.footer import render_footer
 from app.web.components.sidebar import render_sidebar
 from app.web.components.styles import get_base_styles
+from app.web.components.icons import (
+    ICON_SEARCH,
+    ICON_SCISSORS,
+    ICON_SPARKLES,
+)
 
 
 async def render_home_page(db: AsyncSession, user=None) -> str:
     """Главная страница руми."""
-    
+
     # Получаем популярные салоны
     try:
         result = await db.execute(
@@ -20,7 +25,7 @@ async def render_home_page(db: AsyncSession, user=None) -> str:
     except Exception as e:
         print(f"Ошибка загрузки салонов: {e}")
         salons = []
-    
+
     # Карточки салонов
     salon_cards = ""
     for s in salons:
@@ -36,11 +41,10 @@ async def render_home_page(db: AsyncSession, user=None) -> str:
             <a href="/salons/{s.id}" class="btn-primary salon-btn">Подробнее</a>
         </div>
         """
-    
+
     if not salons:
         salon_cards = '<p class="salon-empty">Пока нет салонов. <a href="/register">Зарегистрируйтесь</a> как владелец, чтобы добавить первый салон!</p>'
 
-    
     html = f"""<!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -49,75 +53,114 @@ async def render_home_page(db: AsyncSession, user=None) -> str:
     <title>Руми — мастера и салоны красоты рядом</title>
     <meta name="description" content="Платформа для клиентов и бизнеса: находите лучших мастеров, становитесь моделью или управляйте своим салоном.">
     {get_base_styles()}
-
 </head>
 <body>
     {render_header("home", user)}
     {render_sidebar("home")}
 
-    <main class="home-main { 'lg:pr-64' if user else '' }">
-        <!-- Hero -->
+    <main class="home-main">
+        <!-- Hero секция -->
         <section class="home-hero">
-            <div class="section-container home-hero-content">
-                <div class="badge" style="margin-bottom: 1rem;">Запись в пару кликов</div>
-                <h1 class="text-display home-hero-title">Красота — рядом<br>с вами</h1>
-                <p class="home-hero-subtitle">Выберите услугу, салон и время — готово. Никаких звонков, всё онлайн.</p>
-                
-                <a href="/salons" class="home-search-bar">
-                    <div class="home-search-icon">🔍</div>
-                    <div class="home-search-info">
-                        <span class="home-search-title">Найти салон или услугу</span>
-                        <span class="home-search-desc">Маникюр, стрижка, окрашивание, брови...</span>
+            <div class="section-container relative z-10">
+                <div class="home-hero-content">
+                    <h1 class="home-hero-title text-display">
+                        Красота — это просто<span class="dot-primary">.</span>
+                    </h1>
+                    <p class="home-hero-subtitle text-body-lg">
+                        Услуга, салон, время — готово. Без звонков и ожиданий.
+                    </p>
+
+                    <!-- Поиск -->
+                    <div class="home-search-card">
+                        <a href="/salons" class="home-search-link group">
+                            <div class="home-search-icon-wrapper">
+                                {ICON_SEARCH}
+                            </div>
+                            <div class="home-search-info">
+                                <span class="home-search-title">Найти салон или услугу</span>
+                                <span class="home-search-desc">Маникюр, стрижка, окрашивание, брови...</span>
+                            </div>
+                            <div class="home-search-btn hidden sm:flex">
+                                Найти
+                            </div>
+                        </a>
                     </div>
-                    <div class="home-search-btn">Найти</div>
-                </a>
-                
-                <div class="home-hero-tags">
-                    <a href="/salons" class="btn-outline" style="font-size: 0.85rem;">✂️ Стрижка</a>
-                    <a href="/salons" class="btn-outline" style="font-size: 0.85rem;">💅 Маникюр</a>
-                    <a href="/salons" class="btn-outline" style="font-size: 0.85rem;">🎨 Окрашивание</a>
-                    <a href="/salons" class="btn-outline" style="font-size: 0.85rem;">✨ Брови</a>
-                </div>
-                
-                <div class="home-hero-features">
-                    <span class="home-feature-item">📍 Салоны рядом с вами</span>
-                    <span class="home-feature-item">⚡ Запись за 30 секунд</span>
-                    <span class="home-feature-item">✅ Проверенные мастера</span>
+
+                    <!-- Теги -->
+                    <div class="home-hero-tags">
+                        <a href="/salons?service=стрижка" class="home-tag">
+                            {ICON_SCISSORS} Стрижка
+                        </a>
+                        <a href="/salons?service=маникюр" class="home-tag">
+                            {ICON_SPARKLES} Маникюр
+                        </a>
+                        <a href="/salons?service=окрашивание" class="home-tag">
+                            {ICON_SPARKLES} Окрашивание
+                        </a>
+                        <a href="/salons?service=брови" class="home-tag">
+                            {ICON_SPARKLES} Брови
+                        </a>
+                    </div>
                 </div>
             </div>
         </section>
 
         <!-- Как записаться -->
-        <section class="section-py bg-surface">
+        <section class="section-py" style="background:var(--color-surface);">
             <div class="section-container">
-                <div class="section-header">
-                    <div class="badge">Просто как 1-2-3</div>
-                    <h2 class="text-display section-title">Как записаться?</h2>
-                    <p class="text-body section-subtitle">Три простых шага — и вы записаны к лучшему мастеру</p>
+                <div class="how-title-wrapper">
+                    <h2 class="how-title">
+                        Как записаться<span class="how-title-dot">?</span>
+                    </h2>
+                    <p class="how-subtitle">
+                        Никаких звонков. Никаких форм с десятью полями. Ничего лишнего.
+                    </p>
                 </div>
-                <div class="steps-grid">
-                    <div class="card step-card">
-                        <div class="step-number">1</div>
-                        <span class="badge" style="margin-bottom: 0.5rem;">Шаг 01</span>
-                        <h3 class="text-subtitle step-title">Найдите салон</h3>
-                        <p class="step-desc">Выберите салон или услугу рядом с вами. Фильтры, рейтинги и отзывы помогут.</p>
-                    </div>
-                    <div class="card step-card">
-                        <div class="step-number">2</div>
-                        <span class="badge" style="margin-bottom: 0.5rem;">Шаг 02</span>
-                        <h3 class="text-subtitle step-title">Выберите время</h3>
-                        <p class="step-desc">Посмотрите свободные окна у мастера и выберите удобное время.</p>
-                    </div>
-                    <div class="card step-card">
-                        <div class="step-number">3</div>
-                        <span class="badge" style="margin-bottom: 0.5rem;">Шаг 03</span>
-                        <h3 class="text-subtitle step-title">Готово!</h3>
-                        <p class="step-desc">Приходите в назначенное время. Напоминание придёт заранее.</p>
+
+                <!-- Сам блок с 4 шагами -->
+                <div class="steps-block">
+                    <div class="steps-grid">
+                        <!-- 01 -->
+                        <div class="step-item">
+                            <div class="step-number">
+                                <span class="step-num">01</span>
+                                <span class="step-dot" style="color:var(--color-primary);">.</span>
+                            </div>
+                            <h3 class="step-headline">Услуга</h3>
+                            <p class="step-desc">Выберите, что нужно сделать.</p>
+                        </div>
+                        <!-- 02 -->
+                        <div class="step-item">
+                            <div class="step-number">
+                                <span class="step-num">02</span>
+                                <span class="step-dot" style="color:var(--color-primary);">.</span>
+                            </div>
+                            <h3 class="step-headline">Салон</h3>
+                            <p class="step-desc">Найдите ближайший с нужным мастером.</p>
+                        </div>
+                        <!-- 03 -->
+                        <div class="step-item">
+                            <div class="step-number">
+                                <span class="step-num">03</span>
+                                <span class="step-dot" style="color:var(--color-primary);">.</span>
+                            </div>
+                            <h3 class="step-headline">Время</h3>
+                            <p class="step-desc">Возьмите свободное окно в один тап.</p>
+                        </div>
+                        <!-- 04 -->
+                        <div class="step-item">
+                            <div class="step-number">
+                                <span class="step-num">04</span>
+                                <span class="step-dot" style="color:var(--color-primary);">.</span>
+                            </div>
+                            <h3 class="step-headline">Готово</h3>
+                            <p class="step-desc">Приходите. Напоминание придёт само.</p>
+                        </div>
                     </div>
                 </div>
             </div>
         </section>
-
+        
         <!-- Популярные салоны -->
         <section class="section-py bg-surface-alt">
             <div class="section-container">
@@ -128,7 +171,7 @@ async def render_home_page(db: AsyncSession, user=None) -> str:
                 <div class="salon-cards-grid">
                     {salon_cards}
                 </div>
-                <div style="text-align: center; margin-top: 2.5rem;">
+                <div class="text-center mt-10">
                     <a href="/salons" class="btn-outline">Смотреть все салоны →</a>
                 </div>
             </div>
@@ -138,5 +181,5 @@ async def render_home_page(db: AsyncSession, user=None) -> str:
     </main>
 </body>
 </html>"""
-    
+
     return html

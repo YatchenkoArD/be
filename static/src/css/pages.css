@@ -1,201 +1,420 @@
-/* app/web/pages/home.py */
+/* ============================================
+   СТИЛИ ДЛЯ СТРАНИЦ (pages)
+   ============================================ */
+
+/* ---------- app/web/pages/home.py ---------- */
+
+/* Отступ для основного контента (с учётом сайдбара) */
 .home-main {
-    margin-right: 16rem; 
+    margin-right: 16rem;
 }
+@media (max-width: 1023px) {
+    .home-main {
+        margin-right: 0;
+    }
+}
+
+/* ---------- HERO СЕКЦИЯ ---------- */
 
 .home-hero {
     position: relative;
     background: linear-gradient(135deg, #FFF8F6, #F8C8DC33, #F28C6F22);
     overflow: hidden;
-    padding: 8rem 0 6rem 0;
-}
-.home-hero-content {
-    position: relative;
-    z-index: 10;
-}
-.home-hero-title {
-    font-size: 6rem;
-    line-height: 1.1;
-    margin-bottom: 1rem;
-}
-.home-hero-subtitle {
-    font-size: 1.1rem;
-    max-width: 32rem;
-    margin-bottom: 2rem;
-    color: var(--color-body);
+    min-height: 100vh; /* чтобы занимать весь экран */
+    display: flex;
+    align-items: center; /* вертикальное центрирование содержимого */
 }
 
-.home-search-bar {
+.home-hero-content {
+    width: 100%;
+    padding-top: 12vh;   /* отступ сверху для центрирования */
+    padding-bottom: 12vh; /* и снизу для баланса */
+}
+
+@media (max-width: 768px) {
+    .home-hero-content {
+        padding-top: 8vh;
+        padding-bottom: 8vh;
+    }
+}
+
+/* Заголовок */
+.home-hero-title {
+    font-size: 3rem;
+    line-height: 1.05;
+    margin-bottom: 1.25rem;
+}
+@media (min-width: 640px) {
+    .home-hero-title { font-size: 3.75rem; }
+}
+@media (min-width: 1024px) {
+    .home-hero-title { font-size: 4.5rem; }
+}
+.home-hero-title .dot-primary {
+    color: var(--color-primary);
+}
+
+/* Подзаголовок */
+.home-hero-subtitle {
+    font-size: 1rem;
+    margin-bottom: 2.5rem;
+    max-width: 36rem;
+}
+@media (min-width: 640px) {
+    .home-hero-subtitle { font-size: 1.125rem; }
+}
+
+/* Поисковая карточка */
+.home-search-card {
+    max-width: 42rem;
+}
+
+.home-search-link {
     display: flex;
     align-items: center;
     gap: 0.75rem;
-    background: white;
+    width: 100%;
+    padding: 1rem 1.25rem;
+    background: var(--color-surface);
     border: 2px solid transparent;
     border-radius: 1rem;
-    padding: 1rem 1.5rem;
-    width: 100%;
-    max-width: 40rem;
-    cursor: pointer;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.08);
-    text-decoration: none;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
     transition: all 0.2s ease;
+    cursor: pointer;
+    text-decoration: none;
+    min-height: 64px;
 }
-.home-search-bar:hover {
-    box-shadow: 0 15px 35px rgba(0,0,0,0.12);
+.home-search-link:hover {
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.12);
+    border-color: var(--color-primary);
 }
-.home-search-icon {
+@media (min-width: 640px) {
+    .home-search-link { padding: 1.25rem 1.5rem; }
+}
+
+.home-search-icon-wrapper {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 3rem;
-    height: 3rem;
-    background: linear-gradient(135deg, var(--color-primary), var(--color-accent));
+    padding: 0.75rem;
     border-radius: 50%;
-    color: white;
+    background: linear-gradient(135deg, var(--color-primary), var(--color-accent-hover));
     flex-shrink: 0;
 }
+.home-search-icon-wrapper svg {
+    width: 1.25rem;
+    height: 1.25rem;
+    color: white;
+}
+@media (min-width: 640px) {
+    .home-search-icon-wrapper svg {
+        width: 1.5rem;
+        height: 1.5rem;
+    }
+}
+
 .home-search-info {
     flex: 1;
     text-align: left;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    min-width: 0;
 }
 .home-search-title {
-    display: block;
+    font-size: 1rem;
     font-weight: 600;
     color: var(--color-heading);
-    font-size: 1.1rem;
+}
+@media (min-width: 640px) {
+    .home-search-title { font-size: 1.125rem; }
 }
 .home-search-desc {
-    display: block;
+    font-size: 0.875rem;
     color: var(--color-muted);
-    font-size: 0.875rem;
-}
-.home-search-btn {
-    background: linear-gradient(135deg, var(--color-primary), var(--color-accent));
-    color: white;
-    padding: 0.75rem 1.5rem;
-    border-radius: 2rem;
-    font-weight: 600;
-    font-size: 0.875rem;
 }
 
+.home-search-btn {
+    display: none;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.625rem 1.25rem;
+    border-radius: 9999px;
+    background: linear-gradient(135deg, var(--color-primary), var(--color-accent-hover));
+    color: white;
+    font-size: 0.875rem;
+    font-weight: 600;
+    flex-shrink: 0;
+    transition: transform 0.2s;
+}
+.group:hover .home-search-btn {
+    transform: scale(1.05);
+}
+@media (min-width: 640px) {
+    .home-search-btn { display: flex; }
+}
+
+/* Теги-фильтры */
 .home-hero-tags {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.75rem;
-    margin-top: 1.5rem;
+    gap: 0.5rem;
+    margin-top: 1.25rem;
+    margin-bottom: 1.5rem; /* отступ снизу */
 }
-.home-hero-features {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 1.5rem;
-    margin-top: 2rem;
+@media (min-width: 640px) {
+    .home-hero-tags { gap: 0.75rem; }
 }
-.home-feature-item {
-    color: var(--color-muted);
+
+.home-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.625rem 1rem;
+    border-radius: 9999px;
+    border: 1px solid var(--color-border);
+    background: var(--color-surface-alt);
     font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--color-heading);
+    text-decoration: none;
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+.home-tag:hover {
+    background: var(--color-surface);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    border-color: var(--color-primary);
+}
+.home-tag svg {
+    width: 1rem;
+    height: 1rem;
+    color: var(--color-primary);
+    flex-shrink: 0;
 }
 
-.section-header {
-    text-align: center;
-    margin-bottom: 3rem;
-}
-.section-title {
-    font-size: 2.5rem;
-    margin-top: 1rem;
-}
-.section-subtitle {
-    max-width: 32rem;
-    margin: 0.5rem auto 0;
-    color: var(--color-body);
+/* ---------- СЕКЦИЯ "КАК ЗАПИСАТЬСЯ" ---------- */
+.steps-four-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.5rem;                /* отступы между карточками, как обычно */
+    background: transparent;    /* убираем фон-разделитель */
+    border: none;               /* убираем рамку */
+    border-radius: 0;
+    overflow: visible;
 }
 
+@media (min-width: 768px) {
+    .steps-four-grid {
+        grid-template-columns: repeat(4, 1fr);
+        gap: 1.5rem;
+    }
+}
+
+/* Карточка — белый фон, лёгкая тень (как в образце, но без прозрачности) */
+.step-four-card {
+    padding: 2rem;
+    background: var(--color-surface) !important;  /* белый фон */
+    border-radius: 1rem;           /* rounded-2xl */
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+    transition: box-shadow 0.2s;
+}
+
+@media (min-width: 1024px) {
+    .step-four-card {
+        padding: 2.5rem;
+    }
+}
+
+.step-four-card:hover {
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.04);
+}
+
+/* Номер + точка */
+.step-four-number {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.step-four-num {
+    font-family: var(--font-heading);
+    font-size: 3rem;
+    font-weight: 700;
+    line-height: 1;
+    color: var(--color-primary);
+}
+
+@media (min-width: 1024px) {
+    .step-four-num {
+        font-size: 3.75rem;
+    }
+}
+
+.step-four-dot {
+    font-family: var(--font-heading);
+    font-size: 1.5rem;
+    line-height: 1;
+    color: var(--color-primary);
+}
+
+/* Заголовок карточки */
+.step-four-title {
+    font-family: var(--font-heading);
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--color-heading);
+    margin-bottom: 0.5rem;
+}
+
+/* Описание */
+.step-four-desc {
+    font-family: var(--font-body);
+    font-size: 0.875rem;
+    line-height: 1.625;
+    color: var(--color-muted);
+    margin: 0;
+}
+
+/* ---------- СЕКЦИЯ "ПОПУЛЯРНЫЕ САЛОНЫ" ---------- */
+/* ---------- БЛОК "КАК ЗАПИСАТЬСЯ?" (единый прямоугольник, без разделителей) ---------- */
+
+/* Внешняя обёртка – рамка и скругления */
+.steps-block {
+    border: 1px solid var(--color-border);
+    border-radius: 1rem;
+    overflow: hidden;
+}
+
+/* Сетка – карточки без зазоров, прилегают друг к другу */
 .steps-grid {
     display: grid;
     grid-template-columns: 1fr;
-    gap: 1.5rem;
-    max-width: 48rem;
-    margin: 0 auto;
+    /* gap отсутствует – карточки сливаются */
 }
+
 @media (min-width: 768px) {
     .steps-grid {
-        grid-template-columns: repeat(3, 1fr);
+        grid-template-columns: repeat(4, 1fr);
     }
 }
-.step-card {
-    text-align: center;
+
+/* Карточка шага – белый фон, отступы адаптивные */
+.step-item {
+    background: var(--color-surface);
+    padding: 1.5rem;
+    transition: background 0.2s;
 }
+
+@media (min-width: 768px) {
+    .step-item {
+        padding: 2rem;
+    }
+}
+
+@media (min-width: 1024px) {
+    .step-item {
+        padding: 2.5rem;
+    }
+}
+
+.step-item:hover {
+    background: var(--color-surface-alt);
+}
+
+/* Блок с номером (01 + точка) */
 .step-number {
-    width: 3rem;
-    height: 3rem;
-    border-radius: 50%;
-    background: linear-gradient(135deg, var(--color-primary), var(--color-accent));
-    margin: 0 auto 1rem;
     display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    font-weight: bold;
+    align-items: baseline;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
 }
-.step-title {
-    font-size: 1.1rem;
-    margin: 0.5rem 0;
+
+.step-num {
+    font-family: var(--font-heading);
+    font-size: 3rem;
+    font-weight: 700;
+    line-height: 1;
+    color: var(--color-primary);
 }
+
+@media (min-width: 1024px) {
+    .step-num {
+        font-size: 3.75rem;
+    }
+}
+
+.step-dot {
+    font-family: var(--font-heading);
+    font-size: 1.5rem;
+    line-height: 1;
+    color: var(--color-primary);
+}
+
+/* Заголовок шага */
+.step-headline {
+    font-family: var(--font-heading);
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--color-heading);
+    margin-bottom: 0.5rem;
+}
+
 .step-desc {
+    font-family: var(--font-body);
     font-size: 0.875rem;
+    line-height: 1.625;
+    color: var(--color-muted);
+    margin: 0;
+}
+
+.how-title-wrapper {
+    max-width: 42rem;         
+    margin: 0 auto 3rem;
+    text-align: center;        
+}
+
+.how-title {
+    font-family: var(--font-heading);
+    font-size: 2.25rem;       
+    font-weight: 700;
+    line-height: 1.1;
+    color: var(--color-heading);
+}
+
+@media (min-width: 1024px) {
+    .how-title {
+        font-size: 3rem;      
+    }
+}
+
+.how-title-dot {
+    color: var(--color-primary);
+}
+
+.how-subtitle {
+    font-family: var(--font-body);
+    font-size: 1.125rem;       
+    margin-top: 0.75rem;       
     color: var(--color-muted);
 }
 
-.salon-cards-grid {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 1.5rem;
-    max-width: 48rem;
-    margin: 0 auto;
-}
-@media (min-width: 768px) {
-    .salon-cards-grid {
-        grid-template-columns: repeat(3, 1fr);
-    }
-}
-.salon-card {
-    text-align: center;
-    padding: 1.5rem;
-}
-.salon-avatar {
-    width: 4rem;
-    height: 4rem;
-    border-radius: 50%;
-    background: linear-gradient(135deg, var(--color-primary), var(--color-accent));
-    margin: 0 auto 1rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.5rem;
-    color: white;
-    font-weight: bold;
-}
-.salon-name {
-    font-size: 1.1rem;
-}
-.salon-address {
-    font-size: 0.85rem;
-    margin: 0.5rem 0;
-    color: var(--color-muted);
-}
-.salon-rating {
-    font-weight: 600;
-    color: var(--color-primary);
-}
-.salon-rating-count {
-    font-weight: 400;
-    color: var(--color-muted);
-}
-.salon-btn {
-    margin-top: 1rem;
-    font-size: 0.85rem;
-    padding: 0.5rem 1rem;
-}
-.salon-empty {
-    text-align: center;
-    grid-column: 1 / -1;
+/* ---------- УТИЛИТЫ ---------- */
+.text-center { text-align: center; }
+.mt-10 { margin-top: 2.5rem; }
+
+/* ---------- АДАПТИВНОСТЬ ДЛЯ МОБИЛЬНЫХ ---------- */
+
+@media (max-width: 768px) {
+    .home-hero-title { font-size: 2.5rem; }
+    .home-hero-subtitle { font-size: 0.95rem; }
+    .home-search-link { padding: 0.75rem 1rem; min-height: 56px; }
+    .home-search-icon-wrapper { padding: 0.5rem; }
+    .home-search-icon-wrapper svg { width: 1rem; height: 1rem; }
+    .home-search-title { font-size: 0.9rem; }
+    .home-search-desc { font-size: 0.75rem; }
+    .home-tag { padding: 0.4rem 0.75rem; font-size: 0.75rem; }
+    .home-tag svg { width: 0.875rem; height: 0.875rem; }
+    .section-title { font-size: 2rem; }
 }
