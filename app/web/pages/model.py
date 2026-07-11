@@ -204,7 +204,7 @@ def render_model_page(user=None) -> str:
     </style>
 </head>
 <body>
-    {render_header("model", user)}
+    {render_header("model")}
     {render_sidebar("model", user)}
     
     <main style="margin-right: 16rem;">
