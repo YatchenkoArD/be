@@ -47,7 +47,7 @@ services:
       POSTGRES_HOST: db
       POSTGRES_PORT: "5432"
       REDIS_URL: redis://redis:6379/0
-      CORS_ORIGINS: '["https://${STAGING_DOMAIN:-staging.localhost}"]'
+      CORS_ORIGINS: '["https://${STAGING_DOMAIN:-rumi-staging.test}"]'
       WEB_CONCURRENCY: "2"
     volumes:
       - ./keys-staging:/app/keys:ro   # у staging СВОИ RS256-ключи (не боевые!)

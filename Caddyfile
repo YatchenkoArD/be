@@ -21,7 +21,11 @@
 # (и поисковикам) без пароля. Дефолтные креды staging / rumi-staging-2026 —
 # ВРЕМЕННЫЕ, при настройке сервера заменить хеш в .env (STAGING_BASIC_AUTH_HASH):
 #   docker run --rm caddy:2-alpine caddy hash-password --plaintext 'НОВЫЙ_ПАРОЛЬ'
-{$STAGING_DOMAIN:staging.localhost} {
+{$STAGING_DOMAIN:rumi-staging.test} {
+    # До реального домена — самоподписанный сертификат (по умолчанию internal).
+    # С доменом: STAGING_TLS=<email> в .env → Caddy пойдёт в Let's Encrypt.
+    tls {$STAGING_TLS:internal}
+
     encode gzip
 
     # Значения приходят из docker-compose.edge.yml (там же дефолты; Caddy-дефолт
