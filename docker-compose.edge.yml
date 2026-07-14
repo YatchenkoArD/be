@@ -15,6 +15,9 @@ services:
       # До появления домена: DOMAIN=localhost (или IP сервера) -> Caddy
       # выдаст самоподписанный сертификат (tls internal). С доменом -> Let's Encrypt.
       DOMAIN: ${DOMAIN:-localhost}
+      # Прод-TLS: пока DOMAIN=IP — internal (LE не выдаёт сертификаты на IP);
+      # с реальным доменом задать PROD_TLS=<email> в .env → Let's Encrypt.
+      PROD_TLS: ${PROD_TLS:-internal}
       # .test не выдаётся Let's Encrypt'ом — для него tls internal (см. Caddyfile);
       # *.localhost не годится: Safari/Chrome шлют его на 127.0.0.1 мимо hosts
       STAGING_DOMAIN: ${STAGING_DOMAIN:-rumi-staging.test}

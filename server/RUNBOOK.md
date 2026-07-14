@@ -74,7 +74,7 @@ S3-переменные — в `.env` (панель Timeweb → S3 VK Cloud). **
 ## 3. Когда появится домен
 
 1. DNS: A-записи `домен` и `staging.домен` → IP сервера.
-2. В `.env`: `DOMAIN=домен`, `STAGING_DOMAIN=staging.домен`, `STAGING_TLS=<email>` (включает Let's Encrypt для staging; без него остаётся самоподписанный).
+2. В `.env`: `DOMAIN=домен`, `STAGING_DOMAIN=staging.домен`, `PROD_TLS=<email>` и `STAGING_TLS=<email>` (включают Let's Encrypt; без них остаётся самоподписанный — на IP-адресах LE не работает вовсе).
 3. `docker compose -p rumi-edge -f docker-compose.edge.yml up -d --force-recreate` — Caddy сам получит сертификаты Let's Encrypt.
 
 ## 4. Когда юристы подключат SMSC (OTP)

@@ -16,6 +16,11 @@
 
 # ── Прод ─────────────────────────────────────────────────────────
 {$DOMAIN:localhost} {
+    # Пока DOMAIN = IP сервера, сертификат только самоподписанный: Let's Encrypt
+    # не выдаёт сертификаты на IP (Caddy бесконечно ретраил ACME, хост оставался
+    # без TLS вообще). С реальным доменом: PROD_TLS=<email> в .env → LE.
+    tls {$PROD_TLS:internal}
+
     encode gzip
     reverse_proxy rumi-prod-app:8000
 
