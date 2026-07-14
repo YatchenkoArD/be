@@ -4,74 +4,43 @@ from fastapi import APIRouter, Depends, Request, Form
 from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+
 from app.db.session import get_db
 from app.models.models import User, UserRole
 from app.schemas.user import try_normalize_phone
 from app.core.config import settings
 from app.core.security import (
-    create_access_token,
+    create_access_token,      # единая функция для JWT
     get_password_hash,
     verify_password,
     needs_rehash,
     validate_password_strength,
 )
-from app.core.limiter import (
-    limiter,
-    is_account_locked,
-    register_login_failure,
-    reset_login_failures,
-)
-from app.services import otp
+from app.core.limiter import limiter, is_account_locked, register_login_failure, reset_login_failures
 
 router = APIRouter()
 
-
-def create_access_token(user_id: int) -> str:
-    """Создаёт JWT-токен."""
-    expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    to_encode = {"sub": str(user_id), "exp": expire}
-    return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
-
-
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Проверяет пароль (SHA-256 для тестовых, bcrypt для боевых)."""
-    # Проверяем через SHA-256 (для тестовых пользователей)
-    if hashed_password == hashlib.sha256(plain_password.encode()).hexdigest():
-        return True
-    # Проверяем через bcrypt (для пользователей из регистрации)
-    from passlib.context import CryptContext
-    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-    try:
-        return pwd_context.verify(plain_password, hashed_password)
-    except:
-        return False
-
-
-@router.post("/auth/login-web")
 def _safe_redirect(target: str) -> str:
-    """Разрешаем только внутренние пути (защита от open redirect)."""
+    """Защита от open redirect."""
     if not target or not target.startswith("/") or target.startswith("//"):
         return "/"
     return target
 
-
 def _set_auth_cookie(response: RedirectResponse, user_id: int) -> None:
-    """Ставит cookie с токеном с безопасными флагами."""
+    """Устанавливает cookie с JWT-токеном (используя create_access_token из security)."""
     token = create_access_token(user_id)
     response.set_cookie(
         key="access_token",
         value=token,
-        httponly=True,                       # JS не читает куку (защита от XSS-кражи)
-        secure=settings.COOKIE_SECURE,       # в проде только по HTTPS
+        httponly=True,
+        secure=settings.COOKIE_SECURE,
         max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-        samesite="lax",                      # снижает CSRF при навигации
+        samesite="lax",
         path="/",
     )
 
-
-@router.post("/auth/login-web")
-@limiter.limit("5/minute")  # лимит по IP
-
+@router.post("/login-web")
+@limiter.limit("5/minute")
 async def login_web(
     request: Request,
     phone: str = Form(...),
@@ -81,7 +50,6 @@ async def login_web(
 ):
     """Вход через веб-форму."""
     redirect = _safe_redirect(redirect)
-    # Канонизируем телефон (8…→+7, убираем скобки/пробелы/дефисы от маски ввода)
     norm_phone = try_normalize_phone(phone)
     lookup_phone = norm_phone or phone
     keep_phone = quote(lookup_phone)
@@ -115,27 +83,21 @@ async def login_web(
     _set_auth_cookie(response, user.id)
     return response
 
-
-@router.post("/auth/register-web")
+@router.post("/register-web")
 async def register_web(
     request: Request,
     phone: str = Form(...),
     password: str = Form(...),
     full_name: str = Form(""),
-    request_id: str = Form(""),
-    code: str = Form(""),
     db: AsyncSession = Depends(get_db),
 ):
-    """Регистрация через веб-форму. Роль всегда CLIENT (назначает сервер)."""
-    # Канонизируем телефон (8…→+7, снимаем маску ввода)
+    """Регистрация через веб-форму. Роль всегда CLIENT."""
     norm_phone = try_normalize_phone(phone)
-    # сохранённые поля для возврата на форму при ошибке
     keep = f"phone={quote(norm_phone or phone)}&full_name={quote(full_name)}"
 
     if norm_phone is None:
         return RedirectResponse(url=f"/register?error=bad_phone&{keep}", status_code=302)
 
-    # Политика сложности пароля
     try:
         validate_password_strength(password)
     except ValueError:
@@ -145,24 +107,11 @@ async def register_web(
     if existing.scalar_one_or_none():
         return RedirectResponse(url=f"/register?error=phone_exists&{keep}", status_code=302)
 
-    # При выключенном OTP (нет SMS-провайдера) поля кода не требуем вовсе —
-    # страница их и не показывает; verify_code в этом режиме всегда True
-    if settings.OTP_ENABLED and (not request_id or not code):
-        return RedirectResponse(url=f"/register?error=no_code&{keep}", status_code=302)
-
-    try:
-        code_valid = await otp.verify_code(request_id, code, norm_phone)
-    except otp.OTPError:
-        return RedirectResponse(url=f"/register?error=otp_unavailable&{keep}", status_code=302)
-
-    if not code_valid:
-        return RedirectResponse(url=f"/register?error=bad_code&{keep}", status_code=302)
-
     user = User(
         phone=norm_phone,
         full_name=full_name,
-        hashed_password=get_password_hash(password),  # Argon2id, не sha256
-        role=UserRole.CLIENT,                         # без выбора роли из формы
+        hashed_password=get_password_hash(password),
+        role=UserRole.CLIENT,
         is_active=True,
     )
     db.add(user)

@@ -321,6 +321,18 @@ async def render_home_page(db: AsyncSession, user=None) -> str:
                         {ICON_ARROW_RIGHT}
                     </a>
                 </div>
+
+                <!-- ===== Мы убрали из красоты всё лишнее... (перенесён внутрь той же секции для совместного градиента) ===== -->
+                <div class="home-footer-block">
+                    <p class="home-footer-banner-text">
+                        Мы убрали из красоты всё лишнее.<br>
+                        <span style="color: var(--color-muted);">Остались вы и мастер</span><span class="home-footer-banner-dot">.</span>
+                    </p>
+                    <div class="home-footer-buttons-wrap">
+                        <a class="home-footer-btn-primary" href="/salons">Найти салон</a>
+                        <a class="home-footer-btn-outline" href="/about">Манифест →</a>
+                    </div>
+                </div>
             </div>
         </section>
 

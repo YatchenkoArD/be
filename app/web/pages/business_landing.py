@@ -17,11 +17,17 @@ from app.web.components.icons import (
     ICON_ROCKET,
     ICON_CIRCLE_CHECK,
     ICON_ARROW_RIGHT,
+    ICON_ZAP,
+    ICON_CIRCLE_X,
+    ICON_CREDIT_CARD,
+    ICON_PERCENT,
+    ICON_STORE,
+    ICON_SPARKLES,
 )
 
 
 def render_business_landing_page(user=None) -> str:
-    """Страница «Для бизнеса» (лендинг)."""
+    """Объединённая страница «Для бизнеса» (лендинг)."""
 
     html = f"""<!DOCTYPE html>
 <html lang="ru">
@@ -29,7 +35,7 @@ def render_business_landing_page(user=None) -> str:
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Для бизнеса | Руми</title>
-    <meta name="description" content="Управляйте своим салоном красоты легко — расписание, аналитика, клиенты.">
+    <meta name="description" content="руми — платформа, которая приводит клиентов и управляет салоном. Запись, оплаты, касса, команда и аналитика — в одном окне.">
     {get_base_styles()}
     <link rel="stylesheet" href="/static/src/css/business-landing.css">
 </head>
@@ -37,116 +43,332 @@ def render_business_landing_page(user=None) -> str:
     {render_header("business")}
     {render_sidebar("business", user)}
 
-    <main class="home-main">
-        <!-- Hero -->
-        <section class="business-hero">
+    <main class="home-main bl-wrapper">
+
+        <!-- HERO -->
+        <section class="bl-hero">
             <div class="section-container">
-                <div class="business-hero-content">
-                    <div class="business-hero-badge">
-                        {ICON_BRIEFCASE}
-                        <span>Для бизнеса</span>
-                    </div>
-                    <h1 class="business-hero-title">Управлять салоном — <span class="highlight">тоже просто<span class="highlight">.</span></span></h1>
-                    <p class="business-hero-subtitle">Расписание, оплаты, клиенты, аналитика — всё в одном окне. Никаких таблиц, журналов и десяти разных программ.</p>
-                    <div class="business-hero-buttons">
-                        <a href="#pricing" class="business-hero-btn-primary">
+                <div class="bl-hero-content">
+                    <span class="bl-hero-badge">Коммерческое предложение</span>
+                    <h1 class="bl-hero-title">руми — платформа, которая приводит клиентов и управляет салоном</h1>
+                    <p class="bl-hero-subtitle">Запись, оплаты, касса, команда и аналитика — в одном окне. Плюс поток новых клиентов из маркетплейса. Эквайринг — Т‑Банк, из коробки.</p>
+                    <div class="bl-hero-buttons">
+                        <a href="/business/checkout?plan=business" class="bl-hero-btn-primary">
                             Подключить салон
                             {ICON_ARROW_RIGHT}
                         </a>
-                        <a href="#how-it-works" class="business-hero-btn-secondary">Как это работает?</a>
+                        <a href="#pricing" class="bl-hero-btn-secondary">Смотреть тарифы</a>
+                    </div>
+                </div>
+
+                <!-- Статистика -->
+                <div class="bl-stats">
+                    <div class="bl-stat-item">
+                        <p class="bl-stat-value">−50%</p>
+                        <p class="bl-stat-label">неявок клиентов</p>
+                    </div>
+                    <div class="bl-stat-item">
+                        <p class="bl-stat-value">4 клика</p>
+                        <p class="bl-stat-label">до записи</p>
+                    </div>
+                    <div class="bl-stat-item">
+                        <p class="bl-stat-value">0 ₽</p>
+                        <p class="bl-stat-label">подключение кассы</p>
+                    </div>
+                    <div class="bl-stat-item">
+                        <p class="bl-stat-value">5%</p>
+                        <p class="bl-stat-label">кешбэк клиентам</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Закрываем реальные боли -->
+        <section class="section-py bl-pains">
+            <div class="section-container">
+                <div class="bl-section-header">
+                    <span class="bl-badge">Зачем это салону</span>
+                    <h2>Закрываем реальные боли</h2>
+                </div>
+                <div class="bl-pains-grid">
+                    <!-- Карточка 1 -->
+                    <div class="bl-pain-card">
+                        <div class="bl-pain-header">
+                            {ICON_CIRCLE_X}
+                            <span class="bl-pain-title">Долгий поиск клиентов для новых мастеров</span>
+                        </div>
+                        <div class="bl-pain-solution">
+                            {ICON_CIRCLE_CHECK}
+                            <p>Программа «Модели» заполняет слоты клиентами. Мастера набирают практику и портфолио, а салон получает оборот вместо простоя.</p>
+                        </div>
+                        <a href="#pricing" class="bl-pain-link">
+                            {ICON_TRENDING_UP}
+                            <span>Загрузка новых мастеров без затрат на рекламу</span>
+                            {ICON_ARROW_RIGHT}
+                        </a>
+                    </div>
+
+                    <!-- Карточка 2 -->
+                    <div class="bl-pain-card">
+                        <div class="bl-pain-header">
+                            {ICON_CIRCLE_X}
+                            <span class="bl-pain-title">Записи срываются, клиенты не приходят</span>
+                        </div>
+                        <div class="bl-pain-solution">
+                            {ICON_CIRCLE_CHECK}
+                            <p>Онлайн-предоплата через Т‑Банк закрепляет бронь. Клиент, который оплатил вперёд, почти всегда доходит, а свободные слоты не простаивают впустую.</p>
+                        </div>
+                        <a href="#pricing" class="bl-pain-link">
+                            {ICON_TRENDING_UP}
+                            <span>Снижение неявок (no-show) до 50%</span>
+                            {ICON_ARROW_RIGHT}
+                        </a>
+                    </div>
+
+                    <!-- Карточка 3 -->
+                    <div class="bl-pain-card">
+                        <div class="bl-pain-header">
+                            {ICON_CIRCLE_X}
+                            <span class="bl-pain-title">Новых клиентов мало, реклама дорогая</span>
+                        </div>
+                        <div class="bl-pain-solution">
+                            {ICON_CIRCLE_CHECK}
+                            <p>Салон попадает в маркетплейс руми — витрину, куда люди приходят искать, где постричься. Это поток новых клиентов, а не просто хранилище для текущих.</p>
+                        </div>
+                        <a href="#pricing" class="bl-pain-link">
+                            {ICON_TRENDING_UP}
+                            <span>Новые клиенты из поиска без бюджета на привлечение</span>
+                            {ICON_ARROW_RIGHT}
+                        </a>
+                    </div>
+
+                    <!-- Карточка 4 -->
+                    <div class="bl-pain-card">
+                        <div class="bl-pain-header">
+                            {ICON_CIRCLE_X}
+                            <span class="bl-pain-title">Клиенты не могут дозвониться, чтобы записаться</span>
+                        </div>
+                        <div class="bl-pain-solution">
+                            {ICON_CIRCLE_CHECK}
+                            <p>Онлайн-запись за 4 клика — без звонков и форм. Клиент выбирает услугу, мастера и время сам, в любое время суток, а расписание обновляется в реальном времени.</p>
+                        </div>
+                        <a href="#pricing" class="bl-pain-link">
+                            {ICON_TRENDING_UP}
+                            <span>До 40% записей приходят вне рабочих часов администратора</span>
+                            {ICON_ARROW_RIGHT}
+                        </a>
+                    </div>
+
+                    <!-- Карточка 5 -->
+                    <div class="bl-pain-card">
+                        <div class="bl-pain-header">
+                            {ICON_CIRCLE_X}
+                            <span class="bl-pain-title">Касса, чеки и 54-ФЗ — отдельная головная боль</span>
+                        </div>
+                        <div class="bl-pain-solution">
+                            {ICON_CIRCLE_CHECK}
+                            <p>Эквайринг, торговый терминал и онлайн-касса Т‑Банка подключаются из коробки. Фискальные чеки формируются автоматически — без отдельных договоров и интеграторов.</p>
+                        </div>
+                        <a href="#pricing" class="bl-pain-link">
+                            {ICON_TRENDING_UP}
+                            <span>Подключение за 1 день, 0 ₽ за старт</span>
+                            {ICON_ARROW_RIGHT}
+                        </a>
+                    </div>
+
+                    <!-- Карточка 6 -->
+                    <div class="bl-pain-card">
+                        <div class="bl-pain-header">
+                            {ICON_CIRCLE_X}
+                            <span class="bl-pain-title">Не видно, что реально приносит деньги</span>
+                        </div>
+                        <div class="bl-pain-solution">
+                            {ICON_CIRCLE_CHECK}
+                            <p>Понятные дашборды: выручка, загрузка по мастерам, средний чек, возвраты клиентов. Видно, какие услуги и сотрудники работают, а какие тянут вниз.</p>
+                        </div>
+                        <a href="#pricing" class="bl-pain-link">
+                            {ICON_TRENDING_UP}
+                            <span>Решения по цифрам, а не по ощущениям</span>
+                            {ICON_ARROW_RIGHT}
+                        </a>
                     </div>
                 </div>
             </div>
         </section>
 
         <!-- Возможности -->
-        <section id="features" class="section-py business-features section-gradient-up>
+        <section id="features" class="section-py bl-features bl-gradient-up">
             <div class="section-container">
-                <div class="section-header-center">
-                    <span class="badge">Возможности</span>
+                <div class="bl-section-header">
+                    <span class="bl-badge">Возможности</span>
                     <h2>Всё для вашего салона</h2>
                     <p>От расписания до аналитики — управляйте бизнесом в одном месте</p>
                 </div>
-                <div class="features-grid">
-                    <div class="feature-card">
-                        <div class="icon-wrapper">{ICON_CALENDAR_DAYS}</div>
+                <div class="bl-features-grid">
+                    <div class="bl-feature-card">
+                        <div class="bl-icon-wrapper">{ICON_CALENDAR_DAYS}</div>
                         <h3>Управление расписанием</h3>
                         <p>Полный контроль над записями мастеров. Окна, отмены, переносы — всё в реальном времени. Клиенты записываются онлайн.</p>
                     </div>
-                    <div class="feature-card">
-                        <div class="icon-wrapper">{ICON_CHART_COLUMN}</div>
+                    <div class="bl-feature-card">
+                        <div class="bl-icon-wrapper">{ICON_CHART_COLUMN}</div>
                         <h3>Аналитика доходов</h3>
                         <p>Отслеживайте выручку по дням, неделям и месяцам. Смотрите какие услуги приносят больше прибыли и кто из мастеров самый эффективный.</p>
                     </div>
-                    <div class="feature-card">
-                        <div class="icon-wrapper">{ICON_USERS}</div>
+                    <div class="bl-feature-card">
+                        <div class="bl-icon-wrapper">{ICON_USERS}</div>
                         <h3>Привлечение клиентов</h3>
                         <p>Ваш салон видят тысячи пользователей руми. Рейтинг и отзывы помогают выделиться. Модели приходят сами.</p>
                     </div>
-                    <div class="feature-card">
-                        <div class="icon-wrapper">{ICON_SHIELD_CHECK}</div>
+                    <div class="bl-feature-card">
+                        <div class="bl-icon-wrapper">{ICON_SHIELD_CHECK}</div>
                         <h3>Проверенные клиенты</h3>
                         <p>Все пользователи верифицированы. Меньше отмен, больше лояльных клиентов, рейтинг доверия для каждого.</p>
                     </div>
-                    <div class="feature-card">
-                        <div class="icon-wrapper">{ICON_CLOCK}</div>
+                    <div class="bl-feature-card">
+                        <div class="bl-icon-wrapper">{ICON_CLOCK}</div>
                         <h3>Экономия времени</h3>
                         <p>Автоматические напоминания клиентам, управление очередью, синхронизация с календарём — рутина на автопилоте.</p>
                     </div>
-                    <div class="feature-card">
-                        <div class="icon-wrapper">{ICON_TRENDING_UP}</div>
+                    <div class="bl-feature-card">
+                        <div class="bl-icon-wrapper">{ICON_TRENDING_UP}</div>
                         <h3>Рост бизнеса</h3>
                         <p>Инструменты для масштабирования: акции, программы лояльности, работа с несколькими филиалами из одного кабинета.</p>
                     </div>
                 </div>
             </div>
         </section>
-    
-        <!-- Как подключить -->
-        <section id="how-it-works" class="section-py business-how section-gradient-down">
+
+        <!-- Партнёр Т‑Банк -->
+        <section class="section-py bl-partner">
             <div class="section-container">
-                <div class="section-header-center">
-                    <span class="badge">Начало работы</span>
+                <div class="bl-partner-block">
+                    <div class="bl-partner-inner">
+                        <div class="bl-partner-left">
+                            <div class="bl-partner-logo">
+                                <span class="bl-partner-letter">Т</span>
+                                <div>
+                                    <p class="bl-partner-name">Т‑Банк</p>
+                                    <p class="bl-partner-label">Официальный партнёр по эквайрингу</p>
+                                </div>
+                            </div>
+                            <h2 class="bl-partner-title">Оплаты и касса — из коробки</h2>
+                            <p class="bl-partner-desc">Онлайн-эквайринг для предоплаты записей, торговые терминалы в зале и онлайн-касса для 54-ФЗ. Один партнёр вместо трёх договоров — подключение за день, без платы за старт.</p>
+                        </div>
+                        <div class="bl-partner-right">
+                            <div class="bl-partner-item">
+                                <div class="bl-partner-item-icon">{ICON_CREDIT_CARD}</div>
+                                <p class="bl-partner-item-value">Онлайн</p>
+                                <p class="bl-partner-item-label">предоплата записей</p>
+                            </div>
+                            <div class="bl-partner-item">
+                                <div class="bl-partner-item-icon">{ICON_STORE}</div>
+                                <p class="bl-partner-item-value">Терминал</p>
+                                <p class="bl-partner-item-label">оплата в зале</p>
+                            </div>
+                            <div class="bl-partner-item">
+                                <div class="bl-partner-item-icon">{ICON_PERCENT}</div>
+                                <p class="bl-partner-item-value">5%</p>
+                                <p class="bl-partner-item-label">кешбэк клиентам</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Сравнение -->
+        <section class="section-py bl-comparison bl-bg-surface-alt">
+            <div class="section-container">
+                <div class="bl-section-header">
+                    <span class="bl-badge">Сравнение</span>
+                    <h2>Почему руми, а не другие</h2>
+                </div>
+                <div class="bl-comparison-table">
+                    <div class="bl-comparison-header">
+                        <span>Что важно салону</span>
+                        <span class="bl-comparison-brand">руми</span>
+                        <span id="crm-title">Другие CRM</span>
+                    </div>
+                    <div class="bl-comparison-row">
+                        <span>Подключение эквайринга и кассы</span>
+                        <span class="bl-comparison-rumi">{ICON_CIRCLE_CHECK} Из коробки, 0 ₽</span>
+                        <span class="bl-comparison-other">Доплата + настройка</span>
+                    </div>
+                    <div class="bl-comparison-row">
+                        <span>Онлайн-предоплата за запись</span>
+                        <span class="bl-comparison-rumi">{ICON_CIRCLE_CHECK} Да, через Т‑Банк</span>
+                        <span class="bl-comparison-other">Через сторонние модули</span>
+                    </div>
+                    <div class="bl-comparison-row">
+                        <span>Маркетплейс клиентов</span>
+                        <span class="bl-comparison-rumi">{ICON_CIRCLE_CHECK} Встроен — поток новых клиентов</span>
+                        <span class="bl-comparison-other">Только CRM</span>
+                    </div>
+                    <div class="bl-comparison-row">
+                        <span>Программа «Модели»</span>
+                        <span class="bl-comparison-rumi">{ICON_CIRCLE_CHECK} Да — заполняет пустые окна</span>
+                        <span class="bl-comparison-other">Нет</span>
+                    </div>
+                    <div class="bl-comparison-row">
+                        <span>Стоимость входа</span>
+                        <span class="bl-comparison-rumi">{ICON_CIRCLE_CHECK} От 250 ₽ за сотрудника</span>
+                        <span class="bl-comparison-other">Выше, пакеты</span>
+                    </div>
+                    <div class="bl-comparison-row">
+                        <span>Кешбэк клиентам</span>
+                        <span class="bl-comparison-rumi">{ICON_CIRCLE_CHECK} 5% с Т‑Картой</span>
+                        <span class="bl-comparison-other">Нет</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Как подключить -->
+        <section id="how-it-works" class="section-py bl-how bl-gradient-down">
+            <div class="section-container">
+                <div class="bl-section-header">
+                    <span class="bl-badge">Начало работы</span>
                     <h2>Как подключить салон</h2>
                     <p>4 шага — и ваш салон на платформе</p>
                 </div>
-                <div class="how-steps">
-                    <div class="how-step">
-                        <div class="step-icon">
-                            <div class="icon-circle">{ICON_BUILDING2}</div>
-                            <span class="how-step-number">Шаг 1</span>
+                <div class="bl-how-steps">
+                    <div class="bl-how-step">
+                        <div class="bl-step-icon">
+                            <div class="bl-icon-circle">{ICON_BUILDING2}</div>
+                            <span class="bl-step-number">Шаг 1</span>
                         </div>
-                        <div class="step-content">
+                        <div class="bl-step-content">
                             <h3>Зарегистрируйте салон</h3>
                             <p>Создайте профиль салона, добавьте фото, описание, адрес и список услуг.</p>
                         </div>
                     </div>
-                    <div class="how-step">
-                        <div class="step-icon">
-                            <div class="icon-circle">{ICON_SETTINGS}</div>
-                            <span class="how-step-number">Шаг 2</span>
+                    <div class="bl-how-step">
+                        <div class="bl-step-icon">
+                            <div class="bl-icon-circle">{ICON_SETTINGS}</div>
+                            <span class="bl-step-number">Шаг 2</span>
                         </div>
-                        <div class="step-content">
+                        <div class="bl-step-content">
                             <h3>Настройте расписание</h3>
                             <p>Добавьте мастеров, их графики, услуги и цены. Всё настраивается за 15 минут.</p>
                         </div>
                     </div>
-                    <div class="how-step">
-                        <div class="step-icon">
-                            <div class="icon-circle">{ICON_MEGAPHONE}</div>
-                            <span class="how-step-number">Шаг 3</span>
+                    <div class="bl-how-step">
+                        <div class="bl-step-icon">
+                            <div class="bl-icon-circle">{ICON_MEGAPHONE}</div>
+                            <span class="bl-step-number">Шаг 3</span>
                         </div>
-                        <div class="step-content">
+                        <div class="bl-step-content">
                             <h3>Привлекайте клиентов</h3>
                             <p>Ваш салон появится на платформе. Клиенты и модели начнут записываться.</p>
                         </div>
                     </div>
-                    <div class="how-step">
-                        <div class="step-icon">
-                            <div class="icon-circle">{ICON_ROCKET}</div>
-                            <span class="how-step-number">Шаг 4</span>
+                    <div class="bl-how-step">
+                        <div class="bl-step-icon">
+                            <div class="bl-icon-circle">{ICON_ROCKET}</div>
+                            <span class="bl-step-number">Шаг 4</span>
                         </div>
-                        <div class="step-content">
+                        <div class="bl-step-content">
                             <h3>Развивайте бизнес</h3>
                             <p>Используйте аналитику, акции и программы лояльности для роста.</p>
                         </div>
@@ -156,65 +378,65 @@ def render_business_landing_page(user=None) -> str:
         </section>
 
         <!-- Тарифы -->
-        <section id="pricing" class="section-py business-pricing">
+        <section id="pricing" class="section-py bl-pricing">
             <div class="section-container">
-                <div class="section-header-center">
-                    <span class="badge">Тарифы</span>
+                <div class="bl-section-header">
+                    <span class="bl-badge">Тарифы</span>
                     <h2>Простые и прозрачные цены</h2>
                     <p>Выберите тариф под размер вашего салона. Более 20 сотрудников? Свяжитесь с нами для индивидуального предложения.</p>
                 </div>
-                <div class="pricing-grid">
+                <div class="bl-pricing-grid">
                     <!-- Лайт -->
-                    <div class="pricing-card">
-                        <div class="plan-name">Лайт</div>
-                        <div class="plan-sub">До 5 сотрудников</div>
-                        <div class="plan-price">
-                            <span class="amount">250 ₽</span>
-                            <span class="period">за сотрудника/мес</span>
+                    <div class="bl-pricing-card">
+                        <div class="bl-plan-name">Лайт</div>
+                        <div class="bl-plan-sub">До 5 сотрудников</div>
+                        <div class="bl-plan-price">
+                            <span class="bl-price-amount">250 ₽</span>
+                            <span class="bl-price-period">за сотрудника/мес</span>
                         </div>
-                        <ul class="plan-features">
+                        <ul class="bl-plan-features">
                             <li>{ICON_CIRCLE_CHECK}<span>Оплата только за сотрудников</span></li>
                             <li>{ICON_CIRCLE_CHECK}<span>Управление расписанием</span></li>
                             <li>{ICON_CIRCLE_CHECK}<span>Онлайн-запись клиентов</span></li>
                             <li>{ICON_CIRCLE_CHECK}<span>Базовая аналитика</span></li>
                         </ul>
-                        <a href="/business/checkout?plan=lite" class="plan-btn">
+                        <a href="/business/checkout?plan=lite" class="bl-plan-btn">
                             Подключить
                             {ICON_ARROW_RIGHT}
                         </a>
                     </div>
 
                     <!-- Бизнес (популярный) -->
-                    <div class="pricing-card popular">
-                        <div class="popular-badge">Популярный</div>
-                        <div class="plan-name">Бизнес</div>
-                        <div class="plan-sub">От 5 до 10 сотрудников</div>
-                        <div class="plan-price">
-                            <span class="amount">3 500 ₽</span>
-                            <span class="period">/мес</span>
+                    <div class="bl-pricing-card bl-popular">
+                        <div class="bl-popular-badge">Популярный</div>
+                        <div class="bl-plan-name">Бизнес</div>
+                        <div class="bl-plan-sub">От 5 до 10 сотрудников</div>
+                        <div class="bl-plan-price">
+                            <span class="bl-price-amount">3 500 ₽</span>
+                            <span class="bl-price-period">/мес</span>
                         </div>
-                        <ul class="plan-features">
+                        <ul class="bl-plan-features">
                             <li>{ICON_CIRCLE_CHECK}<span>Всё из тарифа «Лайт»</span></li>
                             <li>{ICON_CIRCLE_CHECK}<span>Расширенная аналитика</span></li>
                             <li>{ICON_CIRCLE_CHECK}<span>Приоритет в выдаче</span></li>
                             <li>{ICON_CIRCLE_CHECK}<span>Акции и программы лояльности</span></li>
                             <li>{ICON_CIRCLE_CHECK}<span>Персональная поддержка</span></li>
                         </ul>
-                        <a href="/business/checkout?plan=business" class="plan-btn">
+                        <a href="/business/checkout?plan=business" class="bl-plan-btn">
                             Подключить
                             {ICON_ARROW_RIGHT}
                         </a>
                     </div>
 
                     <!-- Корпоративный -->
-                    <div class="pricing-card">
-                        <div class="plan-name">Корпоративный</div>
-                        <div class="plan-sub">От 10 до 20 сотрудников</div>
-                        <div class="plan-price">
-                            <span class="amount">6 990 ₽</span>
-                            <span class="period">/мес</span>
+                    <div class="bl-pricing-card">
+                        <div class="bl-plan-name">Корпоративный</div>
+                        <div class="bl-plan-sub">От 10 до 20 сотрудников</div>
+                        <div class="bl-plan-price">
+                            <span class="bl-price-amount">6 990 ₽</span>
+                            <span class="bl-price-period">/мес</span>
                         </div>
-                        <ul class="plan-features">
+                        <ul class="bl-plan-features">
                             <li>{ICON_CIRCLE_CHECK}<span>Всё из тарифа «Бизнес»</span></li>
                             <li>{ICON_CIRCLE_CHECK}<span>Мульти-филиалы</span></li>
                             <li>{ICON_CIRCLE_CHECK}<span>VIP поддержка</span></li>
@@ -222,52 +444,14 @@ def render_business_landing_page(user=None) -> str:
                             <li>{ICON_CIRCLE_CHECK}<span>Расширенная отчётность</span></li>
                             <li>{ICON_CIRCLE_CHECK}<span>Выделенный менеджер</span></li>
                         </ul>
-                        <a href="/business/checkout?plan=corporate" class="plan-btn">
+                        <a href="/business/checkout?plan=corporate" class="bl-plan-btn">
                             Подключить
                             {ICON_ARROW_RIGHT}
                         </a>
                     </div>
                 </div>
-                <div class="pricing-footer">
-                    Более 20 сотрудников? <a href="/business/checkout?plan=custom" class="text-link">Запросите индивидуальный тариф</a>
-                </div>
-            </div>
-        </section>
-
-        <!-- CTA -->
-        <section class="section-py business-cta">
-            <div class="section-container">
-                <div class="cta-block">
-                    <div class="bg-blob top-right"></div>
-                    <div class="bg-blob bottom-left"></div>
-                    <div class="cta-content">
-                        <div class="cta-text">
-                            <h2>Готовы начать?</h2>
-                            <p>Подключите свой салон к руми и получите доступ к тысячам клиентов. Первые 14 дней — бесплатно.</p>
-                            <a href="/business/checkout?plan=business" class="cta-btn">
-                                Подключить салон
-                                {ICON_ARROW_RIGHT}
-                            </a>
-                        </div>
-                        <div class="cta-features">
-                            <div class="cta-feature">
-                                {ICON_CIRCLE_CHECK}
-                                <span>Бесплатный пробный период — 14 дней</span>
-                            </div>
-                            <div class="cta-feature">
-                                {ICON_CIRCLE_CHECK}
-                                <span>Без скрытых комиссий и платежей</span>
-                            </div>
-                            <div class="cta-feature">
-                                {ICON_CIRCLE_CHECK}
-                                <span>Персональная поддержка при подключении</span>
-                            </div>
-                            <div class="cta-feature">
-                                {ICON_CIRCLE_CHECK}
-                                <span>Подключение за 15 минут</span>
-                            </div>
-                        </div>
-                    </div>
+                <div class="bl-pricing-footer">
+                    Более 20 сотрудников? <a href="/business/checkout?plan=custom" class="bl-text-link">Запросите индивидуальный тариф</a>
                 </div>
             </div>
         </section>

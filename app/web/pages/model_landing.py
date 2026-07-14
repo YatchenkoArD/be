@@ -13,13 +13,9 @@ from app.web.components.icons import (
     ICON_ARROW_RIGHT,
 )
 
-# Если какой-то иконки нет в icons.py, добавим её, но в проекте уже есть многие.
-# Я проверю: ICON_CAMERA, ICON_USER_PLUS, ICON_CALENDAR_CHECK есть? В icons.py, который вы скинули, есть ICON_SEARCH, ICON_SPARKLES, ICON_ARROW_RIGHT, ICON_CIRCLE_CHECK.
-# Добавим недостающие в icons.py или используем существующие подходящие.
-
 def render_model_landing_page(user=None) -> str:
     """Страница «Стань моделью» (лендинг)."""
-    
+
     html = f"""<!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -37,10 +33,16 @@ def render_model_landing_page(user=None) -> str:
     <main class="home-main">
         <!-- Hero -->
         <section class="model-hero">
+            <!-- Фоновое изображение -->
+            <div class="model-hero-bg-image">
+                <img src="/static/images/beauty-instuments.png" alt="">
+            </div>
+            <div class="model-hero-bg-overlay"></div>
+
             <div class="section-container">
                 <div class="model-hero-content">
                     <div class="model-hero-badge">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-camera h-4 w-4" aria-hidden="true"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"></path><circle cx="12" cy="13" r="3"></circle></svg>
+                        {ICON_CAMERA}
                         <span>Подписка «Модель»</span>
                     </div>
                     <h1 class="model-hero-title">Стань моделью в <span class="highlight">руми</span></h1>
@@ -51,6 +53,80 @@ def render_model_landing_page(user=None) -> str:
                             {ICON_ARROW_RIGHT}
                         </a>
                         <a href="#how-it-works" class="model-hero-btn-secondary">Как это работает?</a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Как это работает -->
+        <section id="how-it-works" class="section-py model-how">
+            <div class="section-container">
+                <div class="section-header-center">
+                    <span class="badge">Как это работает</span>
+                    <h2>4 простых шага</h2>
+                    <p>От регистрации до записи — всё просто и быстро</p>
+                </div>
+                <div class="how-steps-grid">
+                    <div class="how-step-item">
+                        <div class="step-icon">
+                            {ICON_USER_PLUS}
+                        </div>
+                        <div class="model-step-number">1</div>
+                        <h3>Зарегистрируйся</h3>
+                        <p>Создай аккаунт в руми и заполни профиль — расскажи о себе, загрузи фото.</p>
+                    </div>
+                    <div class="how-step-item">
+                        <div class="step-icon">
+                            {ICON_SPARKLES}
+                        </div>
+                        <div class="model-step-number">2</div>
+                        <h3>Выбери подписку</h3>
+                        <p>Выбери тариф, который подходит именно тебе — от Старт до Премиум.</p>
+                    </div>
+                    <div class="how-step-item">
+                        <div class="step-icon">
+                            {ICON_SEARCH}
+                        </div>
+                        <div class="model-step-number">3</div>
+                        <h3>Найди мастера</h3>
+                        <p>Ищи мастеров по рейтингу, отзывам и услугам. Фильтруй по расстоянию.</p>
+                    </div>
+                    <div class="how-step-item">
+                        <div class="step-icon">
+                            {ICON_CALENDAR_CHECK}
+                        </div>
+                        <div class="model-step-number">4</div>
+                        <h3>Запишись на приём</h3>
+                        <p>Выбери удобное время и получи услугу со скидкой. Мастер уже ждёт!</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Партнёр Альфа-Банк -->
+        <section class="section-py model-partner">
+            <div class="section-container">
+                <div class="partner-horizontal">
+                    <div class="partner-horizontal-inner">
+                        <div class="partner-h-left">
+                            <div class="partner-h-logo">
+                                <span class="partner-h-letter">A</span>
+                            </div>
+                            <div>
+                                <p class="partner-h-name">Альфа-Банк</p>
+                                <span class="partner-h-label">Партнёр руми</span>
+                            </div>
+                        </div>
+                        <p class="partner-h-text">
+                            Оплачивай подписку Альфа‑Картой — <span style="color: #EE3424; font-weight: 600;">кешбэк 5%</span>
+                        </p>
+                        <a href="https://alfabank.ru" target="_blank" rel="noopener noreferrer" class="partner-h-btn">
+                            Оформить карту
+                        </a>
+                    </div>
+                    <div class="partner-h-footer">
+                        <span>Реклама • Альфа-Банк • alfabank.ru</span>
+                        <span>18+</span>
                     </div>
                 </div>
             </div>
@@ -140,80 +216,6 @@ def render_model_landing_page(user=None) -> str:
             </div>
         </section>
 
-        <!-- Партнёр Альфа-Банк -->
-        <section class="section-py model-partner">
-            <div class="section-container">
-                <div class="partner-horizontal">
-                    <div class="partner-horizontal-inner">
-                        <div class="partner-h-left">
-                            <div class="partner-h-logo">
-                                <span class="partner-h-letter">A</span>
-                            </div>
-                            <div>
-                                <p class="partner-h-name">Альфа-Банк</p>
-                                <span class="partner-h-label">Партнёр руми</span>
-                            </div>
-                        </div>
-                        <p class="partner-h-text">
-                            Оплачивай подписку Альфа‑Картой — <span style="color: #EE3424; font-weight: 600;">кешбэк 5%</span>
-                        </p>
-                        <a href="https://alfabank.ru" target="_blank" rel="noopener noreferrer" class="partner-h-btn">
-                            Оформить карту
-                        </a>
-                    </div>
-                    <div class="partner-h-footer">
-                        <span>Реклама • Альфа-Банк • alfabank.ru</span>
-                        <span>18+</span>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Как это работает -->
-        <section id="how-it-works" class="section-py model-how">
-            <div class="section-container">
-                <div class="section-header-center">
-                    <span class="badge">Как это работает</span>
-                    <h2>4 простых шага</h2>
-                    <p>От регистрации до записи — всё просто и быстро</p>
-                </div>
-                <div class="how-steps-grid">
-                    <div class="how-step-item">
-                        <div class="step-icon">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-user-plus h-7 w-7 text-white" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><line x1="19" x2="19" y1="8" y2="14"></line><line x1="22" x2="16" y1="11" y2="11"></line></svg>
-                        </div>
-                        <div class="model-step-number">1</div>
-                        <h3>Зарегистрируйся</h3>
-                        <p>Создай аккаунт в руми и заполни профиль — расскажи о себе, загрузи фото.</p>
-                    </div>
-                    <div class="how-step-item">
-                        <div class="step-icon">
-                            {ICON_SPARKLES}
-                        </div>
-                        <div class="model-step-number">2</div>
-                        <h3>Выбери подписку</h3>
-                        <p>Выбери тариф, который подходит именно тебе — от Старт до Премиум.</p>
-                    </div>
-                    <div class="how-step-item">
-                        <div class="step-icon">
-                            {ICON_SEARCH}
-                        </div>
-                        <div class="model-step-number">3</div>
-                        <h3>Найди мастера</h3>
-                        <p>Ищи мастеров по рейтингу, отзывам и услугам. Фильтруй по расстоянию.</p>
-                    </div>
-                    <div class="how-step-item">
-                        <div class="step-icon">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-calendar-check h-7 w-7 text-white" aria-hidden="true"><path d="M8 2v4"></path><path d="M16 2v4"></path><rect width="18" height="18" x="3" y="4" rx="2"></rect><path d="M3 10h18"></path><path d="m9 16 2 2 4-4"></path></svg>
-                        </div>
-                        <div class="model-step-number">4</div>
-                        <h3>Запишись на приём</h3>
-                        <p>Выбери удобное время и получи услугу со скидкой. Мастер уже ждёт!</p>
-                    </div>
-                </div>
-            </div>
-        </section>
-
         <!-- FAQ -->
         <section class="section-py model-faq">
             <div class="section-container">
@@ -254,7 +256,7 @@ def render_model_landing_page(user=None) -> str:
     </main>
 
     <script>
-        // Простой аккордеон для FAQ
+        // Аккордеон для FAQ
         document.querySelectorAll('.faq-question').forEach(button => {{
             button.addEventListener('click', function() {{
                 const answer = this.nextElementSibling;

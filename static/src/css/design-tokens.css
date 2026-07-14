@@ -20,3 +20,7 @@
     --color-on-dark-muted: #fffc;
     --color-dark: #1a1a2e;
 }
+
+html {
+    font-size: 17px;
+}

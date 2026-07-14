@@ -13,7 +13,6 @@ from app.web.pages.model_landing import render_model_landing_page
 from app.web.pages.model_checkout import render_model_checkout_page   
 from app.web.pages.about import render_about_page
 from app.web.pages.business_landing import render_business_landing_page
-from app.web.pages.offer_landing import render_offer_landing_page
 from app.web.components.header import render_header
 from app.web.components.footer import render_footer
 from app.web.components.styles import get_base_styles

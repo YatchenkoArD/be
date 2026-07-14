@@ -3,17 +3,6 @@
 def render_footer() -> str:
     return """
     <footer class="comp-footer">
-        <div class="section-container footer-top-section">
-            <p class="footer-banner-text">
-                Мы убрали из красоты всё лишнее.<br>
-                <span>Остались вы и мастер</span><span class="dot">.</span>
-            </p>
-            <div class="footer-buttons-wrap">
-                <a class="footer-btn-primary" href="/salons">Найти салон</a>
-                <a class="footer-btn-outline" href="/about">Манифест →</a>
-            </div>
-        </div>
-
         <div class="section-container footer-bottom-section">
             <div class="footer-links-grid">
                 <div>
@@ -46,8 +35,7 @@ def render_footer() -> str:
             </div>
             <div class="footer-meta footer-meta-flex">
                 <span>© 2026 руми. Все права защищены.</span>
-                <span>Some text?
-                </span>
+                <span>4 клика · 30 секунд · 0 звонков</span>
             </div>
         </div>
     </footer>

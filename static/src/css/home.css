@@ -1100,6 +1100,75 @@
     );
 }
 
+/* ---------- Мы убрали из красоты всё лишнее... ---------- */
+.home-footer-block {
+    margin-top: 3rem;
+    padding-top: 2rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.home-footer-banner-text {
+    font-family: var(--font-heading);
+    max-width: 64rem;
+    font-size: 3.5rem;
+    font-weight: 700;
+    line-height: 1.1;
+    margin-bottom: 2.5rem;
+    color: var(--color-heading);
+}
+@media (max-width: 768px) {
+    .home-footer-banner-text {
+        font-size: 2.25rem;
+    }
+}
+.home-footer-banner-dot {
+    color: var(--color-primary);
+}
+
+.home-footer-buttons-wrap {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.home-footer-btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    border-radius: 9999px;
+    padding: 0.875rem 1.75rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    background: linear-gradient(135deg, var(--color-primary), var(--color-accent-hover));
+    color: var(--color-btn-text);
+    text-decoration: none;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+.home-footer-btn-primary:hover {
+    transform: scale(1.05);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.15);
+}
+
+.home-footer-btn-outline {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    border-radius: 9999px;
+    border: 2px solid var(--color-border);
+    padding: 0.875rem 1.75rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--color-heading);
+    text-decoration: none;
+    background: transparent;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+.home-footer-btn-outline:hover {
+    transform: scale(1.05);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.15);
+}
+
 /* ---------- УТИЛИТЫ ---------- */
 .text-center { text-align: center; }
 .mt-10 { margin-top: 2.5rem; }

@@ -104,6 +104,86 @@
     background: var(--color-surface-alt);
 }
 
+/* ---------- Как это работает ---------- */
+.model-how {
+    background: var(--color-background);
+}
+
+.model-how .section-header-center {
+    margin-bottom: 2.5rem; /* увеличенный отступ */
+}
+
+.how-steps-grid {
+    display: grid;
+    gap: 2rem;
+    grid-template-columns: 1fr;
+}
+
+@media (min-width: 768px) {
+    .how-steps-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (min-width: 1024px) {
+    .how-steps-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}
+
+.how-step-item {
+    text-align: center;
+}
+
+.step-icon {
+    display: flex;
+    margin: 0 auto 1.25rem;
+    height: 4rem;
+    width: 4rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 1rem;
+    background: linear-gradient(135deg, var(--color-primary), var(--color-accent-hover));
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+}
+
+.step-icon svg {
+    color: #fff;
+    width: 1.75rem;
+    height: 1.75rem;
+}
+
+.model-step-number {
+    display: inline-flex;
+    margin: 0 auto 0.75rem;
+    height: 2rem;
+    width: 2rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9999px;
+    background: var(--color-primary);
+    color: #fff;
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+.how-step-item h3 {
+    font-family: var(--font-heading);
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--color-heading);
+    margin-bottom: 0.5rem;
+}
+
+.how-step-item p {
+    font-family: var(--font-body);
+    font-size: 0.875rem;
+    line-height: 1.6;
+    color: var(--color-muted);
+    max-width: 16rem;
+    margin: 0 auto;
+}
+
 /* ---------- Тарифы ---------- */
 .model-plans {
     background: var(--color-surface);
@@ -128,6 +208,9 @@
     border: 1px solid var(--color-border);
     background: var(--color-surface);
     transition: box-shadow 0.2s, transform 0.2s;
+    display: flex;
+    flex-direction: column;
+    height: 100%; /* чтобы карточки были одинаковой высоты */
 }
 
 .plan-card:hover {
@@ -259,6 +342,7 @@
     color: #fff;
     transition: transform 0.2s;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    margin-top: auto; /* прижимает кнопку вниз */
 }
 
 .plan-btn:hover {
@@ -372,82 +456,6 @@
     color: rgba(0, 0, 0, 0.45);
 }
 
-/* ---------- Как это работает ---------- */
-.model-how {
-    background: var(--color-background);
-}
-
-.how-steps-grid {
-    display: grid;
-    gap: 2rem;
-    grid-template-columns: 1fr;
-}
-
-@media (min-width: 768px) {
-    .how-steps-grid {
-        grid-template-columns: repeat(2, 1fr);
-    }
-}
-
-@media (min-width: 1024px) {
-    .how-steps-grid {
-        grid-template-columns: repeat(4, 1fr);
-    }
-}
-
-.how-step-item {
-    text-align: center;
-}
-
-.step-icon {
-    display: flex;
-    margin: 0 auto 1.25rem;
-    height: 4rem;
-    width: 4rem;
-    align-items: center;
-    justify-content: center;
-    border-radius: 1rem;
-    background: linear-gradient(135deg, var(--color-primary), var(--color-accent-hover));
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-}
-
-.step-icon svg {
-    color: #fff;
-    width: 1.75rem;
-    height: 1.75rem;
-}
-
-.model-step-number {
-    display: inline-flex;
-    margin: 0 auto 0.75rem;
-    height: 2rem;
-    width: 2rem;
-    align-items: center;
-    justify-content: center;
-    border-radius: 9999px;
-    background: var(--color-primary);
-    color: #fff;
-    font-size: 0.75rem;
-    font-weight: 700;
-}
-
-.how-step-item h3 {
-    font-family: var(--font-heading);
-    font-size: 1.125rem;
-    font-weight: 600;
-    color: var(--color-heading);
-    margin-bottom: 0.5rem;
-}
-
-.how-step-item p {
-    font-family: var(--font-body);
-    font-size: 0.875rem;
-    line-height: 1.6;
-    color: var(--color-muted);
-    max-width: 16rem;
-    margin: 0 auto;
-}
-
 /* ---------- FAQ ---------- */
 .model-faq {
     background: var(--color-surface);
@@ -500,26 +508,6 @@
     display: none;
 }
 
-.model-how .section-header-center,
-.model-faq .section-header-center {
-    margin-bottom: 1.5rem;
-}
-
-.model-how .section-header-center h2,
-.model-faq .section-header-center h2 {
-    margin-top: 0.5rem;
-    margin-bottom: 0.25rem;
-}
-
-.model-how .section-header-center p,
-.model-faq .section-header-center p {
-    margin-bottom: 0;
-}
-
-.how-steps-grid {
-    gap: 1.5rem; 
-}
-
 /* ---------- Общие утилиты ---------- */
 .section-header-center {
     text-align: center;
@@ -558,4 +546,59 @@
     color: var(--color-muted);
     max-width: 32rem;
     margin: 0 auto;
+}
+
+/* ---------- Hero с фоновым изображением ---------- */
+.model-hero {
+    position: relative;
+    overflow: hidden;
+    padding-top: 3rem;
+    padding-bottom: 5rem;
+    background: linear-gradient(135deg, #faf7f5 0%, #f2e2ee 50%, rgba(192, 129, 184, 0.125) 100%);
+}
+
+/* Изображение – на всю ширину, с наклоном и полупрозрачностью */
+.model-hero-bg-image {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    transform: skewX(-10deg);
+    transform-origin: top left;
+    opacity: 0.5;
+    pointer-events: none;
+    z-index: 0;
+}
+
+.model-hero-bg-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transform: skewX(10deg);
+    transform-origin: top left;
+}
+
+/* Оверлей – плавное перекрытие правой части, исчезновение ближе к центру */
+.model-hero-bg-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(to right, 
+        transparent 0%, 
+        transparent 15%, 
+        #faf7f5 55%, 
+        #faf7f5 100%
+    );
+    pointer-events: none;
+    z-index: 1;
+}
+
+/* Контент поверх всего */
+.model-hero .section-container {
+    position: relative;
+    z-index: 2;
 }

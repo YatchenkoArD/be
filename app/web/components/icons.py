@@ -153,6 +153,45 @@ ICON_MODEL = (
     '</svg>'
 )
 
+ICON_HEART = (
+    '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" '
+    'stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+    'class="lucide lucide-heart" aria-hidden="true">'
+    '<path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"></path>'
+    '</svg>'
+)
+
+ICON_LOGOUT = (
+    '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" '
+    'stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+    'class="lucide lucide-log-out" aria-hidden="true">'
+    '<path d="m16 17 5-5-5-5"></path>'
+    '<path d="M21 12H9"></path>'
+    '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>'
+    '</svg>'
+)
+
+ICON_CALENDAR_DAYS_SIDEBAR = (
+    '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" '
+    'stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+    'class="lucide lucide-calendar-days" aria-hidden="true">'
+    '<path d="M8 2v4"></path><path d="M16 2v4"></path>'
+    '<rect width="18" height="18" x="3" y="4" rx="2"></rect>'
+    '<path d="M3 10h18"></path>'
+    '<path d="M8 14h.01"></path><path d="M12 14h.01"></path><path d="M16 14h.01"></path>'
+    '<path d="M8 18h.01"></path><path d="M12 18h.01"></path><path d="M16 18h.01"></path>'
+    '</svg>'
+)
+
+ICON_SETTINGS_SIDEBAR = (
+    '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" '
+    'stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+    'class="lucide lucide-settings" aria-hidden="true">'
+    '<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path>'
+    '<circle cx="12" cy="12" r="3"></circle>'
+    '</svg>'
+)
+
 # Иконка бургер-меню 28x28
 ICON_MENU = (
     '<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" '

@@ -7,13 +7,6 @@ import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-<<<<<<< HEAD
-from app.models.models import Salon, Master, User, Service, Promotion, UserRole, Base 
-from app.core.config import settings
-
-async def seed_database():
-    engine = create_async_engine(settings.DATABASE_URL, echo=True)
-=======
 from app.models.models import Salon, Master, User, Service, Promotion, UserRole, Base
 from app.core.config import settings
 from app.core.security import get_password_hash
@@ -23,7 +16,6 @@ DEV_PASSWORD = "Seedpass1"
 
 async def seed_database():
     engine = create_async_engine(settings.DATABASE_URL, echo=settings.SQL_ECHO)
->>>>>>> main
     async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
     
     # Создаём таблицы (если их ещё нет)
@@ -52,11 +44,7 @@ async def seed_database():
         
         # ========== МАСТЕРА ==========
         # Брутальный
-<<<<<<< HEAD
-        u1 = User(phone="+79991112233", full_name="Александр Петров", hashed_password="hashed_placeholder", role=UserRole.MASTER, is_active=True)
-=======
         u1 = User(phone="+79991112233", full_name="Александр Петров", hashed_password=get_password_hash(DEV_PASSWORD), role=UserRole.MASTER, is_active=True)
->>>>>>> main
         session.add(u1)
         await session.flush()
         m1 = Master(user_id=u1.id, salon_id=s1.id, specialization="барбер-стилист", experience_years=5, rating=0.0)
@@ -64,11 +52,7 @@ async def seed_database():
         await session.flush()
         session.add_all([Service(master_id=m1.id, name="Стрижка машинкой", price=1500, duration_minutes=30), Service(master_id=m1.id, name="Стрижка + борода", price=2400, duration_minutes=60), Service(master_id=m1.id, name="Моделирование бороды", price=1200, duration_minutes=30)])
         
-<<<<<<< HEAD
-        u2 = User(phone="+79992223344", full_name="Дмитрий Волков", hashed_password="hashed_placeholder", role=UserRole.MASTER, is_active=True)
-=======
         u2 = User(phone="+79992223344", full_name="Дмитрий Волков", hashed_password=get_password_hash(DEV_PASSWORD), role=UserRole.MASTER, is_active=True)
->>>>>>> main
         session.add(u2)
         await session.flush()
         m2 = Master(user_id=u2.id, salon_id=s1.id, specialization="барбер-колорист", experience_years=3, rating=0.0)
@@ -77,11 +61,7 @@ async def seed_database():
         session.add_all([Service(master_id=m2.id, name="Стрижка ножницами", price=2000, duration_minutes=45), Service(master_id=m2.id, name="Камуфляж седины", price=1800, duration_minutes=40)])
         
         # Classic
-<<<<<<< HEAD
-        u3 = User(phone="+78121112233", full_name="Сергей Козлов", hashed_password="hashed_placeholder", role=UserRole.MASTER, is_active=True)
-=======
         u3 = User(phone="+78121112233", full_name="Сергей Козлов", hashed_password=get_password_hash(DEV_PASSWORD), role=UserRole.MASTER, is_active=True)
->>>>>>> main
         session.add(u3)
         await session.flush()
         m3 = Master(user_id=u3.id, salon_id=s2.id, specialization="стилист-парикмахер", experience_years=7, rating=0.0)
@@ -90,11 +70,7 @@ async def seed_database():
         session.add_all([Service(master_id=m3.id, name="Классическая стрижка", price=1800, duration_minutes=40), Service(master_id=m3.id, name="Укладка", price=1200, duration_minutes=30), Service(master_id=m3.id, name="Спа-уход", price=2500, duration_minutes=60)])
         
         # Имидж
-<<<<<<< HEAD
-        u4 = User(phone="+74951113344", full_name="Елена Смирнова", hashed_password="hashed_placeholder", role=UserRole.MASTER, is_active=True)
-=======
         u4 = User(phone="+74951113344", full_name="Елена Смирнова", hashed_password=get_password_hash(DEV_PASSWORD), role=UserRole.MASTER, is_active=True)
->>>>>>> main
         session.add(u4)
         await session.flush()
         m4 = Master(user_id=u4.id, salon_id=s3.id, specialization="стилист-колорист", experience_years=8, rating=0.0)
@@ -103,11 +79,7 @@ async def seed_database():
         session.add_all([Service(master_id=m4.id, name="Окрашивание", price=4500, duration_minutes=120), Service(master_id=m4.id, name="Стрижка женская", price=3000, duration_minutes=60), Service(master_id=m4.id, name="Тонирование", price=2800, duration_minutes=90)])
         
         # Гламур
-<<<<<<< HEAD
-        u5 = User(phone="+78124445566", full_name="Ольга Иванова", hashed_password="hashed_placeholder", role=UserRole.MASTER, is_active=True)
-=======
         u5 = User(phone="+78124445566", full_name="Ольга Иванова", hashed_password=get_password_hash(DEV_PASSWORD), role=UserRole.MASTER, is_active=True)
->>>>>>> main
         session.add(u5)
         await session.flush()
         m5 = Master(user_id=u5.id, salon_id=s4.id, specialization="мастер маникюра", experience_years=6, rating=0.0)
@@ -116,11 +88,7 @@ async def seed_database():
         session.add_all([Service(master_id=m5.id, name="Маникюр классический", price=1800, duration_minutes=60), Service(master_id=m5.id, name="Педикюр", price=2500, duration_minutes=90), Service(master_id=m5.id, name="Наращивание ногтей", price=3500, duration_minutes=120)])
         
         # Элегант
-<<<<<<< HEAD
-        u6 = User(phone="+78431112233", full_name="Марина Попова", hashed_password="hashed_placeholder", role=UserRole.MASTER, is_active=True)
-=======
         u6 = User(phone="+78431112233", full_name="Марина Попова", hashed_password=get_password_hash(DEV_PASSWORD), role=UserRole.MASTER, is_active=True)
->>>>>>> main
         session.add(u6)
         await session.flush()
         m6 = Master(user_id=u6.id, salon_id=s5.id, specialization="стилист-визажист", experience_years=4, rating=0.0)
@@ -144,23 +112,11 @@ async def seed_database():
             session.add(Promotion(salon_id=sid, title=title, description=desc, tag=tag))
         
         # ========== ТЕСТОВЫЕ ПОЛЬЗОВАТЕЛИ ==========
-<<<<<<< HEAD
-        import hashlib
-        
-        def simple_hash(password: str) -> str:
-            return hashlib.sha256(password.encode()).hexdigest()
-        
-        test_users = [
-            User(phone="+79990000001", full_name="Анна Клиент", hashed_password=simple_hash("client123"), role=UserRole.CLIENT, is_active=True),
-            User(phone="+79990000002", full_name="Игорь Владелец", hashed_password=simple_hash("owner123"), role=UserRole.BUSINESS, is_active=True),
-            User(phone="+79990000003", full_name="Мария Модель", hashed_password=simple_hash("model123"), role=UserRole.MODEL, is_active=True),
-=======
         # Пароль у всех — DEV_PASSWORD ("Seedpass1"), хеш Argon2id. Только для dev.
         test_users = [
             User(phone="+79990000001", full_name="Анна Клиент", hashed_password=get_password_hash(DEV_PASSWORD), role=UserRole.CLIENT, is_active=True),
             User(phone="+79990000002", full_name="Игорь Владелец", hashed_password=get_password_hash(DEV_PASSWORD), role=UserRole.BUSINESS, is_active=True),
             User(phone="+79990000003", full_name="Мария Модель", hashed_password=get_password_hash(DEV_PASSWORD), role=UserRole.MODEL, is_active=True),
->>>>>>> main
         ]
         
         for tu in test_users:

@@ -70,8 +70,8 @@ app.add_middleware(CSRFOriginMiddleware)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # 2. API-роутеры — ДОЛЖНЫ БЫТЬ ДО ВЕБ-РОУТЕРА
-app.include_router(auth_web.router, prefix="/api/v1", tags=["auth-web"])
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["auth"])
+app.include_router(auth_web.router, prefix="/api/v1/auth", tags=["auth-web"])
 app.include_router(users.router, prefix="/api/v1/users", tags=["users"])
 app.include_router(bookings.router, prefix="/api/v1/bookings", tags=["bookings"])
 app.include_router(business.router, prefix="/api/v1/business", tags=["business"])
