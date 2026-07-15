@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from app.models.models import Booking, Master, Service, User as UserModel, BookingStatus
 
 
-async def render_schedule_tab(db: AsyncSession, salon, masters) -> str:
+async def render_schedule_tab(db: AsyncSession, salon, masters, can_manage_schedule: bool = False, salon_id: int = None) -> str:
     """Вкладка Расписание с реальными записями."""
     
     today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
@@ -57,21 +57,30 @@ async def render_schedule_tab(db: AsyncSession, salon, masters) -> str:
                     service = (await db.execute(select(Service).where(Service.id == b.service_id))).scalar_one_or_none()
                     client = (await db.execute(select(UserModel).where(UserModel.id == b.client_id))).scalar_one_or_none()
                     slot_bookings.append({
+                        "id": b.id,
                         "time": f"{b_start.strftime('%H:%M')}-{b_end.strftime('%H:%M')}",
                         "service": service.name if service else "—",
                         "client": client.full_name if client else "Клиент",
                         "status": "confirmed" if b.status == BookingStatus.CONFIRMED else "pending"
                     })
-            
+
             if slot_bookings:
                 # Показываем записи в слоте
                 booking_html = ""
                 for sb in slot_bookings:
                     bg_color = "#dcfce7" if sb["status"] == "confirmed" else "#fef9c3"
+                    actions_html = ""
+                    if can_manage_schedule and sb["status"] == "confirmed":
+                        actions_html = f"""
+                        <div style="display:flex;gap:0.15rem;margin-top:0.15rem">
+                            <button onclick="event.stopPropagation();markBooking({sb['id']}, 'complete')" title="Выполнено" style="border:none;background:#22c55e;color:white;border-radius:0.2rem;font-size:0.6rem;padding:0.1rem 0.25rem;cursor:pointer">✓</button>
+                            <button onclick="event.stopPropagation();markBooking({sb['id']}, 'no-show')" title="Неявка" style="border:none;background:#ef4444;color:white;border-radius:0.2rem;font-size:0.6rem;padding:0.1rem 0.25rem;cursor:pointer">✕</button>
+                        </div>"""
                     booking_html += f"""
-                    <div style="background:{bg_color};padding:0.25rem 0.5rem;border-radius:0.25rem;margin-bottom:0.15rem;font-size:0.7rem;cursor:pointer" 
+                    <div style="background:{bg_color};padding:0.25rem 0.5rem;border-radius:0.25rem;margin-bottom:0.15rem;font-size:0.7rem"
                          title="{sb['client']} — {sb['service']} ({sb['time']})">
                         {sb['time']}<br>{sb['service'][:15]}
+                        {actions_html}
                     </div>"""
                 cells += f'<td style="padding:0.25rem;vertical-align:top">{booking_html}</td>'
             else:
@@ -126,6 +135,13 @@ async def render_schedule_tab(db: AsyncSession, salon, masters) -> str:
             const today = new Date();
             today.setDate(today.getDate() + offset);
             const dateStr = today.toISOString().split('T')[0];
-            window.location.href = `/business/dashboard?date=${{dateStr}}&tab=schedule`;
+            window.location.href = `/business/dashboard?date=${{dateStr}}&tab=schedule&salon_id={salon_id}`;
+        }}
+
+        function markBooking(bookingId, action) {{
+            const label = action === 'complete' ? 'выполненной' : 'неявкой';
+            if (!confirm(`Отметить запись ${{label}}?`)) return;
+            fetch(`/api/v1/bookings/${{bookingId}}/${{action}}`, {{ method: 'POST' }})
+                .then(r => {{ if (r.ok) location.reload(); else r.json().then(d => alert(d.detail || 'Ошибка')); }});
         }}
     </script>"""

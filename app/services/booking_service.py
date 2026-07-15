@@ -3,7 +3,8 @@ from datetime import datetime, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, or_
 
-from app.models.models import Booking, Master, Service, BookingStatus
+from app.models.models import Booking, Master, Service, Salon, BookingStatus
+from app.services.schedule_utils import get_salon_work_hours
 
 class BookingService:
     
@@ -74,16 +75,45 @@ class BookingService:
         # Если есть пересекающиеся записи — слот занят
         if len(existing) > 0:
             return False
-        
-        # Проверяем, что слот в рабочие часы (10:00-20:00)
-        work_start = start_time.replace(hour=10, minute=0, second=0, microsecond=0)
-        work_end = start_time.replace(hour=20, minute=0, second=0, microsecond=0)
-        
+
+        # Проверяем, что слот в реальные рабочие часы салона (не хардкод)
+        master = (await db.execute(select(Master).where(Master.id == master_id))).scalar_one_or_none()
+        if master is None:
+            return False
+        salon = (await db.execute(select(Salon).where(Salon.id == master.salon_id))).scalar_one_or_none()
+        work_hours = get_salon_work_hours(salon.working_hours if salon else None, start_time)
+        if work_hours is None:
+            return False
+        work_start, work_end = work_hours
+
         if start_time < work_start or end_time > work_end:
             return False
-        
+
         return True
     
+    @staticmethod
+    async def complete_booking(db: AsyncSession, booking: Booking) -> Booking:
+        """Отмечает запись выполненной. Разрешено только из CONFIRMED."""
+        if booking.status != BookingStatus.CONFIRMED:
+            raise ValueError("Отметить выполненной можно только подтверждённую запись")
+        booking.status = BookingStatus.COMPLETED
+        if booking.final_price is None:
+            service = (await db.execute(select(Service).where(Service.id == booking.service_id))).scalar_one_or_none()
+            booking.final_price = service.price if service else 0
+        await db.commit()
+        await db.refresh(booking)
+        return booking
+
+    @staticmethod
+    async def mark_no_show(db: AsyncSession, booking: Booking) -> Booking:
+        """Отмечает неявку клиента. Разрешено только из CONFIRMED."""
+        if booking.status != BookingStatus.CONFIRMED:
+            raise ValueError("Отметить неявкой можно только подтверждённую запись")
+        booking.status = BookingStatus.NO_SHOW
+        await db.commit()
+        await db.refresh(booking)
+        return booking
+
     @staticmethod
     async def calculate_price(user: 'User', service: 'Service') -> int:
         """Рассчитывает цену с учётом подписки модели"""

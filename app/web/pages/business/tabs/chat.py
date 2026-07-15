@@ -17,8 +17,8 @@ async def render_chat_tab(db: AsyncSession, salon, user) -> str:
     chat_members = []
     added_ids = set()  # Чтобы не дублировать участников
     
-    # Владелец салона
-    owner = salon.owner
+    # Создатель салона (полный список совладельцев/админов — в вкладке «Сотрудники»)
+    owner = salon.creator
     if owner and owner.id not in added_ids:
         added_ids.add(owner.id)
         chat_members.append({

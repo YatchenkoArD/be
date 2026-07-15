@@ -1,11 +1,11 @@
 # app/models/models.py
 import enum
 from datetime import datetime, time
-from typing import Optional, List
+from typing import Optional, List, Dict
 
 from sqlalchemy import (
     Column, Integer, String, Float, Boolean, ForeignKey,
-    Text, DateTime, Enum, CheckConstraint, Index
+    Text, DateTime, Enum, CheckConstraint, Index, UniqueConstraint, JSON, text
 )
 from sqlalchemy.orm import relationship, declarative_base, Mapped, mapped_column
 from sqlalchemy.sql import func
@@ -32,6 +32,38 @@ class SubscriptionTier(str, enum.Enum):
     PRO = "pro"
     PREMIUM = "premium"
 
+class SalonRole(str, enum.Enum):
+    OWNER = "owner"
+    ADMIN = "admin"
+    # MASTER сюда сознательно не входит: у мастера уже есть своя таблица
+    # Master с operatonal-доступом, заскоупленным через Master.user_id —
+    # ему не нужен настраиваемый словарь прав, который тут нужен owner/admin.
+
+# Ключи прав салона. Значение — можно ли делать соответствующее действие.
+# У создателя салона (SalonMember.is_creator=True) все права всегда True
+# независимо от словаря, плюс только он может удалить сам салон.
+SALON_PERMISSION_KEYS = (
+    "manage_salon",      # настройки, фото, описание, график салона
+    "manage_owners",     # приглашать/снимать совладельцев, менять их права
+    "manage_admins",     # приглашать/снимать админов
+    "manage_masters",    # CRUD мастеров, услуг, графика мастера
+    "manage_schedule",   # быстрые записи, отметка выполнено/неявка
+    "manage_promotions",
+    "manage_reviews",    # ответы на отзывы
+    "view_finances",
+    "manage_tariff",
+    "view_audit_log",
+)
+
+OWNER_DEFAULT_PERMISSIONS: Dict[str, bool] = {k: True for k in SALON_PERMISSION_KEYS}
+ADMIN_DEFAULT_PERMISSIONS: Dict[str, bool] = {
+    **OWNER_DEFAULT_PERMISSIONS,
+    "view_finances": False,
+    "manage_tariff": False,
+    "manage_owners": False,
+    "view_audit_log": False,
+}
+
 # --- Core Tables ---
 
 class User(Base):
@@ -52,7 +84,8 @@ class User(Base):
     subscription_expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
 
     master_profile: Mapped[Optional["Master"]] = relationship(back_populates="user", uselist=False)
-    owned_salon: Mapped[Optional["Salon"]] = relationship(back_populates="owner", uselist=False)
+    created_salons: Mapped[List["Salon"]] = relationship(back_populates="creator")
+    salon_memberships: Mapped[List["SalonMember"]] = relationship(back_populates="user", foreign_keys="SalonMember.user_id")
     bookings: Mapped[List["Booking"]] = relationship(back_populates="client", foreign_keys="Booking.client_id")
     reviews: Mapped[List["Review"]] = relationship(back_populates="client")
     favorites: Mapped[List["Favorite"]] = relationship(back_populates="user")
@@ -64,8 +97,13 @@ class Salon(Base):
     __tablename__ = "salons"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    owner_id: Mapped[int] = mapped_column(ForeignKey("users.id"), unique=True, nullable=True)
-    owner: Mapped["User"] = relationship(back_populates="owned_salon")
+    # Пользователь, создавший карточку салона. Не источник правды для прав —
+    # тот источник теперь SalonMember (role=owner, is_creator=True для этого же
+    # user_id). creator_id остаётся как исторический/справочный указатель и не
+    # уникален: один человек может быть создателем нескольких салонов.
+    creator_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"), nullable=True)
+    creator: Mapped["User"] = relationship(back_populates="created_salons")
+    members: Mapped[List["SalonMember"]] = relationship(back_populates="salon", cascade="all, delete-orphan")
     
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
@@ -98,6 +136,34 @@ class SalonPhoto(Base):
     salon_id: Mapped[int] = mapped_column(ForeignKey("salons.id", ondelete="CASCADE"))
     url: Mapped[str] = mapped_column(String(500))
     salon: Mapped["Salon"] = relationship(back_populates="photos")
+
+class SalonMember(Base):
+    """Членство пользователя в бизнес-панели салона (owner/admin) с гибкими правами."""
+    __tablename__ = "salon_members"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    salon_id: Mapped[int] = mapped_column(ForeignKey("salons.id", ondelete="CASCADE"))
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+
+    role: Mapped[SalonRole] = mapped_column(Enum(SalonRole), nullable=False)
+    is_creator: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false", nullable=False)
+    permissions: Mapped[Dict[str, bool]] = mapped_column(JSON, nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true", nullable=False)
+
+    invited_by_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    salon: Mapped["Salon"] = relationship(back_populates="members")
+    user: Mapped["User"] = relationship(back_populates="salon_memberships", foreign_keys=[user_id])
+
+    __table_args__ = (
+        UniqueConstraint("salon_id", "user_id", name="uq_salon_member"),
+        Index("ix_salon_members_user", "user_id"),
+        Index(
+            "uq_salon_creator", "salon_id", unique=True,
+            postgresql_where=text("is_creator = true"),
+        ),
+    )
 
 class Master(Base):
     __tablename__ = "masters"
@@ -222,10 +288,15 @@ class AdminAudit(Base):
     target_type: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)  # user / salon / review
     target_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     detail: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # человекочитаемое описание
+    # NULL = платформенное действие (суперадмин). Заполнено — действие внутри
+    # конкретного салона (приглашение/снятие сотрудника, удаление салона и т.п.).
+    # ondelete=SET NULL: при удалении салона лог остаётся, просто теряет привязку.
+    salon_id: Mapped[Optional[int]] = mapped_column(ForeignKey("salons.id", ondelete="SET NULL"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     actor: Mapped["User"] = relationship()
 
     __table_args__ = (
         Index("ix_admin_audit_created", "created_at"),
+        Index("ix_admin_audit_salon", "salon_id"),
     )

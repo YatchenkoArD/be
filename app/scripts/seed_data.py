@@ -7,7 +7,10 @@ import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from app.models.models import Salon, Master, User, Service, Promotion, UserRole, Base
+from app.models.models import (
+    Salon, Master, User, Service, Promotion, UserRole, Base,
+    SalonMember, SalonRole, OWNER_DEFAULT_PERMISSIONS,
+)
 from app.core.config import settings
 from app.core.security import get_password_hash
 
@@ -127,9 +130,18 @@ async def seed_database():
         # Привязываем владельца к первому салону
         owner = await session.execute(select(User).where(User.phone == "+79990000002"))
         owner = owner.scalar_one_or_none()
-        if owner and not s1.owner_id:
-            s1.owner_id = owner.id
-            
+        if owner and not s1.creator_id:
+            s1.creator_id = owner.id
+            await session.flush()
+            existing_membership = await session.execute(
+                select(SalonMember).where(SalonMember.salon_id == s1.id, SalonMember.user_id == owner.id)
+            )
+            if not existing_membership.scalar_one_or_none():
+                session.add(SalonMember(
+                    salon_id=s1.id, user_id=owner.id, role=SalonRole.OWNER,
+                    is_creator=True, permissions=dict(OWNER_DEFAULT_PERMISSIONS), is_active=True,
+                ))
+
         await session.commit()
         print("✅ База заполнена: 5 салонов, 6 мастеров, 17 услуг, 9 акций!")
 

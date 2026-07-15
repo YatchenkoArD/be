@@ -5,13 +5,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from datetime import timedelta, datetime, timezone as tz
 from typing import List
-import json
 
 from app.db.session import get_db
 from app.models.models import Booking, Master, Service, User, BookingStatus, Review, Salon
 from app.schemas.booking import BookingCreate, BookingResponse, BookingCancel
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, get_salon_membership
 from app.services.booking_service import BookingService
+from app.services.schedule_utils import get_salon_work_hours
 from app.utils.timezone import get_salon_time
 
 router = APIRouter()
@@ -113,34 +113,17 @@ async def get_available_slots(
     salon = (await db.execute(select(Salon).where(Salon.id == master.salon_id))).scalar_one_or_none()
     if not salon or not salon.working_hours:
         return {"slots": [], "message": "График работы салона не задан"}
-    
-    try:
-        working_hours = json.loads(salon.working_hours)
-    except:
-        return {"slots": [], "message": "Ошибка в графике салона"}
-    
+
     try:
         target_date = datetime.fromisoformat(date)
-    except:
+    except (ValueError, TypeError):
         target_date = datetime.now()
-    
-    day_names = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
-    day_name = day_names[target_date.weekday()]
-    
-    if day_name not in working_hours or working_hours[day_name] in ("выходной", "closed", "day off"):
-        return {"slots": [], "message": f"Салон не работает в этот день ({day_name})"}
-    
-    time_range = working_hours[day_name]
-    try:
-        start_str, end_str = time_range.split("-")
-        work_start_h, work_start_m = map(int, start_str.split(":"))
-        work_end_h, work_end_m = map(int, end_str.split(":"))
-    except:
-        return {"slots": [], "message": "Ошибка в графике салона"}
-    
-    work_start = target_date.replace(hour=work_start_h, minute=work_start_m, second=0, microsecond=0)
-    work_end = target_date.replace(hour=work_end_h, minute=work_end_m, second=0, microsecond=0)
-    
+
+    work_hours = get_salon_work_hours(salon.working_hours, target_date)
+    if work_hours is None:
+        return {"slots": [], "message": "Салон не работает в этот день или график задан с ошибкой"}
+    work_start, work_end = work_hours
+
     slot_duration = service.duration_minutes + master.break_minutes
     
     booked = await db.execute(
@@ -295,16 +278,9 @@ async def confirm_booking_web(
         #<a href="/bookings" style="color:#F28C6F">Мои записи</a>
         #</body></html>""", status_code=429)
     
-    # ===== ПРОВЕРКА 3: Слот ещё свободен =====
-    conflict = await db.execute(
-        select(Booking).where(
-            Booking.master_id == master_id,
-            Booking.start_time < end,
-            Booking.end_time > start,
-            Booking.status.in_([BookingStatus.PENDING, BookingStatus.CONFIRMED])
-        )
-    )
-    if conflict.scalar_one_or_none():
+    # ===== ПРОВЕРКА 3: Слот ещё свободен (единая проверка пересечений + рабочие часы) =====
+    is_available = await BookingService.is_slot_available(db, master_id, start, service.duration_minutes)
+    if not is_available:
         return HTMLResponse(content="""
         <!DOCTYPE html><html><body style="text-align:center;padding:3rem;font-family:sans-serif">
         <h2 style="color:#e53e3e">⚠️ Время занято</h2>
@@ -323,3 +299,51 @@ async def confirm_booking_web(
 # Создание отзыва вынесено в единый эндпоинт reviews.py (через ReviewService).
 # Прежний дублирующий create_review_web здесь удалён — он не проверял
 # завершённость записи и позволял накручивать рейтинг.
+
+
+async def _can_mark_booking(db: AsyncSession, user: User, booking: Booking) -> bool:
+    """Может ли user отметить эту запись выполненной/неявкой: сам мастер записи
+    либо участник салона с правом manage_schedule."""
+    master = (await db.execute(select(Master).where(Master.id == booking.master_id))).scalar_one_or_none()
+    if master is not None and master.user_id == user.id:
+        return True
+    membership = await get_salon_membership(db, user.id, master.salon_id if master else -1)
+    return membership is not None and (
+        membership.is_creator or membership.permissions.get("manage_schedule", False)
+    )
+
+
+@router.post("/{booking_id}/complete", response_model=BookingResponse)
+async def complete_booking(
+    booking_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Отметить запись выполненной — сам мастер или owner/admin салона с manage_schedule."""
+    booking = (await db.execute(select(Booking).where(Booking.id == booking_id))).scalar_one_or_none()
+    if not booking:
+        raise HTTPException(status_code=404, detail="Запись не найдена")
+    if not await _can_mark_booking(db, current_user, booking):
+        raise HTTPException(status_code=403, detail="Нет прав отмечать эту запись")
+    try:
+        return await BookingService.complete_booking(db, booking)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/{booking_id}/no-show", response_model=BookingResponse)
+async def no_show_booking(
+    booking_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Отметить неявку клиента — сам мастер или owner/admin салона с manage_schedule."""
+    booking = (await db.execute(select(Booking).where(Booking.id == booking_id))).scalar_one_or_none()
+    if not booking:
+        raise HTTPException(status_code=404, detail="Запись не найдена")
+    if not await _can_mark_booking(db, current_user, booking):
+        raise HTTPException(status_code=403, detail="Нет прав отмечать эту запись")
+    try:
+        return await BookingService.mark_no_show(db, booking)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))

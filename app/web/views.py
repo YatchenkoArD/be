@@ -94,44 +94,59 @@ async def settings_page(request: Request, db: AsyncSession = Depends(get_db)):
 
 @router.get("/business/dashboard", response_class=HTMLResponse)
 async def business_dashboard_page(
-    request: Request, 
+    request: Request,
+    salon_id: int = None,
     db: AsyncSession = Depends(get_db)
 ):
-    """Бизнес-панель с аналитикой."""
+    """Бизнес-панель с аналитикой. Доступна любому активному участнику
+    салона (owner/admin), не только его создателю."""
     from app.web.pages.business import render_business_dashboard
-    
+    from app.api.deps import get_user_primary_salon_id, get_salon_membership
+
     user = await get_current_user_from_cookie(request, db)
-    if not user or user.role.value != "business":
+    if not user:
         return RedirectResponse(url="/login?redirect=/business/dashboard", status_code=302)
-    
-    result = await db.execute(select(Salon).where(Salon.owner_id == user.id))
-    salon = result.scalar_one_or_none()
-    
-    if not salon:
+
+    resolved_id = await get_user_primary_salon_id(db, user.id, salon_id)
+    if resolved_id is None:
         return RedirectResponse(url="/business/register-salon", status_code=302)
-    
-    return HTMLResponse(content=await render_business_dashboard(db, user, salon))
+
+    salon = (await db.execute(select(Salon).where(Salon.id == resolved_id))).scalar_one_or_none()
+    membership = await get_salon_membership(db, user.id, resolved_id)
+    if not salon or not membership:
+        return RedirectResponse(url="/business/register-salon", status_code=302)
+
+    return HTMLResponse(content=await render_business_dashboard(db, user, salon, membership))
 
 
 @router.get("/business/my-salon", response_class=HTMLResponse)
 async def my_salon_page(
-    request: Request, 
+    request: Request,
+    salon_id: int = None,
     db: AsyncSession = Depends(get_db)
 ):
-    """Страница редактирования своего салона."""
+    """Страница редактирования своего салона (доступна с правом manage_salon)."""
     from app.web.pages.my_salon import render_my_salon_page
-    
+    from app.api.deps import get_user_primary_salon_id, check_salon_permission
+    from fastapi import HTTPException
+
     user = await get_current_user_from_cookie(request, db)
-    if not user or user.role.value != "business":
+    if not user:
         return RedirectResponse(url="/login?redirect=/business/my-salon", status_code=302)
-    
-    # Получаем салон владельца
-    result = await db.execute(select(Salon).where(Salon.owner_id == user.id))
-    salon = result.scalar_one_or_none()
-    
+
+    resolved_id = await get_user_primary_salon_id(db, user.id, salon_id)
+    if resolved_id is None:
+        return RedirectResponse(url="/business/register-salon", status_code=302)
+
+    try:
+        await check_salon_permission(db, user, resolved_id, "manage_salon")
+    except HTTPException:
+        return RedirectResponse(url="/business/dashboard", status_code=302)
+
+    salon = (await db.execute(select(Salon).where(Salon.id == resolved_id))).scalar_one_or_none()
     if not salon:
         return RedirectResponse(url="/business/register-salon", status_code=302)
-    
+
     return HTMLResponse(content=await render_my_salon_page(db, salon, user))
 
 

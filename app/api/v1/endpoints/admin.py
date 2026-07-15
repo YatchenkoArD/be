@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_db
 from app.models.models import (
     User, UserRole, Salon, Master, Service, Booking, Review, Promotion,
-    SalonPhoto, Favorite, AdminAudit,
+    SalonPhoto, Favorite, AdminAudit, SalonMember, SalonRole, OWNER_DEFAULT_PERMISSIONS,
 )
 from app.core.security import get_password_hash
 from app.web.auth import get_current_user_from_cookie
@@ -141,7 +141,7 @@ async def delete_user(uid: int, request: Request, db: AsyncSession = Depends(get
         return _back("users", err="Нельзя удалить последнего администратора")
 
     # Сложные связи блокируем — их надо разрулить явно (заблокируйте пользователя)
-    owns_salon = (await db.execute(select(func.count(Salon.id)).where(Salon.owner_id == target.id))).scalar() or 0
+    owns_salon = (await db.execute(select(func.count(Salon.id)).where(Salon.creator_id == target.id))).scalar() or 0
     is_master = (await db.execute(select(func.count(Master.id)).where(Master.user_id == target.id))).scalar() or 0
     if owns_salon:
         return _back("users", err="Пользователь владеет салоном — сначала переназначьте владельца")
@@ -187,8 +187,17 @@ async def salon_owner(sid: int, request: Request, owner_phone: str = Form(""), d
         return _back("salons", err="Салон не найден")
 
     owner_phone = owner_phone.strip()
+
+    # Снимаем is_creator с текущего создателя (если есть) в любом случае —
+    # либо совсем снимаем владельца, либо передаём создателя другому.
+    current_creator_membership = (await db.execute(
+        select(SalonMember).where(SalonMember.salon_id == sid, SalonMember.is_creator == True)
+    )).scalar_one_or_none()
+    if current_creator_membership is not None:
+        current_creator_membership.is_creator = False
+
     if not owner_phone:  # снять владельца
-        salon.owner_id = None
+        salon.creator_id = None
         _audit(db, admin.id, "salon_owner", "salon", sid, f"{salon.name}: владелец снят")
         await db.commit()
         return _back("salons", ok=f"«{salon.name}»: владелец снят")
@@ -196,14 +205,25 @@ async def salon_owner(sid: int, request: Request, owner_phone: str = Form(""), d
     owner = (await db.execute(select(User).where(User.phone == owner_phone))).scalar_one_or_none()
     if not owner:
         return _back("salons", err="Пользователь с таким телефоном не найден")
-    # один пользователь — один салон (owner_id unique)
-    other = (await db.execute(select(Salon).where(Salon.owner_id == owner.id, Salon.id != sid))).scalar_one_or_none()
-    if other:
-        return _back("salons", err=f"{owner.phone} уже владеет салоном «{other.name}»")
 
-    salon.owner_id = owner.id
+    # Множественные салоны на владельца разрешены — блокировки больше нет.
+    membership = (await db.execute(
+        select(SalonMember).where(SalonMember.salon_id == sid, SalonMember.user_id == owner.id)
+    )).scalar_one_or_none()
+    if membership is None:
+        membership = SalonMember(
+            salon_id=sid, user_id=owner.id, role=SalonRole.OWNER,
+            is_creator=True, permissions=dict(OWNER_DEFAULT_PERMISSIONS), is_active=True,
+        )
+        db.add(membership)
+    else:
+        membership.role = SalonRole.OWNER
+        membership.is_creator = True
+        membership.is_active = True
+
+    salon.creator_id = owner.id
     if owner.role != UserRole.ADMIN:
-        owner.role = UserRole.BUSINESS  # владелец салона → бизнес-роль
+        owner.role = UserRole.BUSINESS  # владелец салона → бизнес-роль (для навигации/UX)
     _audit(db, admin.id, "salon_owner", "salon", sid, f"{salon.name}: владелец → {owner.phone}")
     await db.commit()
     return _back("salons", ok=f"«{salon.name}»: владелец → {owner.phone}")

@@ -124,6 +124,7 @@ async def render_my_salon_page(db: AsyncSession, salon: Salon, user=None) -> str
                 <h2 class="text-subtitle" style="font-size: 1.25rem; margin-bottom: 1.5rem;">Основная информация</h2>
                 <form action="/api/v1/business/my-salon" method="post">
                     <input type="hidden" name="method_override" value="put">
+                    <input type="hidden" name="salon_id" value="{salon.id}">
                     <div class="grid-2" style="gap: 1.5rem; margin-bottom: 1.5rem;">
                         <div>
                             <label style="display: block; font-weight: 500; margin-bottom: 0.5rem;">Название салона</label>
@@ -197,6 +198,7 @@ async def render_my_salon_page(db: AsyncSession, salon: Salon, user=None) -> str
             <button class="modal-close" onclick="document.getElementById('addMasterModal').classList.remove('active')">&times;</button>
             <h2 style="margin-bottom:1.5rem">Добавить мастера</h2>
             <form action="/api/v1/master/create-web" method="post">
+                <input type="hidden" name="salon_id" value="{salon.id}">
                 <div style="margin-bottom:1rem">
                     <label style="display:block;font-weight:500;margin-bottom:0.5rem">Имя *</label>
                     <input type="text" name="full_name" required placeholder="Имя мастера" style="width:100%;padding:0.75rem;border:1px solid var(--color-border);border-radius:0.5rem">
@@ -248,6 +250,7 @@ async def render_my_salon_page(db: AsyncSession, salon: Salon, user=None) -> str
             <button class="modal-close" onclick="document.getElementById('addPromoModal').classList.remove('active')">&times;</button>
             <h2 style="margin-bottom:1.5rem">Добавить акцию</h2>
             <form action="/api/v1/business/my-salon/promotions/web" method="post">
+                <input type="hidden" name="salon_id" value="{salon.id}">
                 <div style="margin-bottom:1rem">
                     <label style="display:block;font-weight:500;margin-bottom:0.5rem">Название *</label>
                     <input type="text" name="title" required placeholder="Например: Скидка 20%" style="width:100%;padding:0.75rem;border:1px solid var(--color-border);border-radius:0.5rem">

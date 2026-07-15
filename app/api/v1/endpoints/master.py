@@ -1,4 +1,5 @@
 # app/api/v1/endpoints/master.py
+from typing import Optional
 from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Form, status
@@ -9,7 +10,9 @@ import secrets
 
 from app.db.session import get_db
 from app.models.models import User, Master, Booking, Salon, UserRole, BookingStatus
-from app.api.deps import get_current_user, require_role
+from app.api.deps import (
+    get_current_user, require_role, check_salon_permission, get_user_primary_salon_id,
+)
 from app.core.security import get_password_hash
 
 router = APIRouter()
@@ -62,18 +65,24 @@ async def create_master_web(
     phone: str = Form(...),
     specialization: str = Form(...),
     experience_years: int = Form(0),
+    salon_id: Optional[int] = Form(None),
     db: AsyncSession = Depends(get_db)
 ):
-    """Добавление мастера владельцем салона через веб-форму."""
+    """Добавление мастера владельцем/админом салона через веб-форму."""
     from app.web.auth import get_current_user_from_cookie
-    
+
     user = await get_current_user_from_cookie(request, db)
-    if not user or user.role.value != "business":
+    if not user:
         return RedirectResponse(url="/login", status_code=302)
-    
-    salon = (await db.execute(select(Salon).where(Salon.owner_id == user.id))).scalar_one_or_none()
-    if not salon:
+
+    resolved_id = await get_user_primary_salon_id(db, user.id, salon_id)
+    if resolved_id is None:
         return RedirectResponse(url="/business/register-salon", status_code=302)
+    try:
+        await check_salon_permission(db, user, resolved_id, "manage_masters")
+    except HTTPException:
+        return HTMLResponse(content="Недостаточно прав для управления мастерами", status_code=403)
+    salon = (await db.execute(select(Salon).where(Salon.id == resolved_id))).scalar_one()
     
     # Проверяем, нет ли уже мастера с таким телефоном
     temp_password = None
@@ -127,20 +136,21 @@ async def update_master_web(
     experience_years: int = Form(0),
     db: AsyncSession = Depends(get_db)
 ):
-    """Обновление данных мастера владельцем салона."""
+    """Обновление данных мастера владельцем/админом салона."""
     from app.web.auth import get_current_user_from_cookie
-    
+
     user = await get_current_user_from_cookie(request, db)
-    if not user or user.role.value != "business":
+    if not user:
         return RedirectResponse(url="/login", status_code=302)
-    
-    salon = (await db.execute(select(Salon).where(Salon.owner_id == user.id))).scalar_one_or_none()
-    if not salon:
-        return RedirectResponse(url="/business/register-salon", status_code=302)
-    
-    master = (await db.execute(select(Master).where(Master.id == master_id, Master.salon_id == salon.id))).scalar_one_or_none()
+
+    master = (await db.execute(select(Master).where(Master.id == master_id))).scalar_one_or_none()
     if not master:
         return HTMLResponse(content="Мастер не найден", status_code=404)
+
+    try:
+        await check_salon_permission(db, user, master.salon_id, "manage_masters")
+    except HTTPException:
+        return HTMLResponse(content="Недостаточно прав для управления мастерами", status_code=403)
     
     # Обновляем имя пользователя
     master_user = (await db.execute(select(User).where(User.id == master.user_id))).scalar_one_or_none()
@@ -161,22 +171,22 @@ async def delete_master_web(
     request: Request,
     db: AsyncSession = Depends(get_db)
 ):
-    """Удаление мастера владельцем салона."""
+    """Удаление мастера владельцем/админом салона."""
     from app.web.auth import get_current_user_from_cookie
-    
+
     user = await get_current_user_from_cookie(request, db)
-    if not user or user.role.value != "business":
+    if not user:
         return RedirectResponse(url="/login", status_code=302)
-    
+
     master = (await db.execute(select(Master).where(Master.id == master_id))).scalar_one_or_none()
     if not master:
         return HTMLResponse(content="Мастер не найден", status_code=404)
-    
-    # Проверяем, что мастер принадлежит салону владельца
-    salon = (await db.execute(select(Salon).where(Salon.owner_id == user.id))).scalar_one_or_none()
-    if not salon or master.salon_id != salon.id:
-        return HTMLResponse(content="Нет доступа", status_code=403)
-    
+
+    try:
+        await check_salon_permission(db, user, master.salon_id, "manage_masters")
+    except HTTPException:
+        return HTMLResponse(content="Недостаточно прав для управления мастерами", status_code=403)
+
     await db.delete(master)
     await db.commit()
     
@@ -191,19 +201,20 @@ async def toggle_master_web(
 ):
     """Включение/отключение мастера."""
     from app.web.auth import get_current_user_from_cookie
-    
+
     user = await get_current_user_from_cookie(request, db)
-    if not user or user.role.value != "business":
+    if not user:
         return RedirectResponse(url="/login", status_code=302)
-    
+
     master = (await db.execute(select(Master).where(Master.id == master_id))).scalar_one_or_none()
     if not master:
         return HTMLResponse(content="Мастер не найден", status_code=404)
-    
-    salon = (await db.execute(select(Salon).where(Salon.owner_id == user.id))).scalar_one_or_none()
-    if not salon or master.salon_id != salon.id:
-        return HTMLResponse(content="Нет доступа", status_code=403)
-    
+
+    try:
+        await check_salon_permission(db, user, master.salon_id, "manage_masters")
+    except HTTPException:
+        return HTMLResponse(content="Недостаточно прав для управления мастерами", status_code=403)
+
     master.is_active = not master.is_active
     await db.commit()
     
