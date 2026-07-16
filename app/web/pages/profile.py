@@ -5,19 +5,15 @@ from app.web.components.sidebar import render_sidebar
 from app.web.components.styles import get_base_styles
 from app.web.components.icons import (
     ICON_USER,
-    ICON_CALENDAR_DAYS,
-    ICON_HEART,
     ICON_CAMERA,
     ICON_PHONE,
     ICON_MAIL,
     ICON_CALENDAR_SMALL,
     ICON_EDIT,
+    ICON_MAP_PIN_SMALL,
 )
 
-
 def render_profile_page(user=None, master_profile=None, salon=None, stats=None, error=None, success=None) -> str:
-    """Страница профиля пользователя."""
-
     # Обработка сообщений
     error_message = ""
     success_message = ""
@@ -40,7 +36,6 @@ def render_profile_page(user=None, master_profile=None, salon=None, stats=None, 
         }
         success_message = f'<div class="profile-alert profile-alert-success">{success_messages.get(success, "Операция выполнена успешно")}</div>'
 
-    # Если пользователь не авторизован
     if not user:
         return _render_guest_page()
 
@@ -48,6 +43,7 @@ def render_profile_page(user=None, master_profile=None, salon=None, stats=None, 
     name = user.full_name or "Пользователь"
     phone = user.phone or ""
     email = user.email or ""
+    city = getattr(user, "city", "") or "Не указан"
     avatar_url = user.avatar_url or ""
     role = user.role.value if user.role else "client"
     created_at = getattr(user, "created_at", None)
@@ -63,13 +59,9 @@ def render_profile_page(user=None, master_profile=None, salon=None, stats=None, 
     }
     role_display = role_names.get(role, role.capitalize())
 
-    if stats is None:
-        stats = {"bookings": 0, "favorites": 0, "reviews": 0}
-
-    # === Ролевой блок ===
+    # Ролевой блок
     role_block = ""
 
-    # Модель – подписка
     if role == "model":
         tier_names = {"start": "Старт", "pro": "Про", "premium": "Премиум"}
         tier = getattr(user, "subscription_tier", None)
@@ -95,7 +87,6 @@ def render_profile_page(user=None, master_profile=None, salon=None, stats=None, 
         </div>
         """
 
-    # Мастер – профессия
     elif role == "master" and master_profile:
         spec = master_profile.specialization or "—"
         exp = master_profile.experience_years or 0
@@ -127,7 +118,6 @@ def render_profile_page(user=None, master_profile=None, salon=None, stats=None, 
         </div>
         """
 
-    # Бизнес – салон
     elif role == "business" and salon:
         salon_name = salon.name or "—"
         salon_address = salon.address or "—"
@@ -155,8 +145,7 @@ def render_profile_page(user=None, master_profile=None, salon=None, stats=None, 
         </div>
         """
 
-
-    # === Основной HTML ===
+    # HTML
     html = f"""<!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -164,7 +153,7 @@ def render_profile_page(user=None, master_profile=None, salon=None, stats=None, 
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Мой профиль — руми</title>
     {get_base_styles()}
-    <link rel="stylesheet" href="/static/src/css/profile.css">
+    <link rel="stylesheet" href="/static/css/pages/profile.css">
 </head>
 <body>
     {render_header("profile")}
@@ -173,8 +162,8 @@ def render_profile_page(user=None, master_profile=None, salon=None, stats=None, 
     <main class="profile-main">
         <div class="profile-container">
 
-            <!-- Верхний блок -->
-            <div class="profile-banner" style="background: linear-gradient(135deg, var(--color-primary), var(--color-accent-hover));">
+            <!-- Верхний блок (баннер) -->
+            <div class="profile-banner">
                 <div class="profile-avatar-wrapper">
                     <div class="profile-avatar" id="profile-avatar-container">
                         {f'<img src="{avatar_url}" alt="{name}">' if avatar_url else f'<span class="profile-avatar-letter">{avatar_letter}</span>'}
@@ -189,7 +178,7 @@ def render_profile_page(user=None, master_profile=None, salon=None, stats=None, 
                 </button>
             </div>
 
-            <!-- Режим просмотра -->
+            <!-- Информация (белый блок) -->
             <div class="profile-view" id="profile-view">
                 <div class="profile-name-wrapper">
                     <h1 class="profile-name">{name}</h1>
@@ -200,6 +189,9 @@ def render_profile_page(user=None, master_profile=None, salon=None, stats=None, 
                         {ICON_PHONE} {phone}
                     </span>
                     {f'<span class="profile-meta-item">{ICON_MAIL} {email}</span>' if email else ''}
+                    <span class="profile-meta-item">
+                        {ICON_MAP_PIN_SMALL} {city}
+                    </span>
                     {f'<span class="profile-meta-item">{ICON_CALENDAR_SMALL} С {member_since}</span>' if member_since else ''}
                 </div>
                 {error_message}
@@ -212,26 +204,13 @@ def render_profile_page(user=None, master_profile=None, salon=None, stats=None, 
                     <h2>Редактирование профиля</h2>
                     <div class="profile-edit-actions">
                         <button class="profile-btn-cancel" id="profile-edit-cancel">Отмена</button>
-                        <button class="profile-btn-primary" id="profile-edit-save">💾 Сохранить</button>
+                        <button class="profile-btn-primary" id="profile-edit-save">Сохранить</button>
                     </div>
                 </div>
                 <form id="profile-edit-form" action="/api/v1/users/me/update-form" method="post">
                     <div class="profile-form-group">
                         <label for="profile-edit-name">Имя *</label>
                         <input type="text" id="profile-edit-name" name="full_name" value="{name}" required>
-                    </div>
-                    <div class="profile-form-group">
-                        <label for="profile-edit-phone">Телефон</label>
-                        <input type="tel" id="profile-edit-phone" name="phone" value="{phone}" disabled readonly>
-                        <small>Телефон нельзя изменить, он используется для входа</small>
-                    </div>
-                    <div class="profile-form-group">
-                        <label for="profile-edit-email">Email</label>
-                        <input type="email" id="profile-edit-email" name="email" value="{email}" placeholder="example@mail.ru">
-                    </div>
-                    <div class="profile-form-group">
-                        <label for="profile-edit-avatar">URL аватара</label>
-                        <input type="text" id="profile-edit-avatar" name="avatar_url" value="{avatar_url}" placeholder="https://example.com/avatar.jpg">
                     </div>
                     {f'''
                     <div class="profile-form-group">
@@ -241,82 +220,33 @@ def render_profile_page(user=None, master_profile=None, salon=None, stats=None, 
                     ''' if role in ['model', 'master'] else ''}
                     <button type="submit" style="display:none;">Сохранить</button>
                 </form>
+                <div class="profile-edit-note">
+                    <p class="text-muted">Телефон, email и город можно изменить в <a href="/settings#data" class="text-link">настройках</a>.</p>
+                </div>
             </div>
 
             <!-- Ролевой блок -->
             {role_block}
-
-            <!-- Предстоящие записи -->
-            <div class="profile-info-block">
-                <div class="profile-info-header">
-                    <h3>{ICON_CALENDAR_DAYS} Предстоящие записи</h3>
-                    <span class="profile-badge-count">{stats.get('bookings', 0)}</span>
-                </div>
-                <div class="profile-info-body">
-                    {_render_bookings_preview()}
-                </div>
-            </div>
-
-            <!-- Избранные салоны -->
-            <div class="profile-info-block">
-                <div class="profile-info-header">
-                    <h3>{ICON_HEART} Избранные салоны</h3>
-                    <span class="profile-badge-count">{stats.get('favorites', 0)}</span>
-                </div>
-                <div class="profile-info-body">
-                    {_render_favorites_preview()}
-                </div>
-            </div>
-
-            <!-- Изменение пароля -->
-            <div class="profile-info-block">
-                <div class="profile-info-header">
-                    <h3>🔒 Изменить пароль</h3>
-                </div>
-                <div class="profile-info-body">
-                    <form action="/api/v1/users/me/password-form" method="post" class="profile-password-form">
-                        <div class="profile-form-group">
-                            <label for="profile-current-password">Текущий пароль *</label>
-                            <input type="password" id="profile-current-password" name="current_password" required>
-                        </div>
-                        <div class="profile-form-group">
-                            <label for="profile-new-password">Новый пароль *</label>
-                            <input type="password" id="profile-new-password" name="new_password" required>
-                            <ul class="profile-password-hints">
-                                <li>Минимум 8 символов</li>
-                                <li>Строчная и заглавная буквы</li>
-                                <li>Цифра</li>
-                            </ul>
-                        </div>
-                        <div class="profile-form-group">
-                            <label for="profile-confirm-password">Подтвердите новый пароль *</label>
-                            <input type="password" id="profile-confirm-password" name="confirm_password" required>
-                        </div>
-                        <button type="submit" class="profile-btn-secondary">Изменить пароль</button>
-                    </form>
-                </div>
-            </div>
 
         </div>
     </main>
 
     {render_footer()}
 
-    <script src="/static/src/js/profile.js"></script>
+    <script src="/static/js/pages/profile.js"></script>
 </body>
 </html>"""
     return html
 
 
 def _render_guest_page() -> str:
-    """Страница для неавторизованных."""
     return f"""<!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Мой профиль — руми</title>
     {get_base_styles()}
-    <link rel="stylesheet" href="/static/src/css/profile.css">
+    <link rel="stylesheet" href="/static/css/pages/profile.css">
 </head>
 <body>
     {render_header("profile")}
@@ -336,23 +266,3 @@ def _render_guest_page() -> str:
     {render_footer()}
 </body>
 </html>"""
-
-
-def _render_bookings_preview() -> str:
-    return f"""
-    <div class="profile-empty-state">
-        {ICON_CALENDAR_DAYS}
-        <p>Нет предстоящих записей</p>
-        <a href="/salons" class="profile-text-link">Найти салон →</a>
-    </div>
-    """
-
-
-def _render_favorites_preview() -> str:
-    return f"""
-    <div class="profile-empty-state">
-        {ICON_HEART}
-        <p>Нет избранных салонов</p>
-        <a href="/salons" class="profile-text-link">Найти салон →</a>
-    </div>
-    """

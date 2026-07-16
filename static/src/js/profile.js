@@ -1,4 +1,4 @@
-// static/src/js/profile.js
+// static/js/pages/profile.js
 
 document.addEventListener('DOMContentLoaded', function() {
     // === Переключение режима редактирования ===
@@ -8,18 +8,21 @@ document.addEventListener('DOMContentLoaded', function() {
     const cancelBtn = document.getElementById('profile-edit-cancel');
     const saveBtn = document.getElementById('profile-edit-save');
     const editForm = document.getElementById('profile-edit-form');
+    const container = document.querySelector('.profile-container');
 
     if (editToggle && viewMode && editMode) {
         editToggle.addEventListener('click', function() {
             viewMode.style.display = 'none';
             editMode.style.display = 'block';
-            editMode.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            // Добавляем класс для показа кнопки камеры
+            if (container) container.classList.add('profile-edit-active');
         });
 
         if (cancelBtn) {
             cancelBtn.addEventListener('click', function() {
                 editMode.style.display = 'none';
                 viewMode.style.display = 'block';
+                if (container) container.classList.remove('profile-edit-active');
             });
         }
 
@@ -30,10 +33,9 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // === Загрузка аватара ===
+    // === Загрузка аватара (только через кнопку) ===
     const avatarEditBtn = document.getElementById('profile-avatar-edit');
     const avatarInput = document.getElementById('profile-avatar-input');
-    const avatarContainer = document.getElementById('profile-avatar-container');
 
     if (avatarEditBtn && avatarInput) {
         avatarEditBtn.addEventListener('click', function(e) {
@@ -41,17 +43,9 @@ document.addEventListener('DOMContentLoaded', function() {
             avatarInput.click();
         });
 
-        if (avatarContainer) {
-            avatarContainer.addEventListener('click', function(e) {
-                if (e.target.closest('.profile-avatar-edit')) return;
-                avatarInput.click();
-            });
-        }
-
         avatarInput.addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (!file) return;
-            // TODO: реализовать загрузку на сервер
             alert('Загрузка аватара: ' + file.name + '\n(Функция будет добавлена позже)');
             avatarInput.value = '';
         });

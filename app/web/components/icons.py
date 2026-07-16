@@ -452,3 +452,110 @@ ICON_CHEVRON_RIGHT = (
     '</svg>'
 )
 
+ICON_PALETTE = (
+    '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" '
+    'stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+    'class="settings-icon" aria-hidden="true">'
+    '<circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/>'
+    '<circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/>'
+    '<circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/>'
+    '<circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/>'
+    '<path d="M12 2C6.49 2 2 6.49 2 12s4.49 10 10 10a2.5 2.5 0 0 0 2.5-2.5c0-.61-.23-1.2-.64-1.67a.53.53 0 0 1 .04-.68c.2-.2.51-.33.83-.38.28-.04.58-.13.8-.35.37-.37.47-.91.47-1.42 0-1.38-1.12-2.5-2.5-2.5H12c-2.76 0-5-2.24-5-5s2.24-5 5-5z"/>'
+    '</svg>'
+)
+
+ICON_BELL = (
+    '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" '
+    'stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+    'class="settings-icon" aria-hidden="true">'
+    '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/>'
+    '<path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>'
+    '</svg>'
+)
+
+ICON_EDIT_DATA = (
+    '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" '
+    'stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+    'class="settings-icon" aria-hidden="true">'
+    '<path d="M12 20h9"/>'
+    '<path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>'
+    '</svg>'
+)
+
+ICON_PHONE_FILLED = (
+    '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" '
+    'stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+    'class="settings-icon-sm" aria-hidden="true">'
+    '<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>'
+    '</svg>'
+)
+
+ICON_MAIL_FILLED = (
+    '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" '
+    'stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+    'class="settings-icon-sm" aria-hidden="true">'
+    '<rect width="20" height="16" x="2" y="4" rx="2"/>'
+    '<path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>'
+    '</svg>'
+)
+
+ICON_MAP_PIN_FILLED = (
+    '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" '
+    'stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+    'class="settings-icon-sm" aria-hidden="true">'
+    '<path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/>'
+    '<circle cx="12" cy="10" r="3"/>'
+    '</svg>'
+)
+
+ICON_LOCK_FILLED = (
+    '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" '
+    'stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+    'class="settings-icon-sm" aria-hidden="true">'
+    '<rect width="18" height="11" x="3" y="11" rx="2" ry="2"/>'
+    '<path d="M7 11V7a5 5 0 0 1 10 0v4"/>'
+    '</svg>'
+)
+
+ICON_TRASH = (
+    '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" '
+    'stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+    'class="settings-icon-sm" aria-hidden="true">'
+    '<path d="M3 6h18"/>'
+    '<path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>'
+    '</svg>'
+)
+
+ICON_CHEVRON_DOWN = (
+    '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" '
+    'stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+    'class="settings-chevron" aria-hidden="true">'
+    '<path d="m6 9 6 6 6-6"/>'
+    '</svg>'
+)
+
+ICON_CHEVRON_UP = (
+    '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" '
+    'stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+    'class="settings-chevron" aria-hidden="true">'
+    '<path d="m18 15-6-6-6 6"/>'
+    '</svg>'
+)
+
+ICON_SETTINGS_GEAR = (
+    '<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" '
+    'stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+    'class="settings-title-icon" aria-hidden="true">'
+    '<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>'
+    '<circle cx="12" cy="12" r="3"/>'
+    '</svg>'
+)
+
+ICON_MAP_PIN_SMALL = (
+    '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" '
+    'stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+    'class="profile-icon" aria-hidden="true">'
+    '<path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/>'
+    '<circle cx="12" cy="10" r="3"/>'
+    '</svg>'
+)
