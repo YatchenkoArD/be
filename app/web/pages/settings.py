@@ -13,7 +13,6 @@ from app.web.components.icons import (
     ICON_LOCK_FILLED,
     ICON_TRASH,
     ICON_CHEVRON_DOWN,
-    ICON_CHEVRON_UP,
     ICON_SETTINGS_GEAR,
 )
 
