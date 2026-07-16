@@ -3,6 +3,8 @@
 .favorites-main {
     margin-right: 16rem;
     padding-top: 100px;
+    min-height: 100vh;
+    background: linear-gradient(to bottom, #FFF8F6, #F8C8DC33, #F28C6F22);
 }
 @media (max-width: 1023px) {
     .favorites-main {
@@ -98,7 +100,7 @@
     padding: 0.4rem 0.8rem;
 }
 
-/* ===== Кнопки удаления — серые ===== */
+/* ===== Кнопки удаления ===== */
 .fav-remove-btn {
     font-size: 0.8rem;
     padding: 0.4rem 0.8rem;

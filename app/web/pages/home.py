@@ -13,13 +13,15 @@ from app.web.components.icons import (
     ICON_PERCENT,
     ICON_STORE,
     ICON_ARROW_RIGHT,
+    ICON_MAP_PIN,
+    ICON_STAR_FILLED,
 )
 
 
 async def render_home_page(db: AsyncSession, user=None) -> str:
     """Главная страница руми."""
 
-    # Получаем популярные салоны
+    # Получаем популярные салоны (топ-3 по рейтингу)
     try:
         result = await db.execute(
             select(Salon).where(Salon.is_active == True).order_by(Salon.rating.desc()).limit(3)
@@ -32,17 +34,31 @@ async def render_home_page(db: AsyncSession, user=None) -> str:
     # Карточки салонов
     salon_cards = ""
     for s in salons:
+        logo_html = ""
+        if s.logo_url:
+            logo_html = f'<img src="{s.logo_url}" alt="{s.name}" class="popular-salon-avatar-img">'
+        else:
+            logo_html = f'<span class="popular-salon-avatar-letter">{s.name[0].upper()}</span>'
+
+        city = s.address.split(',')[0].strip() if s.address else "Адрес не указан"
+
         salon_cards += f"""
-        <div class="card salon-card">
-            <div class="salon-avatar">{s.name[0]}</div>
-            <h3 class="text-subtitle salon-name">{s.name}</h3>
-            <p class="salon-address">📍 {s.address or 'Адрес не указан'}</p>
-            <p class="salon-rating">
-                ⭐ {s.rating or '0.0'} 
-                <span class="salon-rating-count">({s.reviews_count or 0} отзывов)</span>
-            </p>
-            <a href="/salons/{s.id}" class="btn-primary salon-btn">Подробнее</a>
-        </div>
+        <a href="/salons/{s.id}" class="popular-salon-link">
+            <div class="popular-salon-card">
+                <div class="popular-salon-avatar">
+                    {logo_html}
+                </div>
+                <h3 class="popular-salon-name">{s.name}</h3>
+                <p class="popular-salon-address">
+                    {ICON_MAP_PIN} {city}
+                </p>
+                <div class="popular-salon-rating">
+                    {ICON_STAR_FILLED}
+                    <span class="rating-value">{s.rating or 0.0:.1f}</span>
+                    <span class="rating-count">({s.reviews_count or 0} отзывов)</span>
+                </div>
+            </div>
+        </a>
         """
 
     if not salons:
@@ -56,6 +72,7 @@ async def render_home_page(db: AsyncSession, user=None) -> str:
     <title>Руми — мастера и салоны красоты рядом</title>
     <meta name="description" content="Платформа для клиентов и бизнеса: находите лучших мастеров, становитесь моделью или управляйте своим салоном.">
     {get_base_styles()}
+    <link rel="stylesheet" href="/static/src/css/home.css">
 </head>
 <body>
     {render_header("home")}
@@ -65,7 +82,7 @@ async def render_home_page(db: AsyncSession, user=None) -> str:
         <!-- Hero секция -->
         <section class="home-hero">
         
-            <img src="/static/images/flower-home.png" alt="" class="home-hero-bg-img">
+            <img src="/static/images/flower-home.jpg" alt="" class="home-hero-bg-img">
             <div class="home-hero-gradient"></div>
 
             <div class="section-container">
@@ -169,17 +186,17 @@ async def render_home_page(db: AsyncSession, user=None) -> str:
         </section>
         
         <!-- Популярные салоны -->
-        <section class="section-py bg-surface-alt">
+        <section class="section-py popular-salons-section">
             <div class="section-container">
-                <div class="section-header">
-                    <h2 class="text-display section-title">Популярные салоны</h2>
-                    <p class="text-muted section-subtitle">Лучшие салоны красоты по отзывам пользователей руми</p>
+                <div class="popular-salons-header">
+                    <h2 class="text-display popular-salons-title">Популярные салоны</h2>
+                    <p class="text-muted popular-salons-subtitle">Лучшие салоны красоты по отзывам пользователей руми</p>
                 </div>
-                <div class="salon-cards-grid">
+                <div class="popular-salons-grid">
                     {salon_cards}
                 </div>
-                <div class="text-center mt-10">
-                    <a href="/salons" class="btn-outline">Смотреть все салоны →</a>
+                <div class="popular-salons-footer">
+                    <a href="/salons" class="btn-outline popular-salons-btn">Смотреть все салоны →</a>
                 </div>
             </div>
         </section>
@@ -322,7 +339,7 @@ async def render_home_page(db: AsyncSession, user=None) -> str:
                     </a>
                 </div>
 
-                <!-- ===== Мы убрали из красоты всё лишнее... (перенесён внутрь той же секции для совместного градиента) ===== -->
+                <!-- ===== Мы убрали из красоты всё лишнее... ===== -->
                 <div class="home-footer-block">
                     <p class="home-footer-banner-text">
                         Мы убрали из красоты всё лишнее.<br>

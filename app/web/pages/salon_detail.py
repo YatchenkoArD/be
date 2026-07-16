@@ -10,6 +10,7 @@ from app.web.components.styles import get_base_styles
 from app.web.components.icons import (
     ICON_ARROW_LEFT,
     ICON_HEART,
+    ICON_HEART_FILLED,
     ICON_MAP_PIN,
     ICON_PHONE,
     ICON_CLOCK,
@@ -38,6 +39,7 @@ async def render_salon_detail(db: AsyncSession, salon_id: int, user=None) -> str
     reviews = reviews_result.scalars().all()
 
     heart_svg = ICON_HEART.replace('"', '&quot;')
+    heart_filled_svg = ICON_HEART_FILLED.replace('"', '&quot;')
     star_svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-star"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"></path></svg>'
 
     # ----- Верхний блок (салон) -----
@@ -51,8 +53,13 @@ async def render_salon_detail(db: AsyncSession, salon_id: int, user=None) -> str
             <div class="salon-header-grid">
                 <div class="salon-image-wrapper">
                     <img alt="{salon.name}" src="{salon.logo_url or '/static/images/default-salon.jpg'}">
-                    <button class="fav-btn top-fav-btn salon-top-fav" data-type="salon" data-id="{salon.id}" data-icon-heart="{heart_svg}">
-                        <span class="heart-wrapper">{ICON_HEART}</span>
+                    <button class="favorite-btn top-fav-btn salon-top-fav" 
+                            data-type="salon" 
+                            data-id="{salon.id}" 
+                            data-icon-heart="{heart_svg}"
+                            data-icon-heart-filled="{heart_filled_svg}"
+                            title="В избранное">
+                        <span class="heart-icon">{ICON_HEART}</span>
                     </button>
                 </div>
                 <div class="salon-info-wrapper">
@@ -231,6 +238,7 @@ async def render_salon_detail(db: AsyncSession, salon_id: int, user=None) -> str
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{salon.name} | руми</title>
     {get_base_styles()}
+    <link rel="stylesheet" href="/static/css/pages/salon_detail.css">
 </head>
 <body class="page-body">
     {render_header("salons")}
@@ -254,6 +262,8 @@ async def render_salon_detail(db: AsyncSession, salon_id: int, user=None) -> str
     </div>
 
     {booking_panel}
+
+    <script src="/static/js/pages/salon-detail.js"></script>
 </body>
 </html>"""
     return html

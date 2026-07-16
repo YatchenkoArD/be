@@ -678,6 +678,7 @@
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
 }
 .bl-plan-name {
+    text-align: center;
     font-family: var(--font-heading);
     font-size: 1.125rem;
     font-weight: 700;
@@ -687,6 +688,7 @@
     color: #fff;
 }
 .bl-plan-sub {
+    text-align: center;
     font-size: 0.875rem;
     color: var(--color-muted);
     margin-top: 0.25rem;

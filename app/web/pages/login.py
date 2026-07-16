@@ -55,6 +55,5 @@ def render_login_page(request: Request) -> str:
             <a href="/register">Регистрация</a> · <a href="/">На главную</a>
         </div>
     </div>
-    {scripts}
 </body>
 </html>"""

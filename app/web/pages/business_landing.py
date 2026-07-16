@@ -387,8 +387,8 @@ def render_business_landing_page(user=None) -> str:
                 <div class="bl-pricing-grid">
                     <!-- Лайт -->
                     <div class="bl-pricing-card">
-                        <div class="bl-plan-name">Лайт</div>
-                        <div class="bl-plan-sub">До 5 сотрудников</div>
+                        <div class="bl-plan-name" style="text-align: center;">Лайт</div>
+                        <div class="bl-plan-sub" style="text-align: center;">До 5 сотрудников</div>
                         <div class="bl-plan-price">
                             <span class="bl-price-amount">250 ₽</span>
                             <span class="bl-price-period">за сотрудника/мес</span>
@@ -408,8 +408,8 @@ def render_business_landing_page(user=None) -> str:
                     <!-- Бизнес (популярный) -->
                     <div class="bl-pricing-card bl-popular">
                         <div class="bl-popular-badge">Популярный</div>
-                        <div class="bl-plan-name">Бизнес</div>
-                        <div class="bl-plan-sub">От 5 до 10 сотрудников</div>
+                        <div class="bl-plan-name" style="text-align: center;">Бизнес</div>
+                        <div class="bl-plan-sub" style="text-align: center;">От 5 до 10 сотрудников</div>
                         <div class="bl-plan-price">
                             <span class="bl-price-amount">3 500 ₽</span>
                             <span class="bl-price-period">/мес</span>
@@ -429,8 +429,8 @@ def render_business_landing_page(user=None) -> str:
 
                     <!-- Корпоративный -->
                     <div class="bl-pricing-card">
-                        <div class="bl-plan-name">Корпоративный</div>
-                        <div class="bl-plan-sub">От 10 до 20 сотрудников</div>
+                        <div class="bl-plan-name" style="text-align: center;">Корпоративный</div>
+                        <div class="bl-plan-sub" style="text-align: center;">От 10 до 20 сотрудников</div>
                         <div class="bl-plan-price">
                             <span class="bl-price-amount">6 990 ₽</span>
                             <span class="bl-price-period">/мес</span>

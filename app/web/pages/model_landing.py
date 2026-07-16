@@ -32,12 +32,7 @@ def render_model_landing_page(user=None) -> str:
     <main class="home-main">
         <!-- Hero -->
         <section class="model-hero">
-            <!-- Фоновое изображение -->
-            <div class="model-hero-bg-image">
-                <img src="/static/images/beauty-instuments.png" alt="">
-            </div>
-            <div class="model-hero-bg-overlay"></div>
-
+            <!-- Фоновое изображение УДАЛЕНО, оставлен только градиент из CSS -->
             <div class="section-container">
                 <div class="model-hero-content">
                     <div class="model-hero-badge">
@@ -143,8 +138,8 @@ def render_model_landing_page(user=None) -> str:
                     <!-- Старт -->
                     <div class="plan-card">
                         <div class="plan-header">
-                            <h3 class="plan-name">Старт</h3>
-                            <p class="plan-desc">Для тех, кто хочет попробовать</p>
+                            <h3 class="plan-name" style="text-align: center;">Старт</h3>
+                            <p class="plan-desc" style="text-align: center;">Для тех, кто хочет попробовать</p>
                         </div>
                         <div class="plan-price">
                             <span class="amount">490 ₽</span>
@@ -166,8 +161,8 @@ def render_model_landing_page(user=None) -> str:
                     <div class="plan-card popular">
                         <div class="popular-badge">Популярный</div>
                         <div class="plan-header">
-                            <h3 class="plan-name">Про</h3>
-                            <p class="plan-desc">Самый популярный выбор</p>
+                            <h3 class="plan-name" style="text-align: center;">Про</h3>
+                            <p class="plan-desc" style="text-align: center;">Самый популярный выбор</p>
                         </div>
                         <div class="plan-price">
                             <span class="amount">990 ₽</span>
@@ -190,8 +185,8 @@ def render_model_landing_page(user=None) -> str:
                     <!-- Премиум -->
                     <div class="plan-card">
                         <div class="plan-header">
-                            <h3 class="plan-name">Премиум</h3>
-                            <p class="plan-desc">Максимум возможностей</p>
+                            <h3 class="plan-name" style="text-align: center;">Премиум</h3>
+                            <p class="plan-desc" style="text-align: center;">Максимум возможностей</p>
                         </div>
                         <div class="plan-price">
                             <span class="amount">1 990 ₽</span>

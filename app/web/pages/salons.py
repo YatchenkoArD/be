@@ -116,7 +116,7 @@ async def render_salons_page(db: AsyncSession, user=None) -> str:
                         <input type="text" id="searchInput" placeholder="Поиск салона по названию..." class="search-input">
                     </div>
                 </div>
-            </div>
+            </div
         </section>
 
         <section class="section-py bg-surface salons-list-section">
