@@ -44,9 +44,8 @@ def render_register_salon_page(user=None) -> str:
                 <p class="text-muted" style="text-align: center; margin-top: 1rem; font-size: 0.8rem;">После отправки салон появится в каталоге после проверки модератором.</p>
             </div>
         </div>
+        {render_footer(user)}
     </main>
-    
-    {render_footer()}
 </body>
 </html>"""
     

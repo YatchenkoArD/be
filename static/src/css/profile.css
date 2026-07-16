@@ -3,7 +3,7 @@
 .profile-main {
     margin-right: 16rem;
     padding-top: 120px;
-    padding-bottom: 2rem;
+    padding-bottom: 0rem;
     min-height: 100vh;
     background: linear-gradient(
         to bottom,
@@ -134,8 +134,8 @@
     border: 1px solid var(--color-border);
     border-top: none;
     border-radius: 0 0 1.5rem 1.5rem;
-    padding: 3rem 2rem 120px; /* уменьшен нижний отступ с 200px до 120px */
-    margin-bottom: 1.5rem;
+    padding: 2rem 3rem;
+    margin-bottom: 3rem;
     position: relative;
     z-index: 1;
 }

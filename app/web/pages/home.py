@@ -353,7 +353,7 @@ async def render_home_page(db: AsyncSession, user=None) -> str:
             </div>
         </section>
 
-        {render_footer()}
+        {render_footer(user)}
     </main>
 </body>
 </html>"""

@@ -22,7 +22,7 @@ async def render_client_card(db: AsyncSession, salon, user, client_id: int) -> s
         <body>{render_header("business", user)}{render_sidebar("business")}
         <main style="margin-right:16rem;padding-top:3rem"><div class="section-container">
         <h1>Клиент не найден</h1><a href="/business/dashboard?salon_id={salon.id}" class="btn-outline">← Назад в панель</a>
-        </div></main>{render_footer()}</body></html>"""
+        </div></main>{render_footer(user)}</body></html>"""
 
     masters, _ = await get_masters_data(db, salon.id)
     master_ids = get_master_ids(masters)
@@ -157,7 +157,7 @@ async def render_client_card(db: AsyncSession, salon, user, client_id: int) -> s
         </div>
     </main>
 
-    {render_footer()}
+    {render_footer(user)}
 
     <script>
         document.getElementById('noteForm').addEventListener('submit', async function(e) {{

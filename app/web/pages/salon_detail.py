@@ -257,7 +257,7 @@ async def render_salon_detail(db: AsyncSession, salon_id: int, user=None) -> str
                 </div>
             </section>
 
-            {render_footer()}
+            {render_footer(user)}
         </main>
     </div>
 

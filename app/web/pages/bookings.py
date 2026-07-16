@@ -156,9 +156,8 @@ async def render_bookings_page(db: AsyncSession, user) -> str:
                 {cancelled_html}
             </div>
         </div>
+        {render_footer(user)}
     </main>
-
-    {render_footer()}
 </body>
 </html>"""
     return html

@@ -268,7 +268,7 @@ async def render_my_salon_page(db: AsyncSession, salon: Salon, user=None) -> str
         </div>
     </div>
     
-    {render_footer()}
+    {render_footer(user)}
     
     <script>
     function editMaster(id, name, spec, exp) {{

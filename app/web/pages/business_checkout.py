@@ -152,7 +152,7 @@ def render_business_checkout_page(plan: str = "business", user=None) -> str:
                 </div>
             </div>
         </section>
-        {render_footer()}
+        {render_footer(user)}
     </main>
 
     <script>

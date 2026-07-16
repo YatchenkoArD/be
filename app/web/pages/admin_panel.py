@@ -308,7 +308,7 @@ async def render_admin_panel(db: AsyncSession, user, q) -> str:
         {reviews_tab}
         {audit_tab}
     </main>
-    {render_footer()}
+    {render_footer(user)}
     <script>
         function switchTab(name) {{
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));

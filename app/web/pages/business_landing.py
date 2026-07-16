@@ -455,7 +455,7 @@ def render_business_landing_page(user=None) -> str:
             </div>
         </section>
 
-        {render_footer()}
+        {render_footer(user)}
     </main>
 </body>
 </html>"""

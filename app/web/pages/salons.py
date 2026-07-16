@@ -127,7 +127,7 @@ async def render_salons_page(db: AsyncSession, user=None) -> str:
             </div>
         </section>
 
-        {render_footer()}
+        {render_footer(user)}
     </main>
 
     <script src="/static/js/pages/salons.js"></script>

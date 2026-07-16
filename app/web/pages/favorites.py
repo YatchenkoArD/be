@@ -107,9 +107,8 @@ async def render_favorites_page(db: AsyncSession, user) -> str:
             </h2>
             {master_cards or '<div class="empty-state"><p>Нет избранных мастеров</p><a href="/salons" class="text-link">Найти мастеров →</a></div>'}
         </div>
+        {render_footer(user)}
     </main>
-    
-    {render_footer()}
     <script src="/static/src/js/favorites.js"></script>
 </body>
 </html>"""

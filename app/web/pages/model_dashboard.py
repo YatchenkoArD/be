@@ -194,9 +194,8 @@ def render_model_dashboard(user=None) -> str:
                 </div>
             </div>
         </div>
+        {render_footer(user)}
     </main>
-    
-    {render_footer()}
 </body>
 </html>"""
     

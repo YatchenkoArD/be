@@ -246,7 +246,7 @@ def render_model_landing_page(user=None) -> str:
             </div>
         </section>
 
-        {render_footer()}
+        {render_footer(user)}
     </main>
 
     <script>

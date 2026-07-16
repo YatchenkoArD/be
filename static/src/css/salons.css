@@ -41,7 +41,7 @@
 .salons-hero {
     background: var(--color-surface-alt);
     padding-top: 5rem;
-    padding-bottom: 5rem;
+    padding-bottom: 0rem;
 }
 
 .salons-hero-content {

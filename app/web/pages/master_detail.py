@@ -81,9 +81,8 @@ async def render_master_detail(db: AsyncSession, master_id: int, user=None) -> s
                 <a href="/salons/{master.salon_id}" class="btn-primary" style="font-size:1rem;padding:1rem 2rem">Записаться</a>
             </div>
         </div>
+        {render_footer(user)}
     </main>
-    
-    {render_footer()}
 </body>
 </html>"""
     

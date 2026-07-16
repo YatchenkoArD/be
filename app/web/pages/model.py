@@ -336,9 +336,8 @@ def render_model_page(user=None) -> str:
                 </div>
             </div>
         </div>
+        {render_footer(user)}
     </main>
-    
-    {render_footer()}
 </body>
 </html>"""
     

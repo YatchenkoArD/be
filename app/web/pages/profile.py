@@ -228,9 +228,8 @@ def render_profile_page(user=None, master_profile=None, salon=None, stats=None, 
             {role_block}
 
         </div>
+        {render_footer(user)}
     </main>
-
-    {render_footer()}
 </body>
 </html>"""
     return html
@@ -258,7 +257,7 @@ def _render_guest_page() -> str:
                 </div>
             </div>
         </div>
+        {render_footer(user)}
     </main>
-    {render_footer()}
 </body>
 </html>"""

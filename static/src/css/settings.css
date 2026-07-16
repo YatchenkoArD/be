@@ -2,8 +2,8 @@
 
 .settings-main {
     margin-right: 16rem;
-    padding-top: 120px; /* отступ сверху 120px */
-    padding-bottom: 2rem;
+    padding-top: 120px;
+    padding-bottom: 0rem;
     background: linear-gradient(
         to bottom,
         #FFF8F6,
@@ -15,12 +15,12 @@
 @media (max-width: 1023px) {
     .settings-main {
         margin-right: 0;
-        padding-top: 80px; /* чуть меньше на мобильных */
+        padding-top: 80px;
     }
 }
 
 .settings-container {
-    max-width: 600px; /* уменьшенная ширина */
+    max-width: 600px;
     margin: 0 auto;
     padding: 0 20px;
 }
@@ -57,7 +57,7 @@
     background: var(--color-surface);
     border: 1px solid var(--color-border);
     border-radius: 1.5rem;
-    padding: 2rem 2.5rem; /* увеличенные отступы */
+    padding: 2rem 2.5rem;
     margin-bottom: 1.5rem;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
     transition: box-shadow 0.2s;
@@ -353,7 +353,7 @@
     gap: 0.5rem;
     padding: 0.6rem 1.5rem;
     border: 2px solid var(--color-danger, #ef4444);
-    border-radius: 2rem; /* скруглённая кнопка */
+    border-radius: 2rem;
     background: transparent;
     color: var(--color-danger, #ef4444);
     font-family: var(--font-body);
@@ -395,7 +395,7 @@
         font-size: 1.5rem;
     }
     .settings-card {
-        padding: 1.25rem 1.25rem; /* уменьшенные отступы на мобильных */
+        padding: 1.25rem 1.25rem;
         border-radius: 1.25rem;
     }
     .settings-theme-toggle {

@@ -28,7 +28,7 @@ async def render_master_dashboard(db: AsyncSession, user) -> str:
         <body>{render_header("master", user)}{render_sidebar("master", user)}
         <main style="margin-right:16rem;padding-top:3rem"><div class="section-container">
         <h1>Профиль мастера не найден</h1><p class="text-muted">Обратитесь к владельцу салона, чтобы он добавил вас как мастера.</p>
-        </div></main>{render_footer()}</body></html>"""
+        </div></main>{render_footer(user)}</body></html>"""
 
     today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
     tomorrow = today + timedelta(days=1)
@@ -146,7 +146,7 @@ async def render_master_dashboard(db: AsyncSession, user) -> str:
         </div>
     </main>
 
-    {render_footer()}
+    {render_footer(user)}
 
     <div class="modal-overlay" id="consumptionModal">
         <div class="modal-box">

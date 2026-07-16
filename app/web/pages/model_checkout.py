@@ -150,7 +150,7 @@ def render_model_checkout_page(plan: str = "start", user=None) -> str:
                 </div>
             </div>
         </section>
-        {render_footer()}
+        {render_footer(user)}
     </main>
 
     <script>

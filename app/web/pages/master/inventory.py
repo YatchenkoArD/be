@@ -25,7 +25,7 @@ async def render_master_inventory(db: AsyncSession, user) -> str:
         <body>{render_header("master", user)}{render_sidebar("master", user)}
         <main style="margin-right:16rem;padding-top:3rem"><div class="section-container">
         <h1>Профиль мастера не найден</h1>
-        </div></main>{render_footer()}</body></html>"""
+        </div></main>{render_footer(user)}</body></html>"""
 
     stock = await InventoryService.get_master_stock(db, master.id)
     stock_rows = "".join(f"""
@@ -99,6 +99,6 @@ async def render_master_inventory(db: AsyncSession, user) -> str:
         </div>
     </main>
 
-    {render_footer()}
+    {render_footer(user)}
 </body>
 </html>"""
