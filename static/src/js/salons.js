@@ -1,4 +1,4 @@
-// static/js/pages/salons.js
+// static/src/js/salons.js
 
 document.addEventListener('DOMContentLoaded', function() {
     // === Поиск ===

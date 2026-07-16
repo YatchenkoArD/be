@@ -16,7 +16,6 @@ def render_about_page(user=None) -> str:
     <title>Манифест | руми.</title>
     <meta name="description" content="Мы убрали из красоты всё лишнее. Остались вы и мастер.">
     {get_base_styles()}
-    <link rel="stylesheet" href="/static/css/about.css">
 </head>
 <body>
     {render_header("manifest")}

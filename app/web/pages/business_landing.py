@@ -37,7 +37,6 @@ def render_business_landing_page(user=None) -> str:
     <title>Для бизнеса | Руми</title>
     <meta name="description" content="руми — платформа, которая приводит клиентов и управляет салоном. Запись, оплаты, касса, команда и аналитика — в одном окне.">
     {get_base_styles()}
-    <link rel="stylesheet" href="/static/src/css/business-landing.css">
 </head>
 <body>
     {render_header("business")}

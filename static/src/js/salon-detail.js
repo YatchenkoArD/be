@@ -1,4 +1,4 @@
-// static/js/pages/salon-detail.js
+// staticsrc/js/salon-detail.js
 
 document.addEventListener('DOMContentLoaded', function() {
     let selectedMasterId = null;

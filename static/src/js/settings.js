@@ -1,4 +1,4 @@
-// static/js/pages/settings.js
+// static/src/js/settings.js
 
 document.addEventListener('DOMContentLoaded', function() {
     // === Тема ===

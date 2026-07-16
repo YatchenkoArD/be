@@ -100,7 +100,6 @@ async def render_salons_page(db: AsyncSession, user=None) -> str:
     <title>Салоны — руми</title>
     <meta name="description" content="Найдите лучший салон красоты рядом с вами.">
     {get_base_styles()}
-    <link rel="stylesheet" href="/static/css/pages/salons.css">
 </head>
 <body>
     {render_header("salons")}

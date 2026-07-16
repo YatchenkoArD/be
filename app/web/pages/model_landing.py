@@ -24,7 +24,6 @@ def render_model_landing_page(user=None) -> str:
     <title>Стань моделью | Руми</title>
     <meta name="description" content="Оформи подписку и получай услуги от лучших мастеров по специальным ценам.">
     {get_base_styles()}
-    <link rel="stylesheet" href="/static/src/css/model-landing.css">
 </head>
 <body>
     {render_header("model")}

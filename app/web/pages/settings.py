@@ -30,7 +30,6 @@ def render_settings_page(user=None) -> str:
     <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Настройки — руми</title>
     {get_base_styles()}
-    <link rel="stylesheet" href="/static/css/pages/settings.css">
 </head>
 <body>
     {render_header("settings")}
@@ -190,8 +189,6 @@ def render_settings_page(user=None) -> str:
     </main>
     
     {render_footer()}
-    
-    <script src="/static/js/pages/settings.js"></script>
 </body>
 </html>"""
     return html

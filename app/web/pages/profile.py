@@ -153,7 +153,6 @@ def render_profile_page(user=None, master_profile=None, salon=None, stats=None, 
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Мой профиль — руми</title>
     {get_base_styles()}
-    <link rel="stylesheet" href="/static/css/pages/profile.css">
 </head>
 <body>
     {render_header("profile")}
@@ -232,8 +231,6 @@ def render_profile_page(user=None, master_profile=None, salon=None, stats=None, 
     </main>
 
     {render_footer()}
-
-    <script src="/static/js/pages/profile.js"></script>
 </body>
 </html>"""
     return html
@@ -246,7 +243,6 @@ def _render_guest_page() -> str:
     <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Мой профиль — руми</title>
     {get_base_styles()}
-    <link rel="stylesheet" href="/static/css/pages/profile.css">
 </head>
 <body>
     {render_header("profile")}

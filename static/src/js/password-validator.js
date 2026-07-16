@@ -1,4 +1,4 @@
-// static/js/password-validator.js
+// static/src/js/password-validator.js
 (function() {
     var pw = document.getElementById('pw');
     var btn = document.getElementById('submitBtn');

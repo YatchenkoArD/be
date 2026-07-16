@@ -1,4 +1,4 @@
-// static/js/pages/profile.js
+// static/src/js/profile.js
 
 document.addEventListener('DOMContentLoaded', function() {
     // === Переключение режима редактирования ===

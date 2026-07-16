@@ -70,7 +70,6 @@ def render_model_checkout_page(plan: str = "start", user=None) -> str:
     <title>Оформление подписки | Руми</title>
     <meta name="description" content="Оформите подписку «Модель» и получайте услуги со скидкой">
     {get_base_styles()}
-    <link rel="stylesheet" href="/static/css/model-checkout.css">
 </head>
 <body>
     {render_header("model")}
@@ -215,7 +214,6 @@ def render_model_checkout_page(plan: str = "start", user=None) -> str:
             document.getElementById('submit-note').textContent = 'Мы свяжемся с вами в ближайшее время.';
         }});
     </script>
-    <script src="/static/src/js/phone-mask.js"></script>
 </body>
 </html>"""
     return html

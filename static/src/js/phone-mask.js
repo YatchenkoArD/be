@@ -1,4 +1,4 @@
-// static/js/phone-mask.js
+// static/src/js/phone-mask.js
 (function() {
     function formatPhone(value) {
         var d = (value || '').replace(/\D/g, '');

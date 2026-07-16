@@ -5,4 +5,8 @@ import './password-validator.js';
 import './phone-mask.js';
 import './profile.js';
 import './salons.js';
+import './otp-code.js';
 import './salon-detail.js';
+import './settings.js';
+import './bookings.js';
+import './favorites.js';
