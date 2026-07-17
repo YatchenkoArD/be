@@ -91,10 +91,15 @@ class ReviewService:
         )
         master.rating = round(float(avg_master.scalar() or 0.0), 1)
 
-        # Пересчёт рейтинга салона
+        # Пересчёт рейтинга салона — оба поля считаются заново от реальных
+        # отзывов (не инкремент), иначе reviews_count расходится с фактом
+        # при любом рассинхроне баз (сид, ручные правки и т.п.).
         salon = (await db.execute(select(Salon).where(Salon.id == salon_id))).scalar_one_or_none()
         if salon:
-            salon.reviews_count = (salon.reviews_count or 0) + 1
+            count_salon = await db.execute(
+                select(func.count(Review.id)).where(Review.salon_id == salon_id)
+            )
+            salon.reviews_count = count_salon.scalar() or 0
             avg_salon = await db.execute(
                 select(func.avg(Review.rating)).where(Review.salon_id == salon_id)
             )
