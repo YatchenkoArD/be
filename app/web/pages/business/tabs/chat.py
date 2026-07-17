@@ -18,7 +18,12 @@ async def render_chat_tab(db: AsyncSession, salon, user) -> str:
     added_ids = set()  # Чтобы не дублировать участников
     
     # Создатель салона (полный список совладельцев/админов — в вкладке «Сотрудники»)
-    owner = salon.creator
+    # Явный запрос, а не salon.creator: у AsyncSession нет implicit lazy load
+    # для relationship — обращение к непрогретой связи роняет запрос с
+    # MissingGreenlet, если нужный User ещё не оказался в identity map сессии.
+    owner = None
+    if salon.creator_id:
+        owner = (await db.execute(select(UserModel).where(UserModel.id == salon.creator_id))).scalar_one_or_none()
     if owner and owner.id not in added_ids:
         added_ids.add(owner.id)
         chat_members.append({

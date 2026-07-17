@@ -5,6 +5,7 @@ from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 from typing import List
 from fastapi.responses import HTMLResponse
 
@@ -45,7 +46,13 @@ async def get_current_salon(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="У вас пока нет привязанного салона. Заполните заявку на подключение."
         )
-    salon = (await db.execute(select(Salon).where(Salon.id == resolved_id))).scalar_one_or_none()
+    # eager load photos: SalonResponse сериализует salon.photos, а у AsyncSession
+    # нет implicit lazy load для relationship (тот же класс бага, что был в
+    # chat.py) — грузим сразу, чтобы ни один потребитель этой зависимости
+    # не padал на сериализации.
+    salon = (await db.execute(
+        select(Salon).options(selectinload(Salon.photos)).where(Salon.id == resolved_id)
+    )).scalar_one_or_none()
     if salon is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Салон не найден")
     return salon
@@ -194,6 +201,13 @@ async def update_my_salon(
 
     await db.commit()
     await db.refresh(salon)
+
+    # SalonResponse сериализует salon.photos — у AsyncSession нет implicit
+    # lazy load для relationship (см. тот же класс бага в chat.py), поэтому
+    # грузим явным запросом вместо обращения к непрогретой связи.
+    photos_result = await db.execute(select(SalonPhoto).where(SalonPhoto.salon_id == salon.id))
+    salon.photos = list(photos_result.scalars().all())
+
     return salon
 
 
