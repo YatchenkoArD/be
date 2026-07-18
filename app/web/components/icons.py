@@ -895,3 +895,30 @@ ICON_GIFT_SMALL = (
     '<path d="M12 7h7.5a2.5 2.5 0 0 0 0-5h-5A2.5 2.5 0 0 0 12 4a2.5 2.5 0 0 0-2.5-2.5h-5a2.5 2.5 0 0 0 0 5H12z"/>'
     '</svg>'
 )
+
+ICON_BELL = (
+    '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" '
+    'stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
+    '<path d="M10.268 21a2 2 0 0 0 3.464 0"/>'
+    '<path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/>'
+    '</svg>'
+)
+
+ICON_USER = (
+    '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" '
+    'stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
+    '<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/>'
+    '<circle cx="12" cy="7" r="4"/>'
+    '</svg>'
+)
+
+ICON_SCISSORS = (
+    '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" '
+    'stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
+    '<circle cx="6" cy="6" r="3"/>'
+    '<path d="M8.12 8.12 12 12"/>'
+    '<path d="M20 4 8.12 15.88"/>'
+    '<circle cx="6" cy="18" r="3"/>'
+    '<path d="M14.8 14.8 20 20"/>'
+    '</svg>'
+)

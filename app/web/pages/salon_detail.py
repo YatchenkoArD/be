@@ -1,8 +1,9 @@
 # app/web/pages/salon_detail.py
+import json
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select
 from datetime import datetime, timedelta
-from app.models.models import Salon, SalonPhoto, Master, Service, Promotion, User, Booking, BookingStatus, Review
+from app.models.models import Salon, SalonPhoto, Master, Service, Promotion, User, Review
 from app.web.components.header import render_header
 from app.web.components.footer import render_footer
 from app.web.components.sidebar import render_sidebar
@@ -16,6 +17,11 @@ from app.web.components.icons import (
     ICON_MAP_PIN,
     ICON_PHONE,
     ICON_CLOCK,
+    ICON_CHECK,
+    ICON_BELL,
+    ICON_CHEVRON_RIGHT,
+    ICON_USER,
+    ICON_SCISSORS,
 )
 
 
@@ -41,9 +47,7 @@ async def render_salon_detail(db: AsyncSession, salon_id: int, user=None) -> str
     )
     reviews = reviews_result.scalars().all()
 
-    # Лояльность видна клиенту заранее, до записи — скидку/бонусы даёт салон,
-    # не РУМИ
-
+    # Лояльность
     loyalty_html = ""
     if user:
         loyalty = await LoyaltyService.get_client_status(db, salon.id, user.id)
@@ -58,42 +62,81 @@ async def render_salon_detail(db: AsyncSession, salon_id: int, user=None) -> str
             loyalty_html = (
                 '<div class="salon-loyalty" style="margin-top:0.75rem;display:flex;gap:0.75rem;flex-wrap:wrap">'
                 + "".join(
-                    f'<span class="badge" style="background:var(--color-accent-light);color:var(--color-primary);'
-                    f'padding:0.25rem 0.75rem;border-radius:1rem;font-size:0.85rem">{c}</span>'
+                    f'<span class="badge" style="background:var(--color-accent-light);color:var(--color-primary);padding:0.25rem 0.75rem;border-radius:1rem;font-size:0.85rem">{c}</span>'
                     for c in chips
                 )
                 + "</div>"
             )
 
+    # Фото
     salon_photos = (
         await db.execute(select(SalonPhoto).where(SalonPhoto.salon_id == salon.id).order_by(SalonPhoto.id))
     ).scalars().all()
-    # Обложка (salon.logo_url) — первой в ленте
     salon_photos = sorted(salon_photos, key=lambda p: p.url != salon.logo_url)
     photos_strip = ""
     if salon_photos:
         photos_strip = (
             '<div class="salon-photos" style="display:flex;gap:0.75rem;overflow-x:auto;padding:1rem 0">'
             + "".join(
-                f'<img src="{p.url}" alt="" loading="lazy" '
-                f'style="height:180px;border-radius:0.75rem;flex-shrink:0">'
+                f'<img src="{p.url}" alt="" loading="lazy" style="height:180px;border-radius:0.75rem;flex-shrink:0">'
                 for p in salon_photos
             )
             + "</div>"
         )
 
-
     heart_svg = ICON_HEART.replace('"', '&quot;')
     heart_filled_svg = ICON_HEART_FILLED.replace('"', '&quot;')
     star_svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-star"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"></path></svg>'
 
-    # ----- Верхний блок (салон) -----
+    # Подготовка данных для JS
+    masters_data = []
+    for m in masters:
+        user_result = await db.execute(select(User).where(User.id == m.user_id))
+        master_user = user_result.scalar_one_or_none()
+        services_result = await db.execute(select(Service).where(Service.master_id == m.id))
+        services = services_result.scalars().all()
+        masters_data.append({
+            "id": m.id,
+            "name": master_user.full_name if master_user else "Мастер",
+            "specialization": m.specialization,
+            "experience": m.experience_years,
+            "rating": m.rating,
+            "avatar": master_user.avatar_url or "",
+            "services": [
+                {"id": s.id, "name": s.name, "price": s.price, "duration": s.duration_minutes}
+                for s in services
+            ]
+        })
+
+    # Шаг 1: список мастеров (если больше одного, иначе сразу переходим к услугам)
+    masters_list_html = ""
+    for m in masters_data:
+        avatar_html = f'<img src="{m["avatar"]}" alt="{m["name"]}">' if m["avatar"] else f'<div class="master-avatar-placeholder">{m["name"][0].upper()}</div>'
+        masters_list_html += f"""
+        <div class="master-card" data-master-id="{m["id"]}">
+            <div class="master-image-box">
+                {avatar_html}
+            </div>
+            <div class="master-info-box">
+                <div>
+                    <div class="master-name">{m["name"]}</div>
+                    <div class="master-spec">{m["specialization"]}</div>
+                </div>
+                <div class="master-stats">
+                    <span>опыт: {m["experience"]} лет</span>
+                    <span>⭐ {m["rating"]:.1f}</span>
+                </div>
+                <button class="btn-primary master-book-btn" data-master-id="{m["id"]}">Выбрать</button>
+            </div>
+        </div>
+        """
+
+    # Верхний блок (салон)
     top_block = f"""
     <section class="salon-top-section">
         <div class="section-container">
             <a class="back-link" href="/salons/">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-arrow"><path d="m12 19-7-7 7-7"></path><path d="M19 12H5"></path></svg>
-                Все салоны
+                {ICON_ARROW_LEFT} Все салоны
             </a>
             <div class="salon-header-grid">
                 <div class="salon-image-wrapper">
@@ -132,7 +175,7 @@ async def render_salon_detail(db: AsyncSession, salon_id: int, user=None) -> str
     </section>
     """
 
-    # ----- Акции -----
+    # Акции
     promos_html = ""
     if promotions:
         promos_html = '<section class="section-container promos-section"><h2 class="section-title">Акции</h2><div class="promos-grid">'
@@ -146,212 +189,7 @@ async def render_salon_detail(db: AsyncSession, salon_id: int, user=None) -> str
             """
         promos_html += '</div></section>'
 
-    # ----- Мастера и запись -----
-    masters_list_html = ""
-    detail_html = ""
-
-    for m in masters:
-        user_result = await db.execute(select(User).where(User.id == m.user_id))
-        master_user = user_result.scalar_one_or_none()
-        user_name = master_user.full_name if master_user else "Мастер"
-        avatar = master_user.avatar_url or ""
-
-        # Карточка в списке
-        masters_list_html += f"""
-        <div class="master-card" data-master-id="{m.id}">
-            <div class="master-image-box">
-                {f'<img src="{avatar}" alt="{user_name}">' if avatar else f'<div class="master-avatar-placeholder">{user_name[0].upper()}</div>'}
-            </div>
-            <div class="master-info-box">
-                <div>
-                    <div class="master-name">{user_name}</div>
-                    <div class="master-spec">{m.specialization or "Барбер"}</div>
-                </div>
-                <div class="master-stats">
-                    <span>опыт: {m.experience_years} лет</span>
-                    <span>⭐ {m.rating or 0.0:.1f}</span>
-                </div>
-                <button class="btn-primary master-book-btn" data-master-id="{m.id}">Записаться</button>
-            </div>
-        </div>
-        """
-
-        # Детальный вид
-        services_result = await db.execute(select(Service).where(Service.master_id == m.id))
-        services = services_result.scalars().all()
-
-        services_html = ""
-        for s in services:
-            services_html += f"""
-            <button class="service-btn" 
-                    data-master-id="{m.id}"
-                    data-service-id="{s.id}"
-                    data-service-name="{s.name}"
-                    data-price="{s.price}"
-                    data-duration="{s.duration_minutes}">
-                <div>
-                    <div class="service-name">{s.name}</div>
-                    <div class="service-duration">{s.duration_minutes} мин</div>
-                </div>
-                <div class="service-price">{s.price} ₽</div>
-            </button>
-            """
-
-        detail_html += f"""
-        <div class="master-detail hidden" data-master-id="{m.id}">
-            <button class="back-to-masters">← Назад к мастерам</button>
-            
-            <div class="master-detail-profile">
-                <div class="master-detail-avatar">
-                    {f'<img src="{avatar}" alt="{user_name}">' if avatar else f'<div class="master-avatar-placeholder">{user_name[0].upper()}</div>'}
-                </div>
-                <div>
-                    <div class="master-detail-name">{user_name}</div>
-                    <div class="master-spec">{m.specialization or "Барбер"}</div>
-                    <div class="master-stats">
-                        <span>опыт: {m.experience_years} лет</span>
-                        <span>⭐ {m.rating or 0.0:.1f}</span>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label>Комментарий:</label>
-                    <textarea name="comment" rows="3" placeholder="Расскажите о вашем впечатлении..." style="width:100%;padding:0.75rem;border:1px solid var(--color-border);border-radius:0.5rem;resize:vertical"></textarea>
-                </div>
-                <button type="submit" class="btn-primary">Отправить отзыв</button>
-            </form>
-        </div>
-        """
-    
-    html = f"""<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{salon.name} — руми</title>
-    {get_base_styles()}
-    <style>
-        .salon-hero {{ background: linear-gradient(135deg, #FFF8F6, #F8C8DC33); padding: 3rem 0; margin-bottom: 2rem; }}
-        .salon-hero h1 {{ font-size: 2.5rem; margin-bottom: 0.5rem; }}
-        .salon-hero .meta {{ display: flex; gap: 1.5rem; color: var(--color-muted); font-size: 0.9rem; flex-wrap:wrap; align-items:center }}
-        .master-card {{ background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 1rem; padding: 1.5rem; margin-bottom: 1.25rem; transition: border-color 0.2s; }}
-        .master-card:hover {{ border-color: var(--color-primary); }}
-        .master-header {{ display: flex; gap: 1rem; align-items: start; margin-bottom: 1rem; }}
-        .master-avatar {{ width: 4rem; height: 4rem; border-radius: 50%; background: linear-gradient(135deg, var(--color-primary), var(--color-accent)); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; color: white; font-weight: 700; flex-shrink: 0; }}
-        .master-info h3 {{ font-size: 1.1rem; margin-bottom: 0.25rem; }}
-        .master-spec {{ font-size: 0.85rem; color: var(--color-muted); }}
-        .services-section {{ border-top: 1px solid var(--color-border); padding-top: 1rem; margin-top: 0.5rem; }}
-        .services-title {{ font-size: 0.85rem; font-weight: 600; color: var(--color-muted); margin-bottom: 0.75rem; text-transform: uppercase; letter-spacing: 0.03em; }}
-        .services-grid {{ display: flex; flex-direction: column; gap: 0.5rem; }}
-        .service-card {{ display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 0.75rem; background: var(--color-surface-alt); border-radius: 0.75rem; transition: all 0.2s; }}
-        .service-card:hover {{ background: var(--color-accent-light); }}
-        .service-card.selected {{ background: var(--color-accent-light); border: 1px solid var(--color-primary); }}
-        .service-info {{ flex: 1; }}
-        .service-name {{ font-weight: 600; font-size: 0.95rem; color: var(--color-heading); }}
-        .service-meta {{ font-size: 0.8rem; color: var(--color-muted); margin-top: 0.15rem; }}
-        .service-price {{ font-weight: 700; font-size: 1.1rem; color: var(--color-primary); white-space: nowrap; }}
-        .slots-container {{ border-top: 1px solid var(--color-primary); margin-top: 1rem; padding-top: 1rem; }}
-        .slots-title {{ font-weight: 600; margin-bottom: 0.75rem; color: var(--color-heading); }}
-        .slot-grid {{ display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.5rem; }}
-        .slot-btn {{ padding: 0.5rem 0.75rem; border: 1px solid var(--color-primary); border-radius: 0.5rem; font-size: 0.85rem; cursor: pointer; background: white; color: var(--color-primary); transition: all 0.2s; font-weight: 500; }}
-        .slot-btn:hover {{ background: var(--color-primary); color: white; }}
-        .slot-btn.selected {{ background: var(--color-primary); color: white; }}
-        .no-slots {{ color: var(--color-muted); font-size: 0.85rem; padding: 0.5rem 0; }}
-        .book-panel {{ position: fixed; bottom: 0; left: 0; right: 0; background: white; border-top: 2px solid var(--color-primary); padding: 1rem 2rem; display: none; z-index: 200; box-shadow: 0 -4px 20px rgba(0,0,0,0.1); }}
-        .book-panel.active {{ display: block; }}
-        .book-panel-inner {{ max-width: 1200px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; }}
-        .promo-card {{ background: var(--color-surface-alt); border: 1px solid var(--color-border); border-radius: 0.75rem; padding: 1rem; margin-bottom: 0.5rem; }}
-        .promo-tag {{ display: inline-block; background: linear-gradient(135deg, var(--color-primary), var(--color-accent)); color: white; padding: 0.15rem 0.5rem; border-radius: 1rem; font-size: 0.7rem; font-weight: 600; margin-right: 0.5rem; }}
-        .section-title {{ font-size: 1.5rem; margin: 2rem 0 1rem; }}
-        .review-card {{ background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 0.75rem; padding: 1rem; margin-bottom: 0.75rem; }}
-        .review-header {{ display: flex; gap: 0.75rem; align-items: center; margin-bottom: 0.5rem; }}
-        .review-stars {{ font-size: 0.9rem; }}
-        .review-date {{ font-size: 0.8rem; color: var(--color-muted); margin-left: auto; }}
-        .review-comment {{ color: var(--color-body); font-size: 0.9rem; }}
-        .review-form-card {{ background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 1rem; padding: 1.5rem; margin-top: 2rem; }}
-        .review-form-card h3 {{ margin-bottom: 1rem; }}
-        .form-group {{ margin-bottom: 1rem; }}
-        .form-group label {{ display: block; font-weight: 500; margin-bottom: 0.5rem; }}
-        .rating-input {{ display: flex; gap: 0.5rem; }}
-        .rating-input input {{ display: none; }}
-        .rating-input label {{ font-size: 1.5rem; cursor: pointer; opacity: 0.5; transition: opacity 0.2s; }}
-        .rating-input input:checked ~ label,
-        .rating-input label:hover,
-        .rating-input label:hover ~ label {{ opacity: 1; }}
-        .fav-btn {{
-            background: none;
-            border: none;
-            cursor: pointer;
-            font-size: 1.2rem;
-            transition: transform 0.2s;
-            padding: 0.2rem;
-        }}
-        .fav-btn:hover {{
-            transform: scale(1.2);
-        }}
-        .fav-btn.liked {{
-            color: #ef4444;
-        }}
-    </style>
-</head>
-<body>
-    {render_header("salons")}
-    {render_sidebar("salons", user)}
-    
-    <main style="margin-right: 16rem;">
-        <div class="salon-hero">
-            <div class="section-container">
-                <a href="/salons" style="color:var(--color-primary);text-decoration:none;margin-bottom:1rem;display:inline-block">← Все салоны</a>
-                <h1 class="text-display">{salon.name}</h1>
-                <div class="meta">
-                    <span>📍 {salon.address or 'Адрес не указан'}</span>
-                    <span>📞 {salon.phone or '—'}</span>
-                    <span>⭐ {salon.rating} ({salon.reviews_count} отзывов)</span>
-                    <button id="fav-salon-{salon.id}" onclick="toggleFavorite('salon', {salon.id})" class="fav-btn" title="Добавить в избранное">🤍</button>
-                </div>
-                {loyalty_html}
-                <p style="margin-top:0.75rem;color:var(--color-body)">{salon.description or ''}</p>
-            </div>
-
-            <h3 style="margin: 1.5rem 0 1rem; font-weight:600;">Выберите услугу:</h3>
-            <div class="services-grid">
-                {services_html}
-            </div>
-
-            <div class="slots-container hidden" id="detail-slots-{m.id}">
-                <div class="slots-title" id="detail-slots-title-{m.id}"></div>
-                <div class="slots-grid" id="detail-slot-grid-{m.id}"></div>
-            </div>
-        </div>
-        """
-
-    masters_block = f"""
-    <section class="section-container masters-section">
-        <div class="section-header">
-            <h2 class="section-title">Выберите мастера</h2>
-        </div>
-        <div id="masters-list-container">
-            <div class="masters-list">
-                {masters_list_html or '<p>В салоне пока нет мастеров.</p>'}
-            </div>
-        </div>
-        {detail_html}
-    </section>
-    """
-
-    # Плавающая панель записи
-    booking_panel = """
-    <div class="booking-panel hidden" id="bookPanel">
-        <div class="booking-panel-inner">
-            <div class="booking-info">
-                <span class="booking-master" id="panelMaster"></span>
-                <span class="booking-dot"> · </span>
-                <span class="booking-time" id="panelTime"></span>
-            </div>
-            <button class="btn-primary" onclick="confirmBooking()">Записаться</button>
-        </div>
-    </div>
-    """
-
-    # ----- Отзывы -----
+    # Отзывы
     reviews_html = ""
     if reviews:
         for r in reviews:
@@ -373,6 +211,213 @@ async def render_salon_detail(db: AsyncSession, salon_id: int, user=None) -> str
     else:
         reviews_html = '<p class="empty-state">Пока нет отзывов. Будьте первым!</p>'
 
+    # Контейнер для пошагового процесса записи
+    booking_flow_html = f"""
+    <section class="section-container booking-flow">
+        <div id="booking-flow-container" data-masters='{json.dumps(masters_data, ensure_ascii=False)}' data-user='{json.dumps({"id": user.id, "full_name": user.full_name, "phone": user.phone} if user else None, ensure_ascii=False)}'>
+            <!-- Шаг 1: Выбор мастера -->
+            <div class="booking-step" id="step-masters" style="display: {'none' if len(masters_data) == 1 else 'block'}">
+                <h2 class="step-title">Выберите мастера</h2>
+                <div class="masters-grid">
+                    {masters_list_html}
+                </div>
+            </div>
+
+            <!-- Шаг 2: Выбор услуги -->
+            <div class="booking-step" id="step-services" style="display: none;">
+                <div class="breadcrumb">
+                    <button class="breadcrumb-btn" data-step="masters">Выберите мастера</button>
+                    {ICON_CHEVRON_RIGHT}
+                    <span class="breadcrumb-current" id="breadcrumb-master"></span>
+                </div>
+                <button class="back-btn" data-step="masters">{ICON_ARROW_LEFT} Назад к мастерам</button>
+                <div class="master-summary" id="master-summary">
+                    <div class="master-avatar-sm" id="selected-master-avatar"></div>
+                    <div>
+                        <p class="master-name-sm" id="selected-master-name"></p>
+                        <p class="master-spec-sm" id="selected-master-spec"></p>
+                    </div>
+                    {ICON_CHECK}
+                </div>
+                <h3 class="step-subtitle">Выберите услугу:</h3>
+                <div class="services-grid" id="services-list"></div>
+            </div>
+
+            <!-- Шаг 3: Выбор даты -->
+            <div class="booking-step" id="step-date" style="display: none;">
+                <div class="breadcrumb">
+                    <button class="breadcrumb-btn" data-step="masters">Выберите мастера</button>
+                    {ICON_CHEVRON_RIGHT}
+                    <span class="breadcrumb-current" id="breadcrumb-master-2"></span>
+                    {ICON_CHEVRON_RIGHT}
+                    <span class="breadcrumb-current" id="breadcrumb-service"></span>
+                </div>
+                <button class="back-btn" data-step="services">{ICON_ARROW_LEFT} Назад к услугам</button>
+                <div class="master-summary">
+                    <div class="master-avatar-sm" id="selected-master-avatar-2"></div>
+                    <div>
+                        <p class="master-name-sm" id="selected-master-name-2"></p>
+                        <p class="master-spec-sm" id="selected-master-spec-2"></p>
+                    </div>
+                    {ICON_CHECK}
+                    <span class="service-summary" id="selected-service-summary"></span>
+                    <span class="service-price" id="selected-service-price"></span>
+                </div>
+                <h3 class="step-subtitle">Выберите дату:</h3>
+                <div class="dates-grid" id="dates-grid"></div>
+            </div>
+
+            <!-- Шаг 4: Выбор времени -->
+            <div class="booking-step" id="step-time" style="display: none;">
+                <div class="breadcrumb">
+                    <button class="breadcrumb-btn" data-step="masters">Выберите мастера</button>
+                    {ICON_CHEVRON_RIGHT}
+                    <span class="breadcrumb-current" id="breadcrumb-master-3"></span>
+                    {ICON_CHEVRON_RIGHT}
+                    <span class="breadcrumb-current" id="breadcrumb-service-2"></span>
+                    {ICON_CHEVRON_RIGHT}
+                    <span class="breadcrumb-current" id="breadcrumb-date"></span>
+                </div>
+                <button class="back-btn" data-step="date">{ICON_ARROW_LEFT} Назад к дате</button>
+                <div class="master-summary">
+                    <div class="master-avatar-sm" id="selected-master-avatar-3"></div>
+                    <div>
+                        <p class="master-name-sm" id="selected-master-name-3"></p>
+                        <p class="master-spec-sm" id="selected-master-spec-3"></p>
+                    </div>
+                    {ICON_CHECK}
+                    <span class="service-summary" id="selected-service-summary-2"></span>
+                    <span class="service-price" id="selected-service-price-2"></span>
+                    <span class="date-summary" id="selected-date-summary"></span>
+                </div>
+                <h3 class="step-subtitle">Выберите время:</h3>
+                <div class="times-grid" id="times-grid"></div>
+            </div>
+
+            <!-- Шаг 5: Напоминание -->
+            <div class="booking-step" id="step-reminder" style="display: none;">
+                <div class="breadcrumb">
+                    <button class="breadcrumb-btn" data-step="masters">Выберите мастера</button>
+                    {ICON_CHEVRON_RIGHT}
+                    <span class="breadcrumb-current" id="breadcrumb-master-4"></span>
+                    {ICON_CHEVRON_RIGHT}
+                    <span class="breadcrumb-current" id="breadcrumb-service-3"></span>
+                    {ICON_CHEVRON_RIGHT}
+                    <span class="breadcrumb-current" id="breadcrumb-date-2"></span>
+                    {ICON_CHEVRON_RIGHT}
+                    <span class="breadcrumb-current" id="breadcrumb-time"></span>
+                </div>
+                <button class="back-btn" data-step="time">{ICON_ARROW_LEFT} Назад к времени</button>
+                <div class="master-summary">
+                    <div class="master-avatar-sm" id="selected-master-avatar-4"></div>
+                    <div>
+                        <p class="master-name-sm" id="selected-master-name-4"></p>
+                        <p class="master-spec-sm" id="selected-master-spec-4"></p>
+                    </div>
+                    {ICON_CHECK}
+                    <span class="service-summary" id="selected-service-summary-3"></span>
+                    <span class="service-price" id="selected-service-price-3"></span>
+                    <span class="date-summary" id="selected-date-summary-2"></span>
+                    <span class="time-summary" id="selected-time-summary"></span>
+                </div>
+                <h3 class="step-subtitle">Напоминание:</h3>
+                <div class="reminder-box">
+                    <div class="reminder-toggle">
+                        <div class="reminder-info">
+                            {ICON_BELL}
+                            <div>
+                                <p class="reminder-title">Напомнить о записи</p>
+                                <p class="reminder-desc">Получите уведомление перед визитом</p>
+                            </div>
+                        </div>
+                        <button class="toggle-switch active" id="reminder-toggle"></button>
+                    </div>
+                    <div class="reminder-options" id="reminder-options">
+                        <button class="reminder-option" data-minutes="30">За 30 мин</button>
+                        <button class="reminder-option active" data-minutes="60">За 1 час</button>
+                        <button class="reminder-option" data-minutes="120">За 2 часа</button>
+                        <button class="reminder-option" data-minutes="1440">За день</button>
+                    </div>
+                </div>
+                <button class="btn-primary next-btn" id="reminder-next">Далее →</button>
+            </div>
+
+            <!-- Шаг 6: Подтверждение -->
+            <div class="booking-step" id="step-confirm" style="display: none;">
+                <div class="breadcrumb">
+                    <button class="breadcrumb-btn" data-step="masters">Выберите мастера</button>
+                    {ICON_CHEVRON_RIGHT}
+                    <span class="breadcrumb-current" id="breadcrumb-master-5"></span>
+                    {ICON_CHEVRON_RIGHT}
+                    <span class="breadcrumb-current" id="breadcrumb-service-4"></span>
+                    {ICON_CHEVRON_RIGHT}
+                    <span class="breadcrumb-current" id="breadcrumb-date-3"></span>
+                    {ICON_CHEVRON_RIGHT}
+                    <span class="breadcrumb-current" id="breadcrumb-time-2"></span>
+                    {ICON_CHEVRON_RIGHT}
+                    <span class="breadcrumb-current">Подтверждение</span>
+                </div>
+                <button class="back-btn" data-step="reminder">{ICON_ARROW_LEFT} Назад</button>
+                <div class="confirm-box">
+                    <h3 class="confirm-title">Подтверждение записи</h3>
+                    <div class="confirm-items">
+                        <div class="confirm-item">
+                            <div class="confirm-icon">{ICON_USER}</div>
+                            <div>
+                                <p class="confirm-label">Мастер</p>
+                                <p class="confirm-value" id="confirm-master"></p>
+                                <p class="confirm-sub" id="confirm-master-spec"></p>
+                            </div>
+                            {ICON_CHECK}
+                        </div>
+                        <div class="confirm-item">
+                            <div class="confirm-icon">{ICON_SCISSORS}</div>
+                            <div>
+                                <p class="confirm-label">Услуга</p>
+                                <p class="confirm-value" id="confirm-service"></p>
+                                <p class="confirm-sub" id="confirm-duration"></p>
+                            </div>
+                            <span class="confirm-price" id="confirm-price"></span>
+                        </div>
+                        <div class="confirm-item">
+                            {ICON_CLOCK}
+                            <div>
+                                <p class="confirm-label">Дата и время</p>
+                                <p class="confirm-value" id="confirm-datetime"></p>
+                            </div>
+                        </div>
+                        <div class="confirm-item">
+                            {ICON_MAP_PIN}
+                            <div>
+                                <p class="confirm-label">Салон</p>
+                                <p class="confirm-value">{salon.name}</p>
+                                <p class="confirm-sub">{salon.address or 'Адрес не указан'}</p>
+                            </div>
+                        </div>
+                        <div class="confirm-item">
+                            {ICON_BELL}
+                            <div>
+                                <p class="confirm-label">Напоминание</p>
+                                <p class="confirm-value" id="confirm-reminder"></p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="confirm-user">
+                        <p class="confirm-user-label">Ваши данные</p>
+                        <div class="confirm-user-info">
+                            <span id="confirm-user-name">{user.full_name if user else 'Гость'}</span>
+                            <span id="confirm-user-phone">{user.phone if user else ''}</span>
+                            <a href="/profile" class="confirm-edit-link">изменить</a>
+                        </div>
+                    </div>
+                    <button class="btn-primary confirm-submit" id="confirm-submit">Записаться</button>
+                    <button class="btn-outline confirm-cancel" data-step="reminder">Отменить</button>
+                </div>
+            </div>
+        </div>
+    </section>
+    """
+
     html = f"""<!DOCTYPE html>
 <html lang="ru" data-theme="light">
 <head>
@@ -380,7 +425,7 @@ async def render_salon_detail(db: AsyncSession, salon_id: int, user=None) -> str
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{salon.name} | руми</title>
     {get_base_styles()}
-    <link rel="stylesheet" href="/static/css/pages/salon_detail.css">
+    <link rel="stylesheet" href="/static/src/css/pages/salon-detail.css">
 </head>
 <body class="page-body">
     {render_header("salons")}
@@ -391,22 +436,22 @@ async def render_salon_detail(db: AsyncSession, salon_id: int, user=None) -> str
             {top_block}
             {f'<section class="section-container">{photos_strip}</section>' if photos_strip else ''}
             {promos_html}
-            {masters_block}
-
+            {booking_flow_html}
             <section class="section-container reviews-section">
                 <h2 class="section-title">Отзывы</h2>
                 <div class="reviews-list">
                     {reviews_html}
                 </div>
             </section>
-
             {render_footer(user)}
         </main>
     </div>
 
-    {booking_panel}
-
-    <script>window.MAX_BOOKING_DAYS = {MAX_BOOKING_DAYS_AHEAD};</script>
+    <script>
+        window.salonId = {salon.id};
+        window.maxBookingDays = {MAX_BOOKING_DAYS_AHEAD};
+    </script>
+    <script src="/static/src/js/pages/salon-detail.js"></script>
 </body>
 </html>"""
     return html

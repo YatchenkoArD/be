@@ -1,4 +1,4 @@
-/* static/css/pages/salon_detail.css */
+/* static/src/css/pages/salon-detail.css */
 
 /* --- Базовые утилиты --- */
 .hidden {
@@ -12,7 +12,7 @@
 
 @media (min-width: 1024px) {
     .main-wrapper {
-        padding-right: 16rem; /* Отступ для сайдбара */
+        padding-right: 16rem;
     }
 }
 
@@ -53,14 +53,23 @@
     transition: all 0.2s ease;
 }
 
-.btn-outline:hover, .btn-outline.selected {
+.btn-outline:hover,
+.btn-outline.selected {
     background-color: var(--color-primary);
     color: var(--color-btn-text);
 }
 
 /* --- Иконки и общие элементы --- */
-.icon-arrow { width: 1rem; height: 1rem; }
-.icon-star { width: 1.25rem; height: 1.25rem; fill: var(--color-primary); color: var(--color-primary); }
+.icon-arrow {
+    width: 1rem;
+    height: 1rem;
+}
+.icon-star {
+    width: 1.25rem;
+    height: 1.25rem;
+    fill: var(--color-primary);
+    color: var(--color-primary);
+}
 
 .fav-btn {
     position: absolute;
@@ -81,7 +90,6 @@
 .fav-btn:hover {
     transform: scale(1.1);
 }
-
 .fav-btn:active {
     transform: scale(0.95);
 }
@@ -94,17 +102,14 @@
     height: 100%;
     color: #9ca3af;
 }
-
 .heart-wrapper svg {
     width: 1.25rem;
     height: 1.25rem;
     transition: color 0.2s;
 }
-
 .fav-btn.liked .heart-wrapper {
-    color: #ef4444; 
+    color: #ef4444;
 }
-
 .fav-btn.liked .heart-wrapper svg {
     fill: #ef4444;
 }
@@ -142,7 +147,6 @@
     margin-bottom: 1.5rem;
     transition: color 0.2s;
 }
-
 .back-link:hover {
     color: var(--color-heading);
 }
@@ -152,7 +156,6 @@
     flex-direction: column;
     gap: 1.5rem;
 }
-
 @media (min-width: 768px) {
     .salon-header-grid {
         flex-direction: row;
@@ -169,21 +172,18 @@
     border-radius: 1rem;
     box-shadow: 0 1px 2px rgba(0,0,0,0.05);
 }
-
 @media (min-width: 768px) {
     .salon-image-wrapper {
         width: 14rem;
         height: 14rem;
     }
 }
-
 .salon-image-wrapper img {
     width: 100%;
     height: 100%;
     object-fit: cover;
     border-radius: 1rem;
 }
-
 .top-fav-btn {
     top: -0.5rem;
     right: -0.5rem;
@@ -192,7 +192,6 @@
 .salon-info-wrapper {
     flex: 1;
 }
-
 .salon-title {
     font-family: var(--font-heading);
     font-size: 1.875rem;
@@ -200,11 +199,11 @@
     margin-bottom: 0.75rem;
     line-height: 1.1;
 }
-
 @media (min-width: 1024px) {
-    .salon-title { font-size: 2.25rem; }
+    .salon-title {
+        font-size: 2.25rem;
+    }
 }
-
 .salon-meta {
     display: flex;
     flex-wrap: wrap;
@@ -212,22 +211,24 @@
     gap: 1rem;
     margin-bottom: 1rem;
 }
-
 .salon-rating {
     display: flex;
     align-items: center;
     gap: 0.375rem;
 }
-
-.rating-val { font-weight: 600; color: var(--color-heading); }
-.rating-count { font-size: 0.875rem; color: var(--color-muted); }
-
+.rating-val {
+    font-weight: 600;
+    color: var(--color-heading);
+}
+.rating-count {
+    font-size: 0.875rem;
+    color: var(--color-muted);
+}
 .salon-tags {
     display: flex;
     flex-wrap: wrap;
     gap: 0.5rem;
 }
-
 .salon-desc {
     font-size: 0.875rem;
     color: var(--color-muted);
@@ -235,21 +236,18 @@
     max-width: 42rem;
     margin-bottom: 1rem;
 }
-
 .salon-contacts {
     display: flex;
     flex-wrap: wrap;
     gap: 1.25rem;
     font-size: 0.875rem;
 }
-
 .contact-item {
     display: flex;
     align-items: center;
     gap: 0.5rem;
     color: var(--color-muted);
 }
-
 .contact-item svg {
     width: 0.9375rem;
     height: 0.9375rem;
@@ -260,17 +258,16 @@
 .promos-section {
     padding: 2rem 1.25rem;
 }
-
 .promos-grid {
     display: grid;
     grid-template-columns: 1fr;
     gap: 0.75rem;
 }
-
 @media (min-width: 640px) {
-    .promos-grid { grid-template-columns: repeat(2, 1fr); }
+    .promos-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
 }
-
 .promo-card {
     position: relative;
     border: 1px solid var(--color-border);
@@ -279,11 +276,9 @@
     overflow: hidden;
     transition: box-shadow 0.2s ease;
 }
-
 .promo-card:hover {
     box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
-
 .promo-badge {
     position: absolute;
     top: 0.75rem;
@@ -295,14 +290,12 @@
     padding: 0.125rem 0.625rem;
     border-radius: 9999px;
 }
-
 .promo-title {
     font-size: 0.875rem;
     font-weight: 600;
     padding-right: 4rem;
     margin-bottom: 0.375rem;
 }
-
 .promo-desc {
     font-size: 0.75rem;
     color: var(--color-muted);
@@ -314,50 +307,124 @@
     padding-top: 1rem;
     border-top: 1px solid var(--color-border);
 }
-
 .reviews-list {
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
 }
-
 .review-item {
     border: 1px solid var(--color-border);
     border-radius: 0.75rem;
     padding: 1rem;
     background-color: var(--color-surface);
 }
-
 .review-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: 0.5rem;
 }
-
-.review-author { font-size: 0.875rem; }
-.review-date { font-size: 0.75rem; color: var(--color-muted); }
-.review-stars { color: var(--color-primary); font-size: 0.875rem; margin-bottom: 0.5rem; }
-.review-text { font-size: 0.875rem; color: var(--color-muted); }
-
-/* ==================== МАСТЕРА ==================== */
-.masters-section {
-    padding: 1rem 1.25rem 4rem 1.25rem;
+.review-author {
+    font-size: 0.875rem;
+}
+.review-date {
+    font-size: 0.75rem;
+    color: var(--color-muted);
+}
+.review-stars {
+    color: var(--color-primary);
+    font-size: 0.875rem;
+    margin-bottom: 0.5rem;
+}
+.review-text {
+    font-size: 0.875rem;
+    color: var(--color-muted);
 }
 
-.section-header {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
+/* ==================== ПОШАГОВАЯ ЗАПИСЬ ==================== */
+.booking-flow {
+    padding: 2rem 0;
+}
+
+.booking-step {
+    max-width: 42rem;
+    margin: 0 auto;
+}
+
+.step-title {
+    font-family: var(--font-heading);
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--color-heading);
     margin-bottom: 1.5rem;
 }
 
-.masters-list {
+.step-subtitle {
+    font-family: var(--font-heading);
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--color-heading);
+    margin: 1.5rem 0 1rem;
+}
+
+/* Хлебные крошки */
+.breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    color: var(--color-muted);
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+}
+.breadcrumb-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--color-muted);
+    transition: color 0.2s;
+    font-size: inherit;
+}
+.breadcrumb-btn:hover {
+    color: var(--color-heading);
+}
+.breadcrumb-current {
+    font-weight: 600;
+    color: var(--color-heading);
+}
+.breadcrumb svg {
+    width: 0.9rem;
+    height: 0.9rem;
+    flex-shrink: 0;
+}
+
+/* Кнопка назад */
+.back-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: none;
+    border: none;
+    color: var(--color-muted);
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: color 0.2s;
+    margin-bottom: 1rem;
+}
+.back-btn:hover {
+    color: var(--color-heading);
+}
+.back-btn svg {
+    width: 1rem;
+    height: 1rem;
+}
+
+/* Карточки мастеров */
+.masters-grid {
     display: flex;
     flex-direction: column;
     gap: 1rem;
 }
-
 .master-card {
     display: flex;
     background: white;
@@ -367,26 +434,22 @@
     transition: all 0.2s ease;
     cursor: pointer;
 }
-
 .master-card:hover {
     border-color: var(--color-primary);
     box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
 }
-
 .master-image-box {
     width: 140px;
     height: 140px;
     flex-shrink: 0;
     position: relative;
 }
-
 .master-image-box img,
 .master-avatar-placeholder {
     width: 100%;
     height: 100%;
     object-fit: cover;
 }
-
 .master-avatar-placeholder {
     background: var(--color-accent-light);
     display: flex;
@@ -396,26 +459,22 @@
     font-weight: 700;
     color: var(--color-primary);
 }
-
 .master-info-box {
     flex: 1;
     padding: 1.25rem;
     display: flex;
     flex-direction: column;
 }
-
 .master-name {
     font-size: 1.125rem;
     font-weight: 600;
     margin-bottom: 0.25rem;
 }
-
 .master-spec {
     color: var(--color-muted);
     font-size: 0.875rem;
     margin-bottom: 0.75rem;
 }
-
 .master-stats {
     display: flex;
     gap: 1rem;
@@ -423,148 +482,405 @@
     color: var(--color-muted);
     margin-bottom: auto;
 }
-
 .master-book-btn {
     align-self: flex-start;
     margin-top: auto;
-    padding: 0.625rem 1.5rem;
+    padding: 0.5rem 1.5rem;
     font-size: 0.875rem;
-    font-weight: 600;
-    border-radius: 9999px;
 }
 
-/* ==================== ДЕТАЛЬНЫЙ ВИД МАСТЕРА ==================== */
-.master-detail {
-    background: white;
-    border: 1px solid var(--color-border);
-    border-radius: 16px;
-    padding: 1.5rem;
-    margin-top: 1rem;
-}
-
-.back-to-masters {
-    color: var(--color-muted);
-    font-size: 0.875rem;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    margin-bottom: 1rem;
-    cursor: pointer;
-}
-
-.master-detail-profile {
+/* Сводка выбранного мастера и услуги */
+.master-summary {
     display: flex;
-    gap: 1.5rem;
-    margin-bottom: 2rem;
+    align-items: center;
+    gap: 0.75rem;
+    background: var(--color-surface-alt);
+    border-radius: 0.75rem;
+    padding: 0.75rem 1rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
 }
-
-.master-detail-avatar {
-    width: 80px;
-    height: 80px;
-    border-radius: 9999px;
+.master-avatar-sm {
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 50%;
     overflow: hidden;
+    flex-shrink: 0;
+    background: var(--color-accent-light);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    color: var(--color-primary);
+}
+.master-avatar-sm img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+.master-name-sm {
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: var(--color-heading);
+}
+.master-spec-sm {
+    font-size: 0.8rem;
+    color: var(--color-muted);
+}
+.service-summary {
+    font-weight: 500;
+    font-size: 0.95rem;
+    color: var(--color-heading);
+}
+.service-price {
+    font-weight: 700;
+    font-size: 1rem;
+    color: var(--color-primary);
+}
+.date-summary,
+.time-summary {
+    font-weight: 500;
+    font-size: 0.9rem;
+    color: var(--color-heading);
+}
+.master-summary svg {
+    color: #22c55e;
+    width: 1.2rem;
+    height: 1.2rem;
     flex-shrink: 0;
 }
 
-.master-detail-name {
-    font-size: 1.5rem;
-    font-weight: 600;
-}
-
+/* Услуги */
 .services-grid {
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
 }
-
 .service-btn {
     display: flex;
     justify-content: space-between;
     align-items: center;
     padding: 1rem 1.25rem;
-    background: var(--color-surface-alt);
+    background: var(--color-surface);
     border: 1px solid var(--color-border);
     border-radius: 12px;
     cursor: pointer;
     transition: all 0.2s;
+    width: 100%;
+    text-align: left;
 }
-
 .service-btn:hover,
 .service-btn.selected {
     border-color: var(--color-primary);
     background: var(--color-accent-light);
 }
-
-.service-name { font-weight: 500; }
-.service-duration { color: var(--color-muted); font-size: 0.875rem; }
-.service-price { font-weight: 700; color: var(--color-primary); }
-
-/* Слоты */
-.slots-container {
-    margin-top: 2rem;
+.service-btn .service-info {
+    flex: 1;
+}
+.service-btn .service-name {
+    font-weight: 500;
+}
+.service-btn .service-duration {
+    color: var(--color-muted);
+    font-size: 0.8rem;
+    margin-left: 0.5rem;
+}
+.service-btn .service-price {
+    font-weight: 700;
+    color: var(--color-primary);
+    font-size: 1.1rem;
+}
+.service-btn .chevron {
+    color: var(--color-muted);
+    margin-left: 0.5rem;
+}
+.service-btn .chevron svg {
+    width: 1rem;
+    height: 1rem;
 }
 
-.slots-title {
-    font-weight: 600;
-    margin-bottom: 0.75rem;
+/* Даты */
+.dates-grid {
+    display: flex;
+    gap: 0.5rem;
+    overflow-x: auto;
+    padding-bottom: 0.5rem;
 }
-
-.slots-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
-    gap: 0.75rem;
-}
-
-.slot-btn {
-    padding: 0.75rem;
+.date-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0.5rem 0.75rem;
+    min-width: 4rem;
     border: 1px solid var(--color-border);
-    border-radius: 9999px;
-    text-align: center;
-    font-size: 0.875rem;
+    border-radius: 0.75rem;
+    background: var(--color-surface);
     cursor: pointer;
     transition: all 0.2s;
 }
-
-.slot-btn:hover,
-.slot-btn.selected {
-    background: var(--color-primary);
-    color: white;
+.date-btn:hover {
     border-color: var(--color-primary);
 }
-
-/* Плавающая панель */
-.booking-panel {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    background: white;
-    border-top: 2px solid var(--color-primary);
-    padding: 1rem 1.5rem;
-    z-index: 100;
-    box-shadow: 0 -4px 20px rgba(0,0,0,0.1);
+.date-btn.active {
+    border-color: var(--color-primary);
+    background: linear-gradient(135deg, var(--color-primary), var(--color-accent-hover));
+    color: white;
+}
+.date-btn .day-label {
+    font-size: 0.7rem;
+    color: var(--color-muted);
+}
+.date-btn.active .day-label {
+    color: rgba(255,255,255,0.8);
+}
+.date-btn .day-number {
+    font-size: 1.2rem;
+    font-weight: 700;
+}
+.date-btn .month-label {
+    font-size: 0.65rem;
+    color: var(--color-muted);
+}
+.date-btn.active .month-label {
+    color: rgba(255,255,255,0.8);
 }
 
-@media (min-width: 1024px) {
-    .booking-panel {
-        padding-right: 16rem;
-    }
+/* Время */
+.times-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+    gap: 0.5rem;
+}
+.time-btn {
+    padding: 0.5rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.75rem;
+    background: var(--color-surface);
+    text-align: center;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.time-btn:hover {
+    border-color: var(--color-primary);
+}
+.time-btn.active {
+    border-color: var(--color-primary);
+    background: linear-gradient(135deg, var(--color-primary), var(--color-accent-hover));
+    color: white;
 }
 
-.booking-panel-inner {
-    max-width: 1200px;
-    margin: 0 auto;
+/* Напоминание */
+.reminder-box {
+    border: 1px solid var(--color-border);
+    border-radius: 0.75rem;
+    padding: 1rem;
+    background: var(--color-surface);
+    margin-bottom: 1.5rem;
+}
+.reminder-toggle {
     display: flex;
     justify-content: space-between;
     align-items: center;
+}
+.reminder-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+.reminder-info svg {
+    width: 1.25rem;
+    height: 1.25rem;
+    color: var(--color-primary);
+}
+.reminder-title {
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: var(--color-heading);
+}
+.reminder-desc {
+    font-size: 0.8rem;
+    color: var(--color-muted);
+}
+.toggle-switch {
+    width: 2.75rem;
+    height: 1.5rem;
+    border-radius: 1rem;
+    border: none;
+    background: var(--color-border);
+    cursor: pointer;
+    position: relative;
+    transition: background 0.3s;
+}
+.toggle-switch::after {
+    content: '';
+    position: absolute;
+    top: 0.15rem;
+    left: 0.15rem;
+    width: 1.2rem;
+    height: 1.2rem;
+    border-radius: 50%;
+    background: white;
+    transition: transform 0.3s;
+}
+.toggle-switch.active {
+    background: linear-gradient(135deg, var(--color-primary), var(--color-accent-hover));
+}
+.toggle-switch.active::after {
+    transform: translateX(1.25rem);
+}
+.reminder-options {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 1rem;
     flex-wrap: wrap;
-    gap: 1rem;
+}
+.reminder-option {
+    padding: 0.3rem 0.8rem;
+    border: 1px solid var(--color-border);
+    border-radius: 2rem;
+    background: transparent;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.reminder-option:hover {
+    border-color: var(--color-primary);
+}
+.reminder-option.active {
+    border-color: var(--color-primary);
+    background: linear-gradient(135deg, var(--color-primary), var(--color-accent-hover));
+    color: white;
 }
 
-.booking-info {
+/* Подтверждение */
+.confirm-box {
+    border: 1px solid var(--color-border);
+    border-radius: 1rem;
+    padding: 1.5rem;
+    background: var(--color-surface);
+}
+.confirm-title {
+    font-family: var(--font-heading);
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--color-heading);
+    text-align: center;
+    margin-bottom: 1.5rem;
+}
+.confirm-items {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+.confirm-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    background: var(--color-surface-alt);
+    border-radius: 0.75rem;
+}
+.confirm-item .confirm-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 0.5rem;
+    background: var(--color-accent-light);
+    color: var(--color-primary);
+    flex-shrink: 0;
+}
+.confirm-item .confirm-icon svg {
+    width: 1.2rem;
+    height: 1.2rem;
+}
+.confirm-item .confirm-label {
+    font-size: 0.7rem;
+    color: var(--color-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+.confirm-item .confirm-value {
+    font-weight: 600;
+    color: var(--color-heading);
+}
+.confirm-item .confirm-sub {
+    font-size: 0.8rem;
+    color: var(--color-muted);
+}
+.confirm-item .confirm-price {
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: var(--color-primary);
+    margin-left: auto;
+}
+.confirm-item svg:last-child {
+    color: #22c55e;
+    width: 1.2rem;
+    height: 1.2rem;
+    flex-shrink: 0;
+}
+.confirm-user {
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--color-border);
+}
+.confirm-user-label {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--color-heading);
+    margin-bottom: 0.5rem;
+}
+.confirm-user-info {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+.confirm-user-info span {
     font-size: 0.95rem;
 }
+.confirm-user-info .confirm-edit-link {
+    font-size: 0.8rem;
+    color: var(--color-primary);
+    text-decoration: none;
+}
+.confirm-user-info .confirm-edit-link:hover {
+    text-decoration: underline;
+}
 
-.booking-master { font-weight: 600; }
-.booking-time { color: var(--color-primary); font-weight: 600; }
-.booking-dot { color: var(--color-muted); margin: 0 0.25rem; }
+.confirm-submit {
+    width: 100%;
+    margin-top: 1.5rem;
+    padding: 0.75rem;
+    font-size: 1rem;
+}
+.confirm-cancel {
+    width: 100%;
+    margin-top: 0.75rem;
+    padding: 0.75rem;
+    font-size: 0.9rem;
+}
+
+/* Адаптив */
+@media (max-width: 640px) {
+    .master-image-box {
+        width: 100px;
+        height: 100px;
+    }
+    .dates-grid {
+        gap: 0.3rem;
+    }
+    .date-btn {
+        min-width: 3.2rem;
+        padding: 0.4rem 0.5rem;
+    }
+    .times-grid {
+        grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
+    }
+    .confirm-item {
+        flex-wrap: wrap;
+    }
+}
