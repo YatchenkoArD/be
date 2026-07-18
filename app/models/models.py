@@ -48,6 +48,19 @@ class InventoryAuditStatus(str, enum.Enum):
     DRAFT = "draft"          # акт открыт, идёт пересчёт
     CONFIRMED = "confirmed"  # акт закрыт, остатки скорректированы
 
+class EquipmentStatus(str, enum.Enum):
+    WORKING = "working"
+    BROKEN = "broken"
+
+class WarehouseRequestType(str, enum.Enum):
+    CONSUMABLE_LOW = "consumable_low"    # расходник заканчивается (без точного остатка)
+    EQUIPMENT_BROKEN = "equipment_broken"  # техника сломалась/нужна замена
+
+class WarehouseRequestStatus(str, enum.Enum):
+    PENDING = "pending"      # заявка открыта
+    RESOLVED = "resolved"    # админ отреагировал (закупил/заменил)
+    DISMISSED = "dismissed"  # отклонена
+
 class LoyaltyStatusSource(str, enum.Enum):
     AUTO = "auto"      # статус выставлен автоматически по числу визитов
     MANUAL = "manual"  # статус выставлен/снят вручную админом
@@ -522,6 +535,65 @@ class InventoryAuditItem(Base):
 
     audit: Mapped["InventoryAudit"] = relationship(back_populates="items")
     item: Mapped["InventoryItem"] = relationship()
+
+# ========== Техника и инструменты (общий склад салона) ==========
+class Equipment(Base):
+    """Единица техники/инструментов салона (кресла, фены и т.п.) — общий
+    склад на весь салон, не привязан к конкретному мастеру (в отличие от
+    расходников в InventoryItem)."""
+    __tablename__ = "equipment"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    salon_id: Mapped[int] = mapped_column(ForeignKey("salons.id", ondelete="CASCADE"))
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    quantity: Mapped[int] = mapped_column(Integer, default=1, server_default="1", nullable=False)
+    status: Mapped[EquipmentStatus] = mapped_column(
+        Enum(EquipmentStatus), default=EquipmentStatus.WORKING, server_default="WORKING", nullable=False
+    )
+    purchased_at: Mapped[Optional[date_]] = mapped_column(Date, nullable=True)
+    service_life_months: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    cost_per_unit: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true", nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    salon: Mapped["Salon"] = relationship()
+
+# ========== Заявки склада: расходник заканчивается / техника сломалась ==========
+class WarehouseRequest(Base):
+    """Единая «заявка» мастера администратору салона — по расходнику
+    (заканчивается, без точного остатка) или по технике (сломалась,
+    нужна замена). Обе ветки решает один и тот же админ-воркфлоу."""
+    __tablename__ = "warehouse_requests"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    salon_id: Mapped[int] = mapped_column(ForeignKey("salons.id", ondelete="CASCADE"))
+    type: Mapped[WarehouseRequestType] = mapped_column(Enum(WarehouseRequestType), nullable=False)
+    # SET NULL, не CASCADE — та же логика, что у PhotoReport: разрешённая
+    # заявка должна пережить исчезновение позиции, иначе теряется история.
+    item_id: Mapped[Optional[int]] = mapped_column(ForeignKey("inventory_items.id", ondelete="SET NULL"), nullable=True)
+    equipment_id: Mapped[Optional[int]] = mapped_column(ForeignKey("equipment.id", ondelete="SET NULL"), nullable=True)
+    created_by_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    comment: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    status: Mapped[WarehouseRequestStatus] = mapped_column(
+        Enum(WarehouseRequestStatus), default=WarehouseRequestStatus.PENDING, server_default="PENDING", nullable=False
+    )
+    resolved_by_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"), nullable=True)
+    resolved_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    salon: Mapped["Salon"] = relationship()
+    item: Mapped[Optional["InventoryItem"]] = relationship()
+    equipment: Mapped[Optional["Equipment"]] = relationship()
+    created_by: Mapped["User"] = relationship(foreign_keys=[created_by_id])
+    resolved_by: Mapped[Optional["User"]] = relationship(foreign_keys=[resolved_by_id])
+
+    __table_args__ = (
+        CheckConstraint(
+            "(item_id IS NOT NULL)::int + (equipment_id IS NOT NULL)::int <= 1",
+            name="check_warehouse_request_at_most_one_target",
+        ),
+        Index("ix_warehouse_requests_salon_status", "salon_id", "status"),
+    )
 
 # ========== Зарплаты: ставка мастера + ручные бонусы/штрафы ==========
 class MasterPayrollSettings(Base):

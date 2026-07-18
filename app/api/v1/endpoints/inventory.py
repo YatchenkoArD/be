@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.db.session import get_db
-from app.models.models import InventoryItem, Master, User, UserRole, Booking
+from app.models.models import InventoryItem, Master, User, UserRole, Booking, WarehouseRequestType
 from app.api.deps import check_salon_permission, get_current_user, require_role
 from app.services.inventory_service import InventoryService, InventoryError
 
@@ -215,3 +215,125 @@ async def log_my_consumption(
         raise HTTPException(status_code=e.status, detail=e.message)
 
     return {"booking_id": booking.id, "consumption_reported": booking.consumption_reported}
+
+
+# ========== Техника и инструменты (общий склад салона, только владелец/админ) ==========
+
+@router.post("/salon/{salon_id}/equipment")
+async def add_equipment_web(
+    salon_id: int,
+    request: Request,
+    name: str = Form(...),
+    quantity: int = Form(1),
+    purchased_at: Optional[str] = Form(None),
+    service_life_months: Optional[int] = Form(None),
+    cost_per_unit: Optional[int] = Form(None),
+    db: AsyncSession = Depends(get_db),
+):
+    """Добавляет позицию техники/инструментов на общий склад салона."""
+    from datetime import date as date_cls
+    from app.web.auth import get_current_user_from_cookie
+
+    user = await get_current_user_from_cookie(request, db)
+    if not user:
+        return RedirectResponse(url="/login", status_code=302)
+    try:
+        await check_salon_permission(db, user, salon_id, "manage_inventory")
+    except HTTPException:
+        return HTMLResponse(content="Недостаточно прав для управления складом", status_code=403)
+
+    parsed_date = None
+    if purchased_at:
+        try:
+            parsed_date = date_cls.fromisoformat(purchased_at)
+        except ValueError:
+            pass
+
+    try:
+        await InventoryService.add_equipment(
+            db, salon_id=salon_id, name=name, quantity=quantity,
+            purchased_at=parsed_date, service_life_months=service_life_months, cost_per_unit=cost_per_unit,
+        )
+    except InventoryError as e:
+        return HTMLResponse(content=e.message, status_code=e.status)
+
+    return RedirectResponse(url="/business/dashboard?tab=warehouse&equipment_added=1", status_code=302)
+
+
+@router.post("/salon/{salon_id}/equipment/{equipment_id}/toggle")
+async def toggle_equipment_web(
+    salon_id: int,
+    equipment_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Владелец/админ вручную переключает исправно/сломано."""
+    await check_salon_permission(db, current_user, salon_id, "manage_inventory")
+    try:
+        equipment = await InventoryService.toggle_equipment_status(db, equipment_id=equipment_id, salon_id=salon_id)
+    except InventoryError as e:
+        raise HTTPException(status_code=e.status, detail=e.message)
+    return {"id": equipment.id, "status": equipment.status.value}
+
+
+# ========== Заявки: расходник заканчивается / техника сломалась ==========
+
+@router.post("/requests")
+async def create_warehouse_request_web(
+    request_type: str = Form(...),
+    item_id: Optional[int] = Form(None),
+    equipment_id: Optional[int] = Form(None),
+    comment: str = Form(""),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Мастер сигналит: расходник заканчивается, или техника сломалась.
+    Доступ — по факту записи Master (не по role, см. has_master_profile)."""
+    master = (await db.execute(select(Master).where(Master.user_id == current_user.id))).scalar_one_or_none()
+    if master is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="У вас нет профиля мастера")
+
+    try:
+        parsed_type = WarehouseRequestType(request_type)
+    except ValueError:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Некорректный тип заявки")
+
+    try:
+        req = await InventoryService.create_request(
+            db, salon_id=master.salon_id, type=parsed_type, created_by=current_user,
+            item_id=item_id, equipment_id=equipment_id, comment=comment,
+        )
+    except InventoryError as e:
+        raise HTTPException(status_code=e.status, detail=e.message)
+
+    return {"id": req.id, "status": req.status.value}
+
+
+@router.post("/requests/{request_id}/resolve")
+async def resolve_warehouse_request_web(
+    request_id: int,
+    salon_id: int = Form(...),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    await check_salon_permission(db, current_user, salon_id, "manage_inventory")
+    try:
+        req = await InventoryService.resolve_request(db, request_id=request_id, salon_id=salon_id, actor=current_user)
+    except InventoryError as e:
+        raise HTTPException(status_code=e.status, detail=e.message)
+    return {"id": req.id, "status": req.status.value}
+
+
+@router.post("/requests/{request_id}/dismiss")
+async def dismiss_warehouse_request_web(
+    request_id: int,
+    salon_id: int = Form(...),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    await check_salon_permission(db, current_user, salon_id, "manage_inventory")
+    try:
+        req = await InventoryService.dismiss_request(db, request_id=request_id, salon_id=salon_id, actor=current_user)
+    except InventoryError as e:
+        raise HTTPException(status_code=e.status, detail=e.message)
+    return {"id": req.id, "status": req.status.value}

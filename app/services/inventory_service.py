@@ -17,6 +17,7 @@ from app.models.models import (
     InventoryItem, InventoryMovement, InventoryMovementType,
     InventoryAudit, InventoryAuditItem, InventoryAuditStatus,
     Booking, BookingStatus, Master,
+    Equipment, EquipmentStatus, WarehouseRequest, WarehouseRequestType, WarehouseRequestStatus,
 )
 
 
@@ -182,6 +183,121 @@ class InventoryService:
         await db.commit()
         await db.refresh(audit)
         return audit
+
+    # ========== Техника и инструменты (общий склад салона) ==========
+
+    @staticmethod
+    async def get_salon_equipment(db: AsyncSession, salon_id: int) -> list[Equipment]:
+        result = await db.execute(
+            select(Equipment)
+            .where(Equipment.salon_id == salon_id, Equipment.is_active == True)
+            .order_by(Equipment.name)
+        )
+        return list(result.scalars().all())
+
+    @staticmethod
+    async def add_equipment(
+        db: AsyncSession, *, salon_id: int, name: str, quantity: int,
+        purchased_at=None, service_life_months: Optional[int] = None, cost_per_unit: Optional[int] = None,
+    ) -> Equipment:
+        if quantity <= 0:
+            raise InventoryError("Количество должно быть положительным")
+        equipment = Equipment(
+            salon_id=salon_id, name=name, quantity=quantity,
+            purchased_at=purchased_at, service_life_months=service_life_months, cost_per_unit=cost_per_unit,
+        )
+        db.add(equipment)
+        await db.commit()
+        await db.refresh(equipment)
+        return equipment
+
+    @staticmethod
+    async def toggle_equipment_status(db: AsyncSession, *, equipment_id: int, salon_id: int) -> Equipment:
+        equipment = (await db.execute(
+            select(Equipment).where(Equipment.id == equipment_id, Equipment.salon_id == salon_id)
+        )).scalar_one_or_none()
+        if not equipment:
+            raise InventoryError("Позиция техники не найдена", status=404)
+        equipment.status = (
+            EquipmentStatus.BROKEN if equipment.status == EquipmentStatus.WORKING else EquipmentStatus.WORKING
+        )
+        await db.commit()
+        await db.refresh(equipment)
+        return equipment
+
+    # ========== Заявки: расходник заканчивается / техника сломалась ==========
+
+    @staticmethod
+    async def create_request(
+        db: AsyncSession, *, salon_id: int, type: WarehouseRequestType, created_by,
+        item_id: Optional[int] = None, equipment_id: Optional[int] = None, comment: str = "",
+    ) -> WarehouseRequest:
+        if type == WarehouseRequestType.CONSUMABLE_LOW:
+            if not item_id:
+                raise InventoryError("Не указана позиция расходника")
+            item = (await db.execute(select(InventoryItem).where(InventoryItem.id == item_id))).scalar_one_or_none()
+            if not item:
+                raise InventoryError("Позиция склада не найдена", status=404)
+            master = (await db.execute(select(Master).where(Master.id == item.master_id))).scalar_one_or_none()
+            if not master or master.salon_id != salon_id:
+                raise InventoryError("Позиция принадлежит другому салону", status=403)
+            equipment_id = None
+        else:
+            if not equipment_id:
+                raise InventoryError("Не указана позиция техники")
+            equipment = (await db.execute(select(Equipment).where(Equipment.id == equipment_id))).scalar_one_or_none()
+            if not equipment or equipment.salon_id != salon_id:
+                raise InventoryError("Техника не найдена в этом салоне", status=404)
+            item_id = None
+
+        request = WarehouseRequest(
+            salon_id=salon_id, type=type, item_id=item_id, equipment_id=equipment_id,
+            created_by_id=created_by.id, comment=comment or None,
+        )
+        db.add(request)
+        await db.commit()
+        await db.refresh(request)
+        return request
+
+    @staticmethod
+    async def get_pending_requests(db: AsyncSession, salon_id: int) -> list[WarehouseRequest]:
+        result = await db.execute(
+            select(WarehouseRequest)
+            .where(WarehouseRequest.salon_id == salon_id, WarehouseRequest.status == WarehouseRequestStatus.PENDING)
+            .order_by(WarehouseRequest.created_at.desc())
+        )
+        return list(result.scalars().all())
+
+    @staticmethod
+    async def _resolve_or_dismiss(
+        db: AsyncSession, *, request_id: int, salon_id: int, actor, new_status: WarehouseRequestStatus,
+    ) -> WarehouseRequest:
+        request = (await db.execute(
+            select(WarehouseRequest).where(WarehouseRequest.id == request_id, WarehouseRequest.salon_id == salon_id)
+        )).scalar_one_or_none()
+        if not request:
+            raise InventoryError("Заявка не найдена", status=404)
+        if request.status != WarehouseRequestStatus.PENDING:
+            raise InventoryError("Заявка уже обработана", status=409)
+
+        request.status = new_status
+        request.resolved_by_id = actor.id
+        request.resolved_at = datetime.now()
+        await db.commit()
+        await db.refresh(request)
+        return request
+
+    @staticmethod
+    async def resolve_request(db: AsyncSession, *, request_id: int, salon_id: int, actor) -> WarehouseRequest:
+        return await InventoryService._resolve_or_dismiss(
+            db, request_id=request_id, salon_id=salon_id, actor=actor, new_status=WarehouseRequestStatus.RESOLVED,
+        )
+
+    @staticmethod
+    async def dismiss_request(db: AsyncSession, *, request_id: int, salon_id: int, actor) -> WarehouseRequest:
+        return await InventoryService._resolve_or_dismiss(
+            db, request_id=request_id, salon_id=salon_id, actor=actor, new_status=WarehouseRequestStatus.DISMISSED,
+        )
 
     @staticmethod
     async def unreported_bookings(db: AsyncSession, salon_id: int) -> list[Booking]:

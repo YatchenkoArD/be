@@ -60,7 +60,65 @@ async def _render_master_overview(db: AsyncSession, salon: Salon, master: Master
             <div class="stat-card"><div class="stat-value" style="color:#f59e0b">{my_unreported}</div><div class="stat-label">Не списано расходников</div></div>
         </div>
     </div>"""
-    return overview_html.replace("</div>\n    </div>", "</div>\n    </div>" + personal_html, 1)
+    warehouse_html = await _render_master_warehouse_card(db, salon, master)
+    return overview_html.replace("</div>\n    </div>", "</div>\n    </div>" + personal_html + warehouse_html, 1)
+
+
+async def _render_master_warehouse_card(db: AsyncSession, salon: Salon, master: Master) -> str:
+    """Мастер сигналит о проблемах склада: расходник заканчивается (без
+    точного остатка) или техника салона сломалась. Заявка уходит в очередь
+    на вкладке «Склад» у владельца/админа — без пуш-уведомления, они
+    сознательно не строим сейчас."""
+    from app.models.models import EquipmentStatus
+
+    my_stock = await InventoryService.get_master_stock(db, master.id)
+    equipment_list = await InventoryService.get_salon_equipment(db, salon.id)
+
+    stock_rows = "".join(
+        f'<div style="display:flex;justify-content:space-between;align-items:center;padding:0.5rem 0;'
+        f'border-bottom:1px solid var(--color-border)">'
+        f'<span>{i.name} <span class="text-muted" style="font-size:0.8rem">(остаток {i.quantity:g} {i.unit})</span></span>'
+        f'<button class="btn-outline" style="font-size:0.75rem;padding:0.3rem 0.7rem" '
+        f'onclick="reportWarehouseIssue(\'consumable_low\', {i.id}, null)">🚩 Заканчивается</button>'
+        f'</div>'
+        for i in my_stock
+    )
+    equipment_rows = "".join(
+        f'<div style="display:flex;justify-content:space-between;align-items:center;padding:0.5rem 0;'
+        f'border-bottom:1px solid var(--color-border)">'
+        f'<span>{eq.name} <span class="text-muted" style="font-size:0.8rem">({eq.quantity} шт)</span></span>'
+        f'<button class="btn-outline" style="font-size:0.75rem;padding:0.3rem 0.7rem" '
+        f'onclick="reportWarehouseIssue(\'equipment_broken\', null, {eq.id})">🚩 Сломалось</button>'
+        f'</div>'
+        for eq in equipment_list if eq.status == EquipmentStatus.WORKING
+    )
+
+    return f"""
+    <div class="card" style="margin-top:1.5rem">
+        <h3 style="margin-bottom:1rem">Склад</h3>
+        <div class="grid-2">
+            <div>
+                <h4 style="font-size:0.9rem;margin-bottom:0.5rem;color:var(--color-muted)">Ваши расходники</h4>
+                {stock_rows or '<p class="text-muted" style="font-size:0.85rem">Пусто</p>'}
+            </div>
+            <div>
+                <h4 style="font-size:0.9rem;margin-bottom:0.5rem;color:var(--color-muted)">Техника салона</h4>
+                {equipment_rows or '<p class="text-muted" style="font-size:0.85rem">Пусто</p>'}
+            </div>
+        </div>
+    </div>
+    <script>
+        async function reportWarehouseIssue(type, itemId, equipmentId) {{
+            const comment = prompt(type === 'consumable_low' ? 'Что именно заканчивается? (необязательно)' : 'Что случилось с техникой? (необязательно)', '');
+            if (comment === null) return;
+            const body = new URLSearchParams({{ request_type: type, comment: comment || '' }});
+            if (itemId) body.append('item_id', itemId);
+            if (equipmentId) body.append('equipment_id', equipmentId);
+            const res = await fetch('/api/v1/inventory/requests', {{ method: 'POST', body }});
+            if (res.ok) alert('Заявка отправлена администратору'); else alert('Не удалось отправить заявку');
+        }}
+    </script>
+    """
 
 
 async def _render_master_schedule(db: AsyncSession, salon: Salon, master: Master) -> str:
