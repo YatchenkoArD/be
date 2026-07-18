@@ -1,17 +1,20 @@
 # app/services/review_service.py
 """Единая бизнес-логика отзывов.
 
-Закрывает накрутку рейтинга (IDOR + business-logic flaw): отзыв можно
-оставить только при наличии ЗАВЕРШЁННОЙ (COMPLETED) записи этого клиента
-к этому мастеру, и не более одного отзыва на пару клиент-мастер.
-Дёргается из единственного эндпоинта (дубль в bookings.py удалён).
+Отзыв может оставить ЛЮБОЙ зарегистрированный пользователь — без гейта по
+записи. Вместо гейта — is_verified: сервер сам (не со слов клиента) проверяет,
+была ли у него реальная COMPLETED-запись к этому мастеру/в этом салоне, и
+проставляет тег подтверждения. Дёргается из единственного эндпоинта
+(дубль в bookings.py удалён).
 """
 from __future__ import annotations
 
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.models import Review, Salon, Master, Booking, BookingStatus
+from app.models.models import (
+    Review, ReviewTargetType, Salon, Master, SalonMember, Booking, BookingStatus,
+)
 
 
 class ReviewError(Exception):
@@ -25,24 +28,45 @@ class ReviewError(Exception):
 
 class ReviewService:
     @staticmethod
-    async def _has_completed_booking(db: AsyncSession, client_id: int, master_id: int) -> bool:
-        result = await db.execute(
-            select(func.count(Booking.id)).where(
+    async def _find_verifying_booking(
+        db: AsyncSession, client_id: int, salon_id: int,
+        target_type: ReviewTargetType, master_id: int | None,
+    ) -> Booking | None:
+        """Доказательство реального визита: COMPLETED-запись этого клиента.
+
+        Про мастера — запись именно к нему. Про салон/сотрудника — любая
+        завершённая запись в этом салоне (к любому мастеру): человек реально
+        был на месте, этого достаточно, чтобы судить о помещении/сервисе."""
+        query = (
+            select(Booking)
+            .join(Master, Master.id == Booking.master_id)
+            .where(
                 Booking.client_id == client_id,
-                Booking.master_id == master_id,
                 Booking.status == BookingStatus.COMPLETED,
+                Master.salon_id == salon_id,
             )
         )
-        return (result.scalar() or 0) > 0
+        if target_type == ReviewTargetType.MASTER:
+            query = query.where(Booking.master_id == master_id)
+        result = await db.execute(query.order_by(Booking.start_time.desc()))
+        return result.scalars().first()
 
     @staticmethod
-    async def _already_reviewed(db: AsyncSession, client_id: int, master_id: int) -> bool:
-        result = await db.execute(
-            select(func.count(Review.id)).where(
-                Review.client_id == client_id,
-                Review.master_id == master_id,
-            )
+    async def _already_reviewed(
+        db: AsyncSession, client_id: int, target_type: ReviewTargetType,
+        salon_id: int, master_id: int | None, staff_user_id: int | None,
+    ) -> bool:
+        """Не больше одного отзыва на пару клиент-цель (мастер / салон / сотрудник)."""
+        query = select(func.count(Review.id)).where(
+            Review.client_id == client_id, Review.target_type == target_type,
         )
+        if target_type == ReviewTargetType.MASTER:
+            query = query.where(Review.master_id == master_id)
+        elif target_type == ReviewTargetType.STAFF:
+            query = query.where(Review.staff_user_id == staff_user_id)
+        else:
+            query = query.where(Review.salon_id == salon_id)
+        result = await db.execute(query)
         return (result.scalar() or 0) > 0
 
     @staticmethod
@@ -50,60 +74,82 @@ class ReviewService:
         db: AsyncSession,
         *,
         client_id: int,
-        master_id: int,
         salon_id: int,
+        target_type: ReviewTargetType,
         rating: int,
         comment: str = "",
+        master_id: int | None = None,
+        staff_user_id: int | None = None,
     ) -> Review:
         if rating < 1 or rating > 5:
             raise ReviewError("Оценка должна быть от 1 до 5", status=400)
 
-        # Мастер существует и действительно принадлежит указанному салону
-        master = (await db.execute(select(Master).where(Master.id == master_id))).scalar_one_or_none()
-        if not master:
-            raise ReviewError("Мастер не найден", status=404)
-        if master.salon_id != salon_id:
-            raise ReviewError("Мастер не относится к этому салону", status=400)
+        salon = (await db.execute(select(Salon).where(Salon.id == salon_id))).scalar_one_or_none()
+        if not salon:
+            raise ReviewError("Салон не найден", status=404)
 
-        # Ключевая проверка: только после реально завершённого визита
-        if not await ReviewService._has_completed_booking(db, client_id, master_id):
-            raise ReviewError(
-                "Отзыв можно оставить только после завершённой записи к этому мастеру",
-                status=403,
-            )
+        master = None
+        if target_type == ReviewTargetType.MASTER:
+            if not master_id:
+                raise ReviewError("Не указан мастер", status=400)
+            master = (await db.execute(select(Master).where(Master.id == master_id))).scalar_one_or_none()
+            if not master or master.salon_id != salon_id:
+                raise ReviewError("Мастер не найден в этом салоне", status=400)
+            staff_user_id = None
+        elif target_type == ReviewTargetType.STAFF:
+            if not staff_user_id:
+                raise ReviewError("Не указан сотрудник", status=400)
+            member = (await db.execute(
+                select(SalonMember).where(
+                    SalonMember.salon_id == salon_id,
+                    SalonMember.user_id == staff_user_id,
+                    SalonMember.is_active == True,
+                )
+            )).scalar_one_or_none()
+            if not member:
+                raise ReviewError("Сотрудник не найден в этом салоне", status=400)
+            master_id = None
+        else:
+            master_id = None
+            staff_user_id = None
 
-        # Не больше одного отзыва на пару клиент-мастер
-        if await ReviewService._already_reviewed(db, client_id, master_id):
-            raise ReviewError("Вы уже оставляли отзыв этому мастеру", status=409)
+        if await ReviewService._already_reviewed(db, client_id, target_type, salon_id, master_id, staff_user_id):
+            raise ReviewError("Вы уже оставляли отзыв на эту цель", status=409)
+
+        verifying_booking = await ReviewService._find_verifying_booking(
+            db, client_id, salon_id, target_type, master_id,
+        )
 
         review = Review(
             client_id=client_id,
-            master_id=master_id,
             salon_id=salon_id,
+            target_type=target_type,
+            master_id=master_id,
+            staff_user_id=staff_user_id,
             rating=rating,
             comment=comment,
+            is_verified=verifying_booking is not None,
+            booking_id=verifying_booking.id if verifying_booking else None,
         )
         db.add(review)
+        await db.flush()  # нужен review.id для фото, если их прикрепят следом
 
-        # Пересчёт рейтинга мастера
-        avg_master = await db.execute(
-            select(func.avg(Review.rating)).where(Review.master_id == master_id)
-        )
-        master.rating = round(float(avg_master.scalar() or 0.0), 1)
+        if master is not None:
+            avg_master = await db.execute(
+                select(func.avg(Review.rating)).where(
+                    Review.master_id == master_id, Review.target_type == ReviewTargetType.MASTER,
+                )
+            )
+            master.rating = round(float(avg_master.scalar() or 0.0), 1)
 
-        # Пересчёт рейтинга салона — оба поля считаются заново от реальных
-        # отзывов (не инкремент), иначе reviews_count расходится с фактом
-        # при любом рассинхроне баз (сид, ручные правки и т.п.).
-        salon = (await db.execute(select(Salon).where(Salon.id == salon_id))).scalar_one_or_none()
-        if salon:
-            count_salon = await db.execute(
-                select(func.count(Review.id)).where(Review.salon_id == salon_id)
-            )
-            salon.reviews_count = count_salon.scalar() or 0
-            avg_salon = await db.execute(
-                select(func.avg(Review.rating)).where(Review.salon_id == salon_id)
-            )
-            salon.rating = round(float(avg_salon.scalar() or 0.0), 1)
+        # Рейтинг салона считается по ВСЕМ отзывам (про мастера, помещение,
+        # сотрудника) — все они отражают опыт визита в этот салон. Заново от
+        # факта, не инкрементом — не расходится при рассинхроне.
+        count_salon = await db.execute(select(func.count(Review.id)).where(Review.salon_id == salon_id))
+        salon.reviews_count = count_salon.scalar() or 0
+        avg_salon = await db.execute(select(func.avg(Review.rating)).where(Review.salon_id == salon_id))
+        salon.rating = round(float(avg_salon.scalar() or 0.0), 1)
 
         await db.commit()
+        await db.refresh(review)
         return review

@@ -1,7 +1,7 @@
 # app/web/pages/master_detail.py
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-from app.models.models import Master, Service, User
+from sqlalchemy import select, func
+from app.models.models import Master, Service, User, MasterPhoto, Review, ReviewPhoto, ReviewTargetType
 from app.web.components.header import render_header
 from app.web.components.footer import render_footer
 from app.web.components.sidebar import render_sidebar
@@ -40,6 +40,88 @@ async def render_master_detail(db: AsyncSession, master_id: int, user=None) -> s
             <div style="font-size:1.25rem;font-weight:700;color:var(--color-primary)">{srv.price} ₽</div>
         </div>
         """
+
+    # ----- Портфолио: свои фото мастера + фото из отзывов про него -----
+    is_own_page = bool(user and master_user and user.id == master_user.id)
+
+    own_photos = (await db.execute(
+        select(MasterPhoto).where(MasterPhoto.master_id == master.id).order_by(MasterPhoto.id.desc())
+    )).scalars().all()
+
+    review_photos_result = await db.execute(
+        select(ReviewPhoto)
+        .join(Review, Review.id == ReviewPhoto.review_id)
+        .where(Review.master_id == master.id, Review.target_type == ReviewTargetType.MASTER)
+        .order_by(ReviewPhoto.id.desc())
+    )
+    client_photos = review_photos_result.scalars().all()
+
+    verified_count = (await db.execute(
+        select(func.count(Review.id)).where(
+            Review.master_id == master.id, Review.target_type == ReviewTargetType.MASTER, Review.is_verified == True,
+        )
+    )).scalar() or 0
+    total_reviews_count = (await db.execute(
+        select(func.count(Review.id)).where(Review.master_id == master.id, Review.target_type == ReviewTargetType.MASTER)
+    )).scalar() or 0
+
+    def _photo_tile(url: str, delete_url: str | None) -> str:
+        delete_btn = (
+            f'<button class="portfolio-photo-delete" data-url="{delete_url}" '
+            f'style="position:absolute;top:0.25rem;right:0.25rem;border:none;border-radius:50%;'
+            f'width:1.5rem;height:1.5rem;background:rgba(0,0,0,0.6);color:#fff;cursor:pointer">✕</button>'
+            if delete_url else ""
+        )
+        return (
+            f'<div style="position:relative;display:inline-block">'
+            f'<img src="{url}" alt="" loading="lazy" style="width:140px;height:140px;object-fit:cover;'
+            f'border-radius:0.75rem;margin:0.25rem">{delete_btn}</div>'
+        )
+
+    own_photos_html = "".join(_photo_tile(p.url, f"/api/v1/upload/master/photo/{p.id}/delete" if is_own_page else None) for p in own_photos)
+    client_photos_html = "".join(_photo_tile(p.url, None) for p in client_photos)
+
+    upload_block = ""
+    if is_own_page:
+        upload_block = f"""
+        <div style="margin:1rem 0">
+            <input type="file" id="portfolioFileInput" accept="image/*" multiple style="display:none">
+            <button class="btn-outline" onclick="document.getElementById('portfolioFileInput').click()">+ Добавить фото ({len(own_photos)}/20)</button>
+        </div>
+        <script>
+            document.getElementById('portfolioFileInput').addEventListener('change', async (e) => {{
+                const files = e.target.files;
+                if (!files.length) return;
+                const formData = new FormData();
+                for (const f of files) formData.append('files', f);
+                const res = await fetch('/api/v1/upload/master/photo', {{ method: 'POST', body: formData }});
+                if (res.ok) {{ location.reload(); }}
+                else {{ const d = await res.json().catch(() => ({{}})); alert(d.detail || 'Не удалось загрузить фото'); }}
+            }});
+            document.addEventListener('click', async (e) => {{
+                if (e.target.classList.contains('portfolio-photo-delete')) {{
+                    if (!confirm('Удалить это фото?')) return;
+                    const res = await fetch(e.target.dataset.url, {{ method: 'POST' }});
+                    if (res.ok) location.reload(); else alert('Не удалось удалить фото');
+                }}
+            }});
+        </script>
+        """
+
+    portfolio_html = f"""
+    <h2 style="margin:2rem 0 1rem">Портфолио</h2>
+    {upload_block}
+    <div class="card" style="padding:1.5rem">
+        <h3 style="margin-bottom:0.5rem;font-size:1rem">Работы мастера</h3>
+        <div style="display:flex;flex-wrap:wrap">
+            {own_photos_html or '<p class="text-muted">Пока нет фото</p>'}
+        </div>
+        <h3 style="margin:1.5rem 0 0.5rem;font-size:1rem">Из отзывов клиентов</h3>
+        <div style="display:flex;flex-wrap:wrap">
+            {client_photos_html or '<p class="text-muted">Пока нет фото от клиентов</p>'}
+        </div>
+    </div>
+    """
     
     html = f"""<!DOCTYPE html>
 <html lang="ru">
@@ -64,7 +146,7 @@ async def render_master_detail(db: AsyncSession, master_id: int, user=None) -> s
                     <div>
                         <h1 class="text-display" style="font-size:2rem">{master_name}</h1>
                         <p style="font-size:1.1rem;color:var(--color-muted)">{master.specialization}</p>
-                        <p style="margin-top:0.5rem">⭐ {master.rating} · Опыт {master.experience_years} лет</p>
+                        <p style="margin-top:0.5rem" title="{verified_count} из {total_reviews_count} отзывов подтверждены реальной записью">⭐ {master.rating} ({verified_count}/{total_reviews_count} подтверждено) · Опыт {master.experience_years} лет</p>
                         <form action="/api/v1/favorites/toggle-master/{master.id}" method="post" style="display:inline;margin-top:0.5rem">
                             <button type="submit" class="btn-outline" style="font-size:0.8rem;padding:0.4rem 0.8rem" title="Добавить мастера в избранное">⭐ В избранное</button>
                         </form>
@@ -76,7 +158,9 @@ async def render_master_detail(db: AsyncSession, master_id: int, user=None) -> s
             <div class="card">
                 {services_html}
             </div>
-            
+
+            {portfolio_html}
+
             <div style="margin-top:2rem;text-align:center">
                 <a href="/salons/{master.salon_id}" class="btn-primary" style="font-size:1rem;padding:1rem 2rem">Записаться</a>
             </div>

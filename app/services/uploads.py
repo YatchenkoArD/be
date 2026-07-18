@@ -27,7 +27,7 @@ MAX_UPLOAD_BYTES = 5 * 1024 * 1024  # 5 МБ до обработки
 JPEG_QUALITY = 85
 
 # Максимальная сторона после ресайза по назначению
-MAX_SIDE = {"avatars": 512, "salons": 1600}
+MAX_SIDE = {"avatars": 512, "salons": 1600, "masters": 1600, "reviews": 1600}
 
 
 class UploadError(ValueError):

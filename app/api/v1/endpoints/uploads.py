@@ -6,15 +6,18 @@
 """
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from fastapi.responses import RedirectResponse
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import check_salon_permission, get_current_user
 from app.db.session import get_db
-from app.models.models import Salon, SalonPhoto, User
+from app.models.models import Master, MasterPhoto, Review, ReviewPhoto, Salon, SalonPhoto, User
 from app.services.uploads import UploadError, delete_stored, save_image
 
 router = APIRouter()
+
+MAX_MASTER_PHOTOS = 20
+MAX_REVIEW_PHOTOS = 5
 
 
 def _safe_next(target: str, fallback: str) -> str:
@@ -148,3 +151,97 @@ async def delete_salon_photo(
     if url.startswith("/uploads/"):
         delete_stored(url)
     return RedirectResponse(url=_safe_next(next, "/business/my-salon"), status_code=302)
+
+
+@router.post("/master/photo")
+async def upload_master_photos(
+    files: list[UploadFile] = File(...),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Портфолио мастера — свои фото работ, до MAX_MASTER_PHOTOS штук.
+
+    Проверка через реальную запись Master (не через User.role — оно не
+    всегда синхронизировано, см. has_master_profile в app/web/auth.py).
+    """
+    master = (await db.execute(select(Master).where(Master.user_id == current_user.id))).scalar_one_or_none()
+    if master is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="У вас нет профиля мастера")
+
+    existing_count = (await db.execute(
+        select(func.count(MasterPhoto.id)).where(MasterPhoto.master_id == master.id)
+    )).scalar() or 0
+
+    saved, errors = [], []
+    for file in files:
+        if existing_count + len(saved) >= MAX_MASTER_PHOTOS:
+            errors.append({"file": file.filename or "файл", "detail": f"Максимум {MAX_MASTER_PHOTOS} фото в портфолио"})
+            continue
+        try:
+            url = await save_image(file, "masters")
+        except UploadError as e:
+            errors.append({"file": file.filename or "файл", "detail": str(e)})
+            continue
+        db.add(MasterPhoto(master_id=master.id, url=url))
+        saved.append(url)
+    if saved:
+        await db.commit()
+
+    if not saved and errors:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=errors[0]["detail"])
+    return {"saved": saved, "errors": errors}
+
+
+@router.post("/master/photo/{photo_id}/delete")
+async def delete_master_photo(
+    photo_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Мастер удаляет своё фото портфолио."""
+    master = (await db.execute(select(Master).where(Master.user_id == current_user.id))).scalar_one_or_none()
+    if master is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="У вас нет профиля мастера")
+
+    photo = (await db.execute(
+        select(MasterPhoto).where(MasterPhoto.id == photo_id, MasterPhoto.master_id == master.id)
+    )).scalar_one_or_none()
+    if photo is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Фото не найдено")
+
+    url = photo.url
+    await db.delete(photo)
+    await db.commit()
+    if url.startswith("/uploads/"):
+        delete_stored(url)
+    return {"status": "deleted"}
+
+
+@router.post("/review/{review_id}/photo/{photo_id}/delete")
+async def delete_review_photo(
+    review_id: int,
+    photo_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Удаление фото из отзыва: автор отзыва — своё, владелец/админ салона —
+    любое в своём салоне (модерация)."""
+    review = (await db.execute(select(Review).where(Review.id == review_id))).scalar_one_or_none()
+    if review is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Отзыв не найден")
+
+    if review.client_id != current_user.id:
+        await check_salon_permission(db, current_user, review.salon_id, "manage_reviews")
+
+    photo = (await db.execute(
+        select(ReviewPhoto).where(ReviewPhoto.id == photo_id, ReviewPhoto.review_id == review_id)
+    )).scalar_one_or_none()
+    if photo is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Фото не найдено")
+
+    url = photo.url
+    await db.delete(photo)
+    await db.commit()
+    if url.startswith("/uploads/"):
+        delete_stored(url)
+    return {"status": "deleted"}

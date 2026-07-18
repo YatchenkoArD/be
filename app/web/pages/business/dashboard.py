@@ -153,7 +153,7 @@ async def render_business_dashboard(db: AsyncSession, user, salon: Salon, member
     tabs_html.append(render_promos_tab(promotions))
 
     tab_buttons.append(('reviews', f'⭐ Отзывы ({len(reviews)})', True))
-    tabs_html.append(await render_reviews_tab(db, reviews, salon))
+    tabs_html.append(await render_reviews_tab(db, reviews, salon, perms["manage_reviews"]))
 
     tab_buttons.append(('crm', '👥 Клиенты', True))
     tabs_html.append(await render_crm_tab(db, salon, masters, master_ids))

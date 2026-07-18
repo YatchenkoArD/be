@@ -4,11 +4,11 @@ from urllib.parse import quote
 from fastapi import APIRouter, Depends, HTTPException, Request, Form, status
 from fastapi.responses import RedirectResponse, HTMLResponse
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, update
 import secrets
 
 from app.db.session import get_db
-from app.models.models import User, Master, Booking, Salon, UserRole, BookingStatus
+from app.models.models import User, Master, Booking, Salon, UserRole, BookingStatus, Review, ReviewTargetType
 from app.api.deps import (
     get_current_user, require_role, check_salon_permission, get_user_primary_salon_id,
 )
@@ -223,6 +223,18 @@ async def toggle_master_web(
         return HTMLResponse(content="Недостаточно прав для управления мастерами", status_code=403)
 
     master.is_active = not master.is_active
+
+    if not master.is_active:
+        # Мастер ушёл из салона — отзывы «про него» остаются в общем списке
+        # салона, но перестают быть привязаны к конкретному (уже неактивному)
+        # мастеру. Фото в этих отзывах не трогаем — они относятся к отзыву,
+        # не к мастеру напрямую.
+        await db.execute(
+            update(Review)
+            .where(Review.master_id == master.id, Review.target_type == ReviewTargetType.MASTER)
+            .values(master_id=None)
+        )
+
     await db.commit()
-    
+
     return RedirectResponse(url="/business/dashboard?tab=employees", status_code=302)
