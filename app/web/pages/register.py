@@ -26,13 +26,24 @@ def _sms_code_block() -> str:
             </div>"""
 
 
-def _tg_verify_block() -> str:
-    """Кнопка подтверждения через Telegram-бота (блок 18): бот просит
-    «Поделиться контактом», страница поллит статус (tg-verify.js)."""
-    return """
-            <div class="form-group" id="tgVerifyGroup">
-                <button type="button" id="tgVerifyBtn" class="btn-primary" style="width:100%">Подтвердить номер в Telegram</button>
-                <p id="tgHint" style="font-size:0.75rem;color:var(--color-muted,#6B7280);margin-top:0.375rem">Откроется наш бот — нажмите в нём «Поделиться контактом», код вводить не нужно</p>
+def _messenger_verify_block(tg: bool, max_: bool) -> str:
+    """Кнопки подтверждения через ботов (блок 18): Telegram и/или MAX.
+    Бот просит «Поделиться контактом», страница поллит статус
+    (verify-messenger.js — один скрипт на оба канала)."""
+    buttons = ""
+    if tg:
+        buttons += """
+                <button type="button" class="btn-primary msgr-verify-btn" style="flex:1"
+                    data-channel="Telegram" data-start-url="/api/v1/auth/register/tg-start">Подтвердить в Telegram</button>"""
+    if max_:
+        buttons += """
+                <button type="button" class="btn-primary msgr-verify-btn" style="flex:1"
+                    data-channel="MAX" data-start-url="/api/v1/auth/register/max-start">Подтвердить в MAX</button>"""
+    return f"""
+            <div class="form-group" id="msgrVerifyGroup">
+                <div style="display:flex;gap:0.5rem;flex-wrap:wrap">{buttons}
+                </div>
+                <p id="msgrHint" style="font-size:0.75rem;color:var(--color-muted,#6B7280);margin-top:0.375rem">Откроется наш бот — нажмите в нём «Поделиться контактом», код вводить не нужно</p>
             </div>"""
 
 
@@ -58,6 +69,7 @@ def render_register_page(request: Request) -> str:
         settings.SMS_MODE == "live" or settings.ENVIRONMENT != "production"
     )
     tg_available = otp_enabled and settings.TG_VERIFY_ENABLED
+    max_available = otp_enabled and settings.MAX_VERIFY_ENABLED
 
     # Кнопка «Получить код» рядом с телефоном — только при доступном СМС-канале
     phone_input = f'<input type="tel" id="phone" name="phone" value="{phone}" placeholder="+7 (___) ___-__-__" class="phone-input" required>'
@@ -77,13 +89,13 @@ def render_register_page(request: Request) -> str:
                 {phone_input}
             </div>"""
 
-    # request_id общий для обоих каналов (его заполняет otp-code.js либо
-    # tg-verify.js), поэтому hidden-поле рендерится при любом включённом OTP
+    # request_id общий для всех каналов (его заполняет otp-code.js либо
+    # verify-messenger.js), поэтому hidden-поле рендерится при любом OTP
     verify_blocks = ""
     if otp_enabled:
         verify_blocks = '<input type="hidden" id="request_id" name="request_id" value="">'
-        if tg_available:
-            verify_blocks = _tg_verify_block() + verify_blocks
+        if tg_available or max_available:
+            verify_blocks = _messenger_verify_block(tg_available, max_available) + verify_blocks
         if sms_available:
             verify_blocks = _sms_code_block() + verify_blocks
 
@@ -95,9 +107,9 @@ def render_register_page(request: Request) -> str:
         scripts += """
     <script src="/static/src/js/otp-code.js"></script>
     """
-    if tg_available:
+    if tg_available or max_available:
         scripts += """
-    <script src="/static/src/js/tg-verify.js"></script>
+    <script src="/static/src/js/verify-messenger.js"></script>
     """
 
     return f"""<!DOCTYPE html>

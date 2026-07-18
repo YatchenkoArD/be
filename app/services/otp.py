@@ -84,18 +84,27 @@ async def send_code(phone: str) -> dict:
 TG_STATUS_PENDING = "pending"
 TG_STATUS_CONFIRMED = "confirmed"
 
+# Каналы-мессенджеры: у обоих одна механика — бот просит «Поделиться
+# контактом», платформа отдаёт верифицированный номер, код не участвует.
+MESSENGER_CHANNELS = ("telegram", "max")
 
-def tg_deep_link(request_id: str) -> str:
-    """Ссылка, открывающая бота с токеном верификации."""
-    return f"https://t.me/{settings.TG_BOT_USERNAME}?start={request_id}"
+
+def messenger_deep_link(channel: str, request_id: str) -> str:
+    """Ссылка, открывающая бота канала с токеном верификации."""
+    if channel == "telegram":
+        return f"https://t.me/{settings.TG_BOT_USERNAME}?start={request_id}"
+    return f"https://max.ru/{settings.MAX_BOT_USERNAME}?start={request_id}"
 
 
-async def start_tg_verification(phone: str) -> dict:
-    """Создаёт ожидающую запись для подтверждения через Telegram-бота.
+async def start_messenger_verification(phone: str, channel: str) -> dict:
+    """Создаёт ожидающую запись для подтверждения через бота мессенджера.
 
     request_id (uuid4) — одновременно и токен deep link'а: энтропии больше,
     чем у SMS-кода, живёт OTP_TTL_MINUTES и одноразов.
     """
+    if channel not in MESSENGER_CHANNELS:
+        raise OTPError(f"Неизвестный канал подтверждения: {channel}")
+
     request_id = str(uuid.uuid4())
     try:
         r = get_redis()
@@ -104,7 +113,7 @@ async def start_tg_verification(phone: str) -> dict:
             key,
             mapping={
                 "phone_hash": _hash(phone),
-                "channel": "telegram",
+                "channel": channel,
                 "status": TG_STATUS_PENDING,
                 "attempts": 0,
             },
@@ -115,10 +124,15 @@ async def start_tg_verification(phone: str) -> dict:
 
     return {
         "request_id": request_id,
-        "deep_link": tg_deep_link(request_id),
+        "deep_link": messenger_deep_link(channel, request_id),
         "masked_phone": _mask_phone(phone),
         "expires_in_seconds": settings.OTP_TTL_MINUTES * 60,
     }
+
+
+async def start_tg_verification(phone: str) -> dict:
+    """Совместимость: телеграмовский канал через общий механизм."""
+    return await start_messenger_verification(phone, "telegram")
 
 
 def _tg_chat_key(phone: str) -> str:
@@ -157,14 +171,17 @@ async def pop_tg_chat_id(phone: str) -> int | None:
 
 
 async def get_tg_status(request_id: str) -> str:
-    """pending | confirmed | not_found (нет записи, истекла или не TG-канал)."""
+    """pending | confirmed | not_found (нет записи, истекла или не мессенджер).
+
+    Имя историческое (первый канал был Telegram) — обслуживает оба канала.
+    """
     try:
         r = get_redis()
         record = await r.hgetall(_key(request_id))
     except Exception as e:
         raise OTPError(f"Хранилище кодов недоступно: {e}") from e
 
-    if not record or record.get("channel") != "telegram":
+    if not record or record.get("channel") not in MESSENGER_CHANNELS:
         return "not_found"
     return record.get("status", TG_STATUS_PENDING)
 
@@ -187,9 +204,9 @@ async def verify_code(request_id: str, code: str, phone: str) -> bool:
     if not record or record.get("phone_hash") != _hash(phone):
         return False  # не найден, истёк по TTL или не тот номер
 
-    if record.get("channel") == "telegram":
-        # Подтверждение делает бот (contact.user_id == from_user.id и номер
-        # совпал) — здесь достаточно статуса; код в этом канале не участвует.
+    if record.get("channel") in MESSENGER_CHANNELS:
+        # Подтверждение делает бот (контакт принадлежит отправителю и номер
+        # совпал) — здесь достаточно статуса; код в этих каналах не участвует.
         if record.get("status") == TG_STATUS_CONFIRMED:
             await r.delete(key)
             return True

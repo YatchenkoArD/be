@@ -49,27 +49,38 @@ async def upload_avatar(
 
 
 @router.post("/salon/{salon_id}/photo")
-async def upload_salon_photo(
+async def upload_salon_photos(
     salon_id: int,
-    file: UploadFile = File(...),
+    files: list[UploadFile] = File(...),
     next: str = Form("/business/my-salon"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Фото в галерею салона. Право: manage_salon (владелец — всегда)."""
+    """Фото в галерею салона, можно НЕСКОЛЬКО за раз. Право: manage_salon.
+
+    Частичный успех честный: валидные файлы сохраняются, по каждому битому
+    возвращается своя причина — страница показывает и то и другое.
+    """
     salon = (await db.execute(select(Salon).where(Salon.id == salon_id))).scalar_one_or_none()
     if salon is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Салон не найден")
     await check_salon_permission(db, current_user, salon_id, "manage_salon")
 
-    try:
-        url = await save_image(file, "salons")
-    except UploadError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    saved, errors = [], []
+    for file in files:
+        try:
+            url = await save_image(file, "salons")
+        except UploadError as e:
+            errors.append({"file": file.filename or "файл", "detail": str(e)})
+            continue
+        db.add(SalonPhoto(salon_id=salon_id, url=url))
+        saved.append(url)
+    if saved:
+        await db.commit()
 
-    db.add(SalonPhoto(salon_id=salon_id, url=url))
-    await db.commit()
-    return RedirectResponse(url=_safe_next(next, "/business/my-salon"), status_code=302)
+    if not saved and errors:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=errors[0]["detail"])
+    return {"saved": saved, "errors": errors}
 
 
 @router.post("/salon/{salon_id}/photo/{photo_id}/delete")

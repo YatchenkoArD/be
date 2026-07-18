@@ -96,7 +96,7 @@ async def test_salon_photo_requires_permission(client, db_session):
     await _auth_client(client)
     r = await client.post(
         f"/api/v1/upload/salon/{salon.id}/photo",
-        files={"file": ("s.jpg", _jpeg_bytes(), "image/jpeg")},
+        files={"files": ("s.jpg", _jpeg_bytes(), "image/jpeg")},
     )
     assert r.status_code == 403
 
@@ -118,17 +118,24 @@ async def test_salon_photo_upload_and_delete_by_owner(client, db_session):
         await db.commit()
         salon_id = salon.id
 
+    # Несколько файлов за раз + честный частичный успех: битый отклоняется
     r = await client.post(
         f"/api/v1/upload/salon/{salon_id}/photo",
-        files={"file": ("s.jpg", _jpeg_bytes(), "image/jpeg")},
-        data={"next": "/business/my-salon"},
+        files=[
+            ("files", ("a.jpg", _jpeg_bytes(), "image/jpeg")),
+            ("files", ("b.jpg", _jpeg_bytes((640, 480), (10, 200, 90)), "image/jpeg")),
+            ("files", ("fake.jpg", b"not-an-image", "image/jpeg")),
+        ],
     )
-    assert r.status_code == 302
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert len(body["saved"]) == 2
+    assert len(body["errors"]) == 1 and body["errors"][0]["file"] == "fake.jpg"
 
     async with db_session() as db:
         photo = (await db.execute(
             select(SalonPhoto).where(SalonPhoto.salon_id == salon_id)
-        )).scalar_one()
+        )).scalars().first()
 
     r = await client.post(
         f"/api/v1/upload/salon/{salon_id}/photo/{photo.id}/delete",
@@ -139,4 +146,4 @@ async def test_salon_photo_upload_and_delete_by_owner(client, db_session):
         left = (await db.execute(
             select(SalonPhoto).where(SalonPhoto.salon_id == salon_id)
         )).scalars().all()
-        assert left == []
+        assert len(left) == 1  # из двух загруженных удалили одно

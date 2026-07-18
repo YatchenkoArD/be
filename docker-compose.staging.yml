@@ -81,6 +81,23 @@ services:
       disable: true
     restart: unless-stopped
 
+  # MAX-бот подтверждения номера (блок 18, этап 2): зеркало tg-bot.
+  # До MAX_BOT_TOKEN в .env.staging контейнер спит.
+  max-bot:
+    image: rumi-app:staging
+    container_name: rumi-staging-max-bot
+    env_file: .env.staging
+    command: ["python", "-m", "app.max_bot"]
+    environment:
+      ENVIRONMENT: production
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      disable: true
+    restart: unless-stopped
+
   arq-worker:
     image: rumi-app:staging
     container_name: rumi-staging-arq

@@ -44,15 +44,16 @@ async def render_my_salon_page(db: AsyncSession, salon: Salon, user=None, query_
     photos_section = f'''
             <!-- Фото салона -->
             <div class="card" style="margin-top: 2rem;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                    <h2 class="text-subtitle" style="font-size: 1.25rem;">Фото салона</h2>
-                    <form method="post" action="/api/v1/upload/salon/{salon.id}/photo" enctype="multipart/form-data" style="margin:0;display:flex;gap:0.5rem;align-items:center">
-                        <input type="file" name="file" accept="image/*" required style="font-size:0.85rem">
-                        <button type="submit" class="btn-primary" style="font-size:0.85rem;padding:0.5rem 1rem">Загрузить</button>
-                    </form>
+                <h2 class="text-subtitle" style="font-size: 1.25rem; margin-bottom: 1rem;">Фото салона</h2>
+                <div id="photoDropZone" data-upload-url="/api/v1/upload/salon/{salon.id}/photo"
+                     style="border:2px dashed var(--color-border);border-radius:0.75rem;padding:1.5rem;text-align:center;cursor:pointer;transition:all 0.2s;margin-bottom:1rem">
+                    <p style="margin:0;font-weight:500">Перетащите фото сюда или нажмите, чтобы выбрать</p>
+                    <p style="margin:0.25rem 0 0;font-size:0.8rem;color:var(--color-muted)">Можно несколько сразу · JPG/PNG до 5 МБ · появятся на странице салона</p>
                 </div>
-                <div style="display:flex;gap:0.75rem;flex-wrap:wrap">
-                    {photo_cards or '<p style="color:var(--color-muted);margin:0">Пока нет фотографий — они появятся на странице салона для клиентов</p>'}
+                <input type="file" id="photoFileInput" accept="image/*" multiple style="display:none">
+                <div id="photoUploadStatus"></div>
+                <div style="display:flex;gap:0.75rem;flex-wrap:wrap;margin-top:0.5rem">
+                    {photo_cards or '<p style="color:var(--color-muted);margin:0">Пока нет фотографий</p>'}
                 </div>
             </div>'''
     error_banner = ""
@@ -487,6 +488,7 @@ async def render_my_salon_page(db: AsyncSession, salon: Salon, user=None, query_
 
     {render_footer(user)}
 
+    <script src="/static/src/js/salon-photos.js"></script>
     <script>
     function editMaster(id, name, spec, exp) {{
         document.getElementById('editMasterId').value = id;

@@ -103,14 +103,49 @@ async def start_tg_verification(
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e))
 
 
+@router.post("/register/max-start")
+@limiter.limit("3/minute")
+async def start_max_verification(
+    request: Request,
+    data: SendCodeRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """Начинает подтверждение телефона через MAX-бота (блок 18, этап 2)."""
+    if not settings.MAX_VERIFY_ENABLED:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Подтверждение через MAX выключено",
+        )
+
+    existing = await db.execute(select(User).where(User.phone == data.phone))
+    if existing.scalar_one_or_none():
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Пользователь с таким номером уже зарегистрирован",
+        )
+
+    # Общий с остальными каналами бюджет попыток на номер
+    if not await otp_send_allowed(data.phone):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Слишком много попыток подтверждения этого номера, попробуйте позже",
+        )
+
+    try:
+        return await otp.start_messenger_verification(data.phone, "max")
+    except otp.OTPError as e:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e))
+
+
 @router.get("/register/tg-status")
 @limiter.limit("30/minute")
 async def tg_verification_status(request: Request, request_id: str):
-    """Статус TG-подтверждения для поллинга страницей: pending|confirmed|not_found."""
-    if not settings.TG_VERIFY_ENABLED:
+    """Статус подтверждения (Telegram И MAX — имя историческое) для поллинга:
+    pending|confirmed|not_found."""
+    if not (settings.TG_VERIFY_ENABLED or settings.MAX_VERIFY_ENABLED):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Подтверждение через Telegram выключено",
+            detail="Подтверждение через мессенджеры выключено",
         )
     try:
         return {"status": await otp.get_tg_status(request_id)}

@@ -44,27 +44,36 @@ document.addEventListener('DOMContentLoaded', function() {
         avatarInput.addEventListener('change', async function(e) {
             const file = e.target.files[0];
             if (!file) return;
+            // Мгновенное превью + индикатор, пока грузится
+            const container = document.getElementById('profile-avatar-container');
+            {
+                const letter = container.querySelector('.profile-avatar-letter');
+                if (letter) letter.remove();
+                let img = container.querySelector('img');
+                if (!img) { img = document.createElement('img'); container.prepend(img); }
+                img.src = URL.createObjectURL(file);
+                img.style.opacity = '0.5';
+            }
+            avatarEditBtn.disabled = true;
             const formData = new FormData();
             formData.append('file', file);
             try {
                 const res = await fetch('/api/v1/upload/avatar', { method: 'POST', body: formData });
                 const data = await res.json();
+                const img = container.querySelector('img');
                 if (!res.ok) {
+                    if (img) img.remove();
                     alert(data.detail || 'Не удалось загрузить фото');
                     return;
                 }
-                const container = document.getElementById('profile-avatar-container');
-                const letter = container.querySelector('.profile-avatar-letter');
-                if (letter) letter.remove();
-                let img = container.querySelector('img');
-                if (!img) {
-                    img = document.createElement('img');
-                    container.prepend(img);
-                }
                 img.src = data.url + '?t=' + Date.now();
+                img.style.opacity = '';
             } catch (err) {
+                const img = container.querySelector('img');
+                if (img) img.remove();
                 alert('Сеть недоступна, попробуйте ещё раз');
             } finally {
+                avatarEditBtn.disabled = false;
                 avatarInput.value = '';
             }
         });
