@@ -4,20 +4,23 @@ from sqlalchemy import select
 from datetime import datetime, timedelta
 
 from app.models.models import Booking, BookingStatus, Service as ServiceModel, User as UserModel
+from app.web.components.icons import (
+    ICON_CALENDAR_DAYS,
+    ICON_USER_CHECK,
+    ICON_FILTER,
+)
 
 STATUS_LABELS = {
-    BookingStatus.PENDING: ("Ожидает", "#f59e0b"),
-    BookingStatus.CONFIRMED: ("Подтверждена", "#3b82f6"),
-    BookingStatus.COMPLETED: ("Завершена", "#22c55e"),
-    BookingStatus.CANCELLED: ("Отменена", "#9ca3af"),
-    BookingStatus.NO_SHOW: ("Неявка", "#ef4444"),
+    BookingStatus.PENDING: ("Ожидает", "pending"),
+    BookingStatus.CONFIRMED: ("Подтверждена", "confirmed"),
+    BookingStatus.COMPLETED: ("Завершена", "completed"),
+    BookingStatus.CANCELLED: ("Отменена", "cancelled"),
+    BookingStatus.NO_SHOW: ("Неявка", "no_show"),
 }
 
 
 async def render_records_tab(db: AsyncSession, salon, masters, master_ids, filters: dict) -> str:
-    """Вкладка «Записи» — полный список броней салона с фильтрами.
-    filters: {master_id, status, date_from, date_to} — все опциональны,
-    приходят строками из query-параметров дашборда (см. views.py/dashboard.py)."""
+    """Вкладка «Записи» — полный список броней салона с фильтрами."""
 
     today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
     default_from = today - timedelta(days=30)
@@ -71,21 +74,17 @@ async def render_records_tab(db: AsyncSession, salon, masters, master_ids, filte
 
     rows_html = ""
     for b, s in rows_data:
-        label, color = STATUS_LABELS.get(b.status, (b.status.value, "#9ca3af"))
+        label, status_class = STATUS_LABELS.get(b.status, (b.status.value, "cancelled"))
         price = f"{(b.final_price or s.price):,}".replace(",", " ")
         needs_badge = b.status == BookingStatus.COMPLETED and not b.consumption_reported
-        badge = (
-            '<span style="background:#FEF3C7;color:#92400E;border-radius:1rem;padding:0.125rem 0.6rem;'
-            'font-size:0.7rem;font-weight:600;margin-left:0.5rem">не списано</span>'
-            if needs_badge else ""
-        )
+        badge = f'<span class="not-reported-badge">не списано</span>' if needs_badge else ""
         rows_html += f"""
         <tr>
             <td>{b.start_time.strftime('%d.%m.%Y %H:%M')}</td>
             <td>{clients_by_id.get(b.client_id, '—')}</td>
             <td>{master_user_names.get(b.master_id, '—')}</td>
             <td>{s.name}</td>
-            <td><span style="color:{color};font-weight:600">{label}</span>{badge}</td>
+            <td><span class="status-badge {status_class}">{label}</span>{badge}</td>
             <td>{price} ₽</td>
         </tr>"""
 
@@ -100,42 +99,51 @@ async def render_records_tab(db: AsyncSession, salon, masters, master_ids, filte
 
     return f"""
     <div id="tab-records" class="tab-content">
-        <form method="get" action="/business/dashboard" style="display:flex;gap:0.75rem;flex-wrap:wrap;align-items:flex-end;margin-bottom:1.5rem">
+        <form method="get" action="/business/dashboard" class="records-filters">
             <input type="hidden" name="salon_id" value="{salon.id}">
             <input type="hidden" name="tab" value="records">
-            <div>
-                <label class="text-muted" style="display:block;font-size:0.75rem;margin-bottom:0.25rem">С даты</label>
-                <input type="date" name="date_from" value="{date_from.strftime('%Y-%m-%d')}" style="padding:0.5rem;border:1px solid var(--color-border);border-radius:0.5rem">
+            
+            <div class="filter-group">
+                <label for="date_from">С даты</label>
+                <input type="date" id="date_from" name="date_from" value="{date_from.strftime('%Y-%m-%d')}">
             </div>
-            <div>
-                <label class="text-muted" style="display:block;font-size:0.75rem;margin-bottom:0.25rem">По дату</label>
-                <input type="date" name="date_to" value="{(date_to - timedelta(days=1)).strftime('%Y-%m-%d')}" style="padding:0.5rem;border:1px solid var(--color-border);border-radius:0.5rem">
+            <div class="filter-group">
+                <label for="date_to">По дату</label>
+                <input type="date" id="date_to" name="date_to" value="{(date_to - timedelta(days=1)).strftime('%Y-%m-%d')}">
             </div>
-            <div>
-                <label class="text-muted" style="display:block;font-size:0.75rem;margin-bottom:0.25rem">Мастер</label>
-                <select name="master_id" style="padding:0.5rem;border:1px solid var(--color-border);border-radius:0.5rem">
+            <div class="filter-group">
+                <label for="master_id">Мастер</label>
+                <select id="master_id" name="master_id">
                     <option value="">Все мастера</option>
                     {master_options}
                 </select>
             </div>
-            <div>
-                <label class="text-muted" style="display:block;font-size:0.75rem;margin-bottom:0.25rem">Статус</label>
-                <select name="status" style="padding:0.5rem;border:1px solid var(--color-border);border-radius:0.5rem">
+            <div class="filter-group">
+                <label for="status">Статус</label>
+                <select id="status" name="status">
                     <option value="">Все статусы</option>
                     {status_options}
                 </select>
             </div>
-            <button type="submit" class="btn-outline">Применить</button>
+            <button type="submit" class="btn-outline">{ICON_FILTER} Применить</button>
         </form>
 
-        <div class="card" style="overflow-x:auto">
+        <div class="card records-table-wrap">
             <table>
                 <thead>
-                    <tr><th>Дата</th><th>Клиент</th><th>Мастер</th><th>Услуга</th><th>Статус</th><th>Сумма</th></tr>
+                    <tr>
+                        <th>{ICON_CALENDAR_DAYS} Дата</th>
+                        <th>{ICON_USER_CHECK} Клиент</th>
+                        <th>Мастер</th>
+                        <th>Услуга</th>
+                        <th>Статус</th>
+                        <th>Сумма</th>
+                    </tr>
                 </thead>
                 <tbody>
                     {rows_html or '<tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--color-muted)">Записей за период нет</td></tr>'}
                 </tbody>
             </table>
         </div>
-    </div>"""
+    </div>
+    """

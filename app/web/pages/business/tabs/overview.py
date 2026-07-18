@@ -12,6 +12,9 @@ from app.web.components.icons import (
     ICON_ARROW_UP_RIGHT,
     ICON_USER_CHECK,
     ICON_CLOCK,
+    ICON_X,
+    ICON_DOLLAR_SIGN,
+    ICON_CREDIT_CARD_SMALL,
 )
 
 
@@ -46,8 +49,9 @@ async def render_overview_tab(
         )
         clients_count = clients_result.scalar() or 0
     
-    # --- Данные для JS (модальное окно) ---
+    # --- Данные для JS (аккордеон) ---
     week_ops_serialized = []
+    total_bookings_week = 0
     for i in range(7):
         day_ops = []
         for booking, service, client in week_operations[i]:
@@ -61,9 +65,13 @@ async def render_overview_tab(
                 "client": {"full_name": client.full_name, "phone": client.phone}
             })
         week_ops_serialized.append(day_ops)
+        total_bookings_week += len(day_ops)
     
     week_operations_json = json.dumps(week_ops_serialized, ensure_ascii=False)
     days_json = json.dumps(days, ensure_ascii=False)
+    
+    # Средний чек за неделю
+    avg_check = total_revenue // max(total_bookings_week, 1) if total_bookings_week > 0 else 0
     
     # --- 1. КАРТОЧКИ СТАТИСТИКИ (4 карточки как в образце) ---
     stats_cards = f"""
@@ -118,34 +126,39 @@ async def render_overview_tab(
     </div>
     """
 
-    # --- 2. ВЫРУЧКА ЗА НЕДЕЛЮ (график с модальным окном) ---
+    # --- 2. ВЫРУЧКА ЗА НЕДЕЛЮ (график с аккордеоном) ---
     max_revenue = max(max(revenue_data.values()) if revenue_data else 1, 1)
     revenue_bars = ""
     for i in range(7):
-        height = int(revenue_data[i] / max_revenue * 130) if max_revenue > 0 else 5
-        prev_height = int(prev_revenue_data[i] / max_revenue * 130) if max_revenue > 0 else 5
+        height = int(revenue_data[i] / max_revenue * 150) if max_revenue > 0 else 5
         is_highest = revenue_data[i] == max(revenue_data.values()) if revenue_data else False
         rev_val = f"{revenue_data[i]}".replace(",", " ")
         bar_color = "#059669" if is_highest else "#34d399"
         bar_bg = f"background: linear-gradient(to top, {bar_color}, {bar_color}cc);"
         revenue_bars += f"""
-        <div class="chart-column" onclick="showDayDetails({i}, '{days[i]}', {revenue_data[i]}, {prev_revenue_data[i]})" style="cursor:pointer">
+        <div class="chart-column" data-day-index="{i}" onclick="toggleDayDetails({i}, '{days[i]}', {revenue_data[i]}, {prev_revenue_data[i]})" style="cursor:pointer">
             <div class="chart-value">{rev_val} ₽</div>
             <div class="chart-fill {'highest' if is_highest else ''}" style="height:{max(height, 5)}px; {bar_bg}"></div>
             <span class="chart-label">{days[i]}</span>
         </div>"""
-    
-    avg_check = total_revenue // max(sum(revenue_data.values()), 1) if sum(revenue_data.values()) > 0 else 0
+
+    # Контейнер для аккордеона (детали дня)
+    accordion_html = f"""
+    <div class="day-accordion" id="dayAccordion" style="display:none;">
+        <div class="day-accordion-header">
+            <h4 id="accordionDayTitle">Операции за день</h4>
+            <span id="accordionDaySummary" class="text-muted"></span>
+            <button class="accordion-close" onclick="closeDayDetails()">{ICON_X}</button>
+        </div>
+        <div id="accordionDayOperations" class="day-accordion-body"></div>
+    </div>
+    """
 
     revenue_html = f"""
     <div class="chart-wrapper">
         <div class="chart-header">
-            <h3>💰 Выручка за неделю</h3>
+            <h3>{ICON_DOLLAR_SIGN} Выручка за неделю</h3>
             <span class="chart-total">Общая: {total_revenue:,} ₽</span>
-        </div>
-        <div class="legend">
-            <span><span class="legend-dot" style="background:#34d399;"></span> Эта неделя</span>
-            <span><span class="legend-dot" style="background:var(--color-border);"></span> Прошлая неделя</span>
         </div>
         <div class="chart-bar">{revenue_bars}</div>
         <div class="kpi-row">
@@ -153,24 +166,12 @@ async def render_overview_tab(
             <span><span class="kpi-label">Динамика: </span><strong style="color:{revenue_color}">{revenue_trend} {abs(revenue_diff):,} ₽</strong></span>
         </div>
         <p style="font-size:0.7rem;color:var(--color-muted);text-align:center;margin-top:0.75rem">Нажмите на столбец, чтобы увидеть детали дня</p>
+        
+        {accordion_html}
     </div>
     """
 
-    # --- 3. МОДАЛЬНОЕ ОКНО ---
-    modal_html = f"""
-    <div class="modal-overlay" id="dayDetailsModal">
-        <div class="modal-box">
-            <button class="modal-close" onclick="closeDayDetails()">&times;</button>
-            <div id="dayDetailsContent">
-                <h2 id="modalDayTitle">Операции за день</h2>
-                <p id="modalDaySummary" class="text-muted"></p>
-                <div id="modalDayOperations" class="space-y-3"></div>
-            </div>
-        </div>
-    </div>
-    """
-
-    # --- 4. СЕГОДНЯ ---
+    # --- 3. СЕГОДНЯ ---
     today_items = ""
     if today_bookings_list:
         for booking, service, client in today_bookings_list:
@@ -211,7 +212,7 @@ async def render_overview_tab(
     </div>
     """
 
-    # --- 5. Собираем всё ---
+    # --- 4. Собираем всё ---
     return f"""
     <div id="tab-overview" class="tab-content">
         {stats_cards}
@@ -220,26 +221,31 @@ async def render_overview_tab(
             {revenue_html}
             {today_html}
         </div>
-        
-        {modal_html}
     </div>
 
     <script>
         const weekOperations = {week_operations_json};
         const days = {days_json};
+        let currentOpenDay = null;
 
-        function showDayDetails(index, dayName, revenue, prevRevenue) {{
+        function toggleDayDetails(index, dayName, revenue, prevRevenue) {{
+            const accordion = document.getElementById('dayAccordion');
+            const title = document.getElementById('accordionDayTitle');
+            const summary = document.getElementById('accordionDaySummary');
+            const container = document.getElementById('accordionDayOperations');
+            
+            // Если уже открыт этот же день — закрываем
+            if (currentOpenDay === index && accordion.style.display !== 'none') {{
+                closeDayDetails();
+                return;
+            }}
+            
             const ops = weekOperations[index] || [];
-            const modal = document.getElementById('dayDetailsModal');
-            const title = document.getElementById('modalDayTitle');
-            const summary = document.getElementById('modalDaySummary');
-            const container = document.getElementById('modalDayOperations');
-
             title.textContent = `Операции за ${{dayName}}`;
             const totalOps = ops.length;
             const paidCount = ops.filter(o => o.status === 'completed').length;
             summary.textContent = `${{totalOps}} операций • ${{revenue.toLocaleString()}} ₽ • Оплачено: ${{paidCount}}/${{totalOps}}`;
-
+            
             container.innerHTML = '';
             if (totalOps === 0) {{
                 container.innerHTML = '<p class="text-muted">Нет операций за этот день</p>';
@@ -251,7 +257,6 @@ async def render_overview_tab(
                     const statusClass = op.status === 'completed' ? 'status-paid' : 'status-waiting';
                     const initials = op.client.full_name ? op.client.full_name.split(' ').map(n => n[0]).join('') : 'К';
                     const method = op.payment_method || 'Карта';
-                    const methodIcon = method === 'Наличные' ? '💵' : method === 'СБП' ? '📱' : '💳';
                     
                     const item = document.createElement('div');
                     item.className = 'booking-item';
@@ -265,25 +270,24 @@ async def render_overview_tab(
                         </div>
                         <div class="price">${{price}} ₽</div>
                         <div style="display:flex;align-items:center;gap:0.5rem;flex-shrink:0">
-                            <span style="font-size:0.7rem;color:var(--color-muted)">${{methodIcon}} ${{method}}</span>
+                            <span style="font-size:0.7rem;color:var(--color-muted)">${{method}}</span>
                             <span class="status ${{statusClass}}">${{statusLabel}}</span>
                         </div>
                     `;
                     container.appendChild(item);
                 }});
             }}
-
-            modal.classList.add('active');
+            
+            accordion.style.display = 'block';
+            accordion.scrollIntoView({{ behavior: 'smooth', block: 'nearest' }});
+            currentOpenDay = index;
         }}
-
+        
         function closeDayDetails() {{
-            document.getElementById('dayDetailsModal').classList.remove('active');
+            document.getElementById('dayAccordion').style.display = 'none';
+            currentOpenDay = null;
         }}
-
-        document.getElementById('dayDetailsModal').addEventListener('click', function(e) {{
-            if (e.target === this) closeDayDetails();
-        }});
-
+        
         document.addEventListener('keydown', function(e) {{
             if (e.key === 'Escape') closeDayDetails();
         }});

@@ -394,8 +394,6 @@ def render_profile_page(user=None, master_profile=None, salon=None, stats=None, 
         </div>
         {render_footer(user)}
     </main>
-
-    <script src="/static/src/js/profile.js"></script>
 </body>
 </html>"""
     return html

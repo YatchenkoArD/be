@@ -213,7 +213,6 @@ async def render_salon_detail(db: AsyncSession, salon_id: int, user=None) -> str
                         <span>⭐ {m.rating or 0.0:.1f}</span>
                     </div>
                 </div>
-<<<<<<< HEAD
                 <div class="form-group">
                     <label>Комментарий:</label>
                     <textarea name="comment" rows="3" placeholder="Расскажите о вашем впечатлении..." style="width:100%;padding:0.75rem;border:1px solid var(--color-border);border-radius:0.5rem;resize:vertical"></textarea>
@@ -310,8 +309,6 @@ async def render_salon_detail(db: AsyncSession, salon_id: int, user=None) -> str
                 </div>
                 {loyalty_html}
                 <p style="margin-top:0.75rem;color:var(--color-body)">{salon.description or ''}</p>
->>>>>>> origin/main
-=======
             </div>
 
             <h3 style="margin: 1.5rem 0 1rem; font-weight:600;">Выберите услугу:</h3>
@@ -322,7 +319,6 @@ async def render_salon_detail(db: AsyncSession, salon_id: int, user=None) -> str
             <div class="slots-container hidden" id="detail-slots-{m.id}">
                 <div class="slots-title" id="detail-slots-title-{m.id}"></div>
                 <div class="slots-grid" id="detail-slot-grid-{m.id}"></div>
->>>>>>> origin/staging
             </div>
         </div>
         """

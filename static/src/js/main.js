@@ -14,3 +14,7 @@ import './business/dashboard.js';
 import './business/tabs/overview.js';
 import './verify-messenger.js';
 import './salon-photos.js';
+import './business/tabs/schedule.js';
+import './business/tabs/employees.js';
+import './business/tabs/records.js';
+import './my-salon.js';

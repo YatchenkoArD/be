@@ -350,10 +350,7 @@ async def render_business_dashboard(db: AsyncSession, user, salon: Salon, member
             {tabs_body_html}
         </div>
     </main>
-
     {render_footer(user)}
-
-    <script src="/static/src/js/business/dashboard.js"></script>
 </body>
 </html>"""
     return html
