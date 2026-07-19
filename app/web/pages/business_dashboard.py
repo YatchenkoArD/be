@@ -278,7 +278,7 @@ async def render_business_dashboard(db: AsyncSession, user, salon: Salon) -> str
                     <div class="stat-card"><div class="stat-value">{services_count}</div><div class="stat-label">Услуг</div></div>
                     <div class="stat-card"><div class="stat-value">{today_bookings}</div><div class="stat-label">Записей сегодня</div></div>
                     <div class="stat-card"><div class="stat-value">{len(promotions)}</div><div class="stat-label">Акций</div></div>
-                    <div class="stat-card"><div class="stat-value">⭐ {salon.rating}</div><div class="stat-label">Рейтинг</div></div>
+                    <div class="stat-card"><div class="stat-value">{salon.rating}</div><div class="stat-label">Рейтинг</div></div>
                     <div class="stat-card"><div class="stat-value">{salon.reviews_count}</div><div class="stat-label">Отзывов</div></div>
                 </div>
                 

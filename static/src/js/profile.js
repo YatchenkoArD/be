@@ -1,7 +1,7 @@
 // static/src/js/profile.js
 
 document.addEventListener('DOMContentLoaded', function() {
-    // Редактирование профиля
+    // === РЕДАКТИРОВАНИЕ ПРОФИЛЯ ===
     const editToggle = document.getElementById('profile-edit-toggle');
     if (editToggle) {
         const viewMode = document.getElementById('profile-view');
@@ -31,7 +31,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
 
-        // Загрузка аватара
+        // === ЗАГРУЗКА АВАТАРА ===
         const avatarEditBtn = document.getElementById('profile-avatar-edit');
         const avatarInput = document.getElementById('profile-avatar-input');
         const avatarContainer = document.getElementById('profile-avatar-container');
@@ -52,33 +52,40 @@ document.addEventListener('DOMContentLoaded', function() {
             avatarInput.addEventListener('change', async function(e) {
                 const file = e.target.files[0];
                 if (!file) return;
-                // Мгновенное превью + индикатор, пока грузится
+
+                // Мгновенное превью + индикатор загрузки
                 const container = document.getElementById('profile-avatar-container');
-                {
-                    const letter = container.querySelector('.profile-avatar-letter');
-                    if (letter) letter.remove();
-                    let img = container.querySelector('img');
-                    if (!img) { img = document.createElement('img'); container.prepend(img); }
-                    img.src = URL.createObjectURL(file);
-                    img.style.opacity = '0.5';
-                }
+                const oldImg = container.querySelector('img');
+                if (oldImg) oldImg.remove();
+                const letter = container.querySelector('.profile-avatar-letter');
+                if (letter) letter.style.display = 'none';
+
+                const img = document.createElement('img');
+                img.src = URL.createObjectURL(file);
+                img.style.opacity = '0.5';
+                container.prepend(img);
+
                 avatarEditBtn.disabled = true;
                 const formData = new FormData();
                 formData.append('file', file);
+
                 try {
-                    const res = await fetch('/api/v1/upload/avatar', { method: 'POST', body: formData });
+                    const res = await fetch('/api/v1/upload/avatar', {
+                        method: 'POST',
+                        body: formData
+                    });
                     const data = await res.json();
-                    const img = container.querySelector('img');
                     if (!res.ok) {
-                        if (img) img.remove();
+                        img.remove();
+                        if (letter) letter.style.display = '';
                         alert(data.detail || 'Не удалось загрузить фото');
                         return;
                     }
                     img.src = data.url + '?t=' + Date.now();
                     img.style.opacity = '';
                 } catch (err) {
-                    const img = container.querySelector('img');
-                    if (img) img.remove();
+                    img.remove();
+                    if (letter) letter.style.display = '';
                     alert('Сеть недоступна, попробуйте ещё раз');
                 } finally {
                     avatarEditBtn.disabled = false;
@@ -88,9 +95,9 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    // === НАСТРОЙКИ (Тема, уведомления, аккордеон, формы, удаление) ===
 
-    // Настройки
-    // === Тема ===
+    // Тема
     const themeButtons = document.querySelectorAll('.theme-btn');
     const savedTheme = localStorage.getItem('theme') || 'light';
     applyTheme(savedTheme);
@@ -110,7 +117,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // === Уведомления ===
+    // Уведомления
     const notifyBookings = document.getElementById('notify-bookings');
     const notifyPromotions = document.getElementById('notify-promotions');
     const notifyMethod = document.getElementById('notify-method');
@@ -139,7 +146,7 @@ document.addEventListener('DOMContentLoaded', function() {
         } catch (e) {}
     }
 
-    // === Аккордеон ===
+    // Аккордеон
     const accordionHeaders = document.querySelectorAll('.accordion-header');
     accordionHeaders.forEach(header => {
         header.addEventListener('click', function() {
@@ -150,7 +157,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // === Формы смены данных ===
+    // Формы смены данных
     const accordionForms = document.querySelectorAll('.accordion-form');
     accordionForms.forEach(form => {
         form.addEventListener('submit', function(e) {
@@ -164,7 +171,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // === Удаление аккаунта ===
+    // Удаление аккаунта
     const deleteBtn = document.getElementById('delete-account-btn');
     if (deleteBtn) {
         deleteBtn.addEventListener('click', function() {

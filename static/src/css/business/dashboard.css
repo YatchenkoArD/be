@@ -1,0 +1,382 @@
+/* static/src/css/business/dashboard.css */
+
+/* ===== Верхняя шапка ===== */
+.dashboard-header {
+    background: var(--color-surface);
+    border-bottom: 1px solid var(--color-border);
+    height: 72px; 
+    display: flex;
+    align-items: center;
+    padding: 0;
+}
+
+.dashboard-header-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    height: 100%;
+}
+
+@media (min-width: 641px) {
+    .dashboard-header-inner {
+        margin-left: 230px;
+        margin-right: 50px;
+    }
+}
+
+@media (max-width: 640px) {
+    .dashboard-header {
+        margin-top: 100px;
+    }
+    .dashboard-header-inner {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.25rem;
+        padding-left: 1.5rem;
+        height: auto;
+        padding-top: 0.5rem;
+        padding-bottom: 0.5rem;
+    }
+}
+
+.dashboard-header h1 {
+    font-family: var(--font-heading);
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--color-heading);
+    margin: 0;
+    line-height: 1.2;
+}
+
+.dashboard-header p {
+    font-family: var(--font-body);
+    font-size: 0.75rem;
+    color: var(--color-muted);
+    margin: 0;
+}
+
+.dashboard-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: 2rem;
+    background: rgba(255,255,255,0.15);
+    backdrop-filter: blur(4px);
+    font-size: 0.7rem;
+    font-weight: 500;
+    color: var(--color-heading);
+    border: 1px solid var(--color-border);
+    white-space: nowrap;
+    height: 2rem; 
+}
+.dashboard-badge svg {
+    width: 0.9rem;
+    height: 0.9rem;
+    color: var(--color-primary);
+}
+
+/* ===== Навигация вкладок (только для бизнес-панели) ===== */
+.dashboard-page .tab-nav {
+    display: flex;
+    gap: 0.5rem;
+    border-bottom: 1px solid var(--color-border);
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+    padding-bottom: 0.5rem;
+}
+
+.dashboard-page .tab-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.6rem 1.2rem;
+    border: none;
+    border-radius: 2rem;
+    background: transparent;
+    cursor: pointer;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--color-muted);
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+.dashboard-page .tab-btn:hover {
+    background: var(--color-surface-alt);
+    color: var(--color-heading);
+}
+.dashboard-page .tab-btn.active {
+    background: linear-gradient(135deg, var(--color-primary), var(--color-accent-hover));
+    color: var(--color-btn-text);
+}
+.dashboard-page .tab-btn svg {
+    width: 1.25rem;
+    height: 1.25rem;
+    flex-shrink: 0;
+}
+
+/* ===== Общие карточки и таблицы ===== */
+.dashboard-page .tab-content {
+    display: none;
+}
+.dashboard-page .tab-content.active {
+    display: block;
+}
+
+.dashboard-page .stat-card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 1rem;
+    padding: 1.25rem;
+    text-align: center;
+    transition: box-shadow 0.2s;
+}
+.dashboard-page .stat-card:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+.dashboard-page .stat-value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--color-primary);
+}
+.dashboard-page .stat-label {
+    font-size: 0.85rem;
+    color: var(--color-muted);
+    margin-top: 0.25rem;
+}
+
+.dashboard-page .promo-badge {
+    display: inline-block;
+    border-radius: 2rem;
+    padding: 0.125rem 0.5rem;
+    font-size: 0.625rem;
+    font-weight: 700;
+    color: white;
+    background: linear-gradient(135deg, var(--color-primary), var(--color-accent));
+}
+
+.dashboard-page table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+.dashboard-page th {
+    text-align: left;
+    padding: 0.75rem;
+    border-bottom: 2px solid var(--color-border);
+    font-weight: 600;
+    color: var(--color-heading);
+    white-space: nowrap;
+}
+.dashboard-page td {
+    padding: 0.75rem;
+    border-bottom: 1px solid var(--color-border);
+    vertical-align: middle;
+}
+
+/* ===== Графики ===== */
+.dashboard-page .chart-bar {
+    height: 180px;
+    display: flex;
+    align-items: flex-end;
+    gap: 0.75rem;
+    padding: 0.5rem 0;
+}
+.dashboard-page .chart-column {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+    min-width: 32px;
+}
+.dashboard-page .chart-fill {
+    width: 100%;
+    max-width: 3rem;
+    border-radius: 0.375rem 0.375rem 0 0;
+    background: linear-gradient(to top, var(--color-primary), var(--color-accent));
+    transition: height 0.3s;
+}
+.dashboard-page .chart-fill.highest {
+    background: linear-gradient(to top, #22c55e, #4ade80);
+}
+.dashboard-page .chart-fill.prev {
+    background: var(--color-border);
+    opacity: 0.5;
+}
+.dashboard-page .chart-label {
+    font-size: 0.7rem;
+    color: var(--color-muted);
+}
+.dashboard-page .chart-value {
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: var(--color-heading);
+    white-space: nowrap;
+}
+
+/* ===== KPI ===== */
+.dashboard-page .analytics-kpi {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+.dashboard-page .kpi-card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 1rem;
+    padding: 1.25rem 1.5rem;
+}
+.dashboard-page .kpi-value {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--color-heading);
+}
+.dashboard-page .kpi-label {
+    font-size: 0.8rem;
+    color: var(--color-muted);
+}
+.dashboard-page .kpi-trend {
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.dashboard-page .legend {
+    display: flex;
+    gap: 1.5rem;
+    align-items: center;
+    margin-bottom: 1rem;
+    font-size: 0.85rem;
+}
+.dashboard-page .legend-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+    display: inline-block;
+    margin-right: 0.3rem;
+}
+
+.dashboard-page .grid-3 {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 1rem;
+}
+.dashboard-page .grid-2 {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+}
+
+.dashboard-page .card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 1rem;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    transition: box-shadow 0.2s;
+}
+.dashboard-page .card:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+}
+
+.dashboard-page .rating-summary {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+}
+.dashboard-page .rating-big {
+    font-size: 3rem;
+    font-weight: 800;
+    color: var(--color-primary);
+    line-height: 1;
+}
+
+/* ===== Сегодняшние записи ===== */
+.dashboard-page .booking-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    border-radius: 0.75rem;
+    border: 1px solid var(--color-border);
+    background: var(--color-surface-alt);
+}
+.dashboard-page .booking-item .avatar {
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--color-primary), var(--color-accent));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 700;
+    font-size: 0.8rem;
+    flex-shrink: 0;
+}
+.dashboard-page .booking-item .info {
+    flex: 1;
+    min-width: 0;
+}
+.dashboard-page .booking-item .info .name {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--color-heading);
+}
+.dashboard-page .booking-item .info .desc {
+    font-size: 0.75rem;
+    color: var(--color-muted);
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+.dashboard-page .booking-item .price {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--color-heading);
+    text-align: right;
+}
+.dashboard-page .booking-item .status {
+    font-size: 0.7rem;
+    font-weight: 500;
+}
+.dashboard-page .status-paid { color: #22c55e; }
+.dashboard-page .status-waiting { color: #f59e0b; }
+
+/* ===== Сайдбар на бизнес-панели ===== */
+.dashboard-page .sidebar-container {
+    display: flex !important;
+    transform: translateX(100%) !important;
+    transition: transform 0.3s ease;
+}
+
+.dashboard-page .sidebar-container.open {
+    transform: translateX(0) !important;
+}
+
+.dashboard-page #header-burger {
+    display: flex;
+}
+
+.dashboard-page main {
+    margin-right: 0 !important;
+}
+
+.dashboard-page .sidebar-overlay {
+    display: block !important;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+}
+
+.dashboard-page .sidebar-overlay.active {
+    opacity: 1;
+    pointer-events: auto;
+}

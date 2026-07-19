@@ -1,0 +1,399 @@
+/* static/src/css/pages/my-salon.css */
+
+.my-salon-main {
+    margin-right: 16rem;
+    padding-top: 100px;
+}
+
+@media (max-width: 1023px) {
+    .my-salon-main {
+        margin-right: 0;
+        padding-top: 80px;
+    }
+}
+
+.my-salon-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.my-salon-header h1 {
+    font-family: var(--font-heading);
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--color-heading);
+    margin: 0;
+}
+
+.my-salon-header p {
+    color: var(--color-muted);
+    margin: 0.25rem 0 0;
+}
+
+/* Карточки */
+.my-salon-card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 1rem;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.my-salon-card-title {
+    font-family: var(--font-heading);
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--color-heading);
+    margin-bottom: 1.5rem;
+}
+
+.my-salon-card-hint {
+    color: var(--color-muted);
+    font-size: 0.875rem;
+    margin-bottom: 1rem;
+}
+
+/* Сетка 2 колонки */
+.my-salon-grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+@media (max-width: 640px) {
+    .my-salon-grid-2 {
+        grid-template-columns: 1fr;
+    }
+}
+
+.my-salon-grid-2 > div {
+    display: flex;
+    flex-direction: column;
+}
+
+.my-salon-grid-2 label {
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+    color: var(--color-heading);
+}
+
+.my-salon-grid-2 input,
+.my-salon-grid-2 textarea {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.5rem;
+    font-size: 0.95rem;
+    background: var(--color-surface);
+    color: var(--color-heading);
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.my-salon-grid-2 input:focus,
+.my-salon-grid-2 textarea:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(192, 129, 184, 0.15);
+}
+
+.my-salon-textarea {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.5rem;
+    font-size: 0.95rem;
+    background: var(--color-surface);
+    color: var(--color-heading);
+    resize: vertical;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.my-salon-textarea:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(192, 129, 184, 0.15);
+}
+
+/* Часы работы */
+.my-salon-hours-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--color-border);
+    flex-wrap: wrap;
+}
+
+.my-salon-hours-row .day-label {
+    width: 130px;
+    font-size: 0.875rem;
+    color: var(--color-heading);
+}
+
+.my-salon-hours-row .closed-label {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.8rem;
+    color: var(--color-muted);
+    width: 110px;
+    cursor: pointer;
+}
+
+.my-salon-hours-row input[type="time"] {
+    padding: 0.4rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.5rem;
+    background: var(--color-surface);
+    color: var(--color-heading);
+}
+
+.my-salon-hours-row input[type="time"]:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.my-salon-hours-row .time-sep {
+    color: var(--color-muted);
+}
+
+/* Таблицы */
+.my-salon-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.my-salon-table th {
+    text-align: left;
+    padding: 0.75rem;
+    border-bottom: 2px solid var(--color-border);
+    font-weight: 600;
+    color: var(--color-heading);
+}
+
+.my-salon-table td {
+    padding: 0.75rem;
+    border-bottom: 1px solid var(--color-border);
+    vertical-align: middle;
+}
+
+/* Фото галерея */
+.my-salon-photos {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin-top: 0.5rem;
+}
+
+.my-salon-photo-item {
+    position: relative;
+}
+
+.my-salon-photo-item img {
+    width: 140px;
+    height: 100px;
+    object-fit: cover;
+    border-radius: 0.5rem;
+}
+
+.my-salon-photo-item .cover-badge {
+    position: absolute;
+    bottom: 0.25rem;
+    left: 0.25rem;
+    background: var(--color-primary);
+    color: #fff;
+    font-size: 0.65rem;
+    padding: 0.1rem 0.45rem;
+    border-radius: 1rem;
+}
+
+.my-salon-photo-item .cover-btn {
+    position: absolute;
+    bottom: 0.25rem;
+    left: 0.25rem;
+    background: rgba(0,0,0,0.55);
+    color: #fff;
+    border: none;
+    font-size: 0.65rem;
+    padding: 0.15rem 0.5rem;
+    border-radius: 1rem;
+    cursor: pointer;
+}
+
+.my-salon-photo-item .delete-btn {
+    position: absolute;
+    top: 0.25rem;
+    right: 0.25rem;
+    background: rgba(0,0,0,0.55);
+    color: #fff;
+    border: none;
+    border-radius: 50%;
+    width: 1.5rem;
+    height: 1.5rem;
+    cursor: pointer;
+    line-height: 1;
+}
+
+.my-salon-photo-item .cover-border {
+    border: 2px solid var(--color-primary);
+}
+
+.my-salon-photo-item .default-border {
+    border: 1px solid var(--color-border);
+}
+
+/* Drop zone */
+.my-salon-dropzone {
+    border: 2px dashed var(--color-border);
+    border-radius: 0.75rem;
+    padding: 1.5rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-bottom: 1rem;
+}
+
+.my-salon-dropzone:hover {
+    border-color: var(--color-primary);
+    background: var(--color-surface-alt);
+}
+
+.my-salon-dropzone p {
+    margin: 0;
+    font-weight: 500;
+}
+
+.my-salon-dropzone .hint {
+    margin: 0.25rem 0 0;
+    font-size: 0.8rem;
+    color: var(--color-muted);
+}
+
+/* Модалки */
+.my-salon-modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+}
+
+.my-salon-modal-overlay.active {
+    display: flex;
+}
+
+.my-salon-modal-box {
+    background: var(--color-surface);
+    border-radius: 1rem;
+    padding: 2rem;
+    max-width: 500px;
+    width: 90%;
+    position: relative;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.my-salon-modal-close {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: var(--color-muted);
+    transition: color 0.2s;
+}
+
+.my-salon-modal-close:hover {
+    color: var(--color-heading);
+}
+
+.my-salon-modal-box h2 {
+    font-family: var(--font-heading);
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--color-heading);
+    margin-bottom: 1.5rem;
+}
+
+.my-salon-form-group {
+    margin-bottom: 1rem;
+}
+
+.my-salon-form-group label {
+    display: block;
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+    color: var(--color-heading);
+}
+
+.my-salon-form-group input,
+.my-salon-form-group textarea {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.5rem;
+    font-size: 0.95rem;
+    background: var(--color-surface);
+    color: var(--color-heading);
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.my-salon-form-group input:focus,
+.my-salon-form-group textarea:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(192, 129, 184, 0.15);
+}
+
+.my-salon-btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.6rem 1.5rem;
+    border: none;
+    border-radius: 2rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--color-btn-text);
+    background: var(--color-accent);
+    transition: all 0.2s;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.my-salon-btn-primary:hover {
+    background: var(--color-accent-hover);
+}
+
+.my-salon-btn-outline {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1.2rem;
+    border: 1px solid var(--color-border);
+    border-radius: 2rem;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--color-heading);
+    background: transparent;
+    transition: all 0.2s;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.my-salon-btn-outline:hover {
+    background: var(--color-surface-alt);
+    border-color: var(--color-primary);
+}

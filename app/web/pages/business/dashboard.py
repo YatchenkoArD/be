@@ -10,6 +10,21 @@ from app.web.components.header import render_header
 from app.web.components.footer import render_footer
 from app.web.components.sidebar import render_sidebar
 from app.web.components.styles import get_base_styles
+from app.web.components.icons import (
+    ICON_LAYOUT_DASHBOARD,
+    ICON_CLOCK,
+    ICON_USERS,
+    ICON_WALLET,
+    ICON_PACKAGE,
+    ICON_CHART_COLUMN,
+    ICON_HEART,
+    ICON_CALENDAR_DAYS,
+    ICON_MESSAGE_CIRCLE,
+    ICON_STAR_FILLED,
+    ICON_USER_CHECK,
+    ICON_SPARKLES,
+    ICON_SETTINGS_GEAR_SMALL,
+)
 from app.web.pages.business.utils import get_masters_data, get_master_ids
 from app.web.pages.business.tabs.overview import render_overview_tab
 from app.web.pages.business.tabs.analytics import render_analytics_tab
@@ -29,10 +44,7 @@ from app.crm.tabs.clients import render_crm_tab
 
 
 async def render_business_dashboard(db: AsyncSession, user, salon: Salon, membership: SalonMember, query_params=None) -> str:
-    """Бизнес-панель с аналитикой. `membership` — активное членство текущего
-    пользователя в этом салоне (owner/admin), уже проверенное вызывающим кодом.
-    `query_params` — request.query_params страницы (используется вкладкой
-    «Записи» для фильтров и для восстановления активной вкладки после submit)."""
+    """Бизнес-панель с аналитикой."""
 
     query_params = query_params or {}
     active_tab = query_params.get("tab", "overview")
@@ -101,76 +113,187 @@ async def render_business_dashboard(db: AsyncSession, user, salon: Salon, member
         ))
         today_bookings = tb.scalar() or 0
 
-    # Рендерим вкладки. Финансы/Аналитика (выручка) и Сотрудники — только при
-    # наличии прав: рендер-функция вообще не вызывается, чтобы данные физически
-    # не попадали в HTML-ответ для тех, кому нельзя (не просто скрывались JS).
+    # --- Данные для выручки (текущая и прошлая неделя) + операции по дням ---
+    revenue_data = {}
+    prev_revenue_data = {}
+    week_operations = {}  # ключ: индекс дня, значение: список (Booking, Service, User)
+    days = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
+
+    for i in range(7):
+        # Текущая неделя
+        day = today - timedelta(days=today.weekday()) + timedelta(days=i)
+        day_end = day + timedelta(days=1)
+
+        # Выручка
+        if master_ids:
+            rev = await db.execute(
+                select(func.coalesce(func.sum(Booking.final_price), 0))
+                .where(
+                    Booking.master_id.in_(master_ids),
+                    Booking.start_time >= day,
+                    Booking.start_time < day_end,
+                    Booking.status.in_([BookingStatus.CONFIRMED, BookingStatus.COMPLETED])
+                )
+            )
+            revenue_data[i] = rev.scalar() or 0
+        else:
+            revenue_data[i] = 0
+
+        # Операции за день (для выпадающего окна)
+        if master_ids:
+            ops = await db.execute(
+                select(Booking, Service, UserModel)
+                .join(Service, Service.id == Booking.service_id)
+                .join(UserModel, UserModel.id == Booking.client_id)
+                .where(
+                    Booking.master_id.in_(master_ids),
+                    Booking.start_time >= day,
+                    Booking.start_time < day_end,
+                    Booking.status != BookingStatus.CANCELLED
+                )
+                .order_by(Booking.start_time)
+            )
+            week_operations[i] = ops.all()
+        else:
+            week_operations[i] = []
+
+        # Прошлая неделя (только выручка)
+        prev_day = today - timedelta(days=today.weekday() + 7) + timedelta(days=i)
+        prev_day_end = prev_day + timedelta(days=1)
+        if master_ids:
+            prev_rev = await db.execute(
+                select(func.coalesce(func.sum(Booking.final_price), 0))
+                .where(
+                    Booking.master_id.in_(master_ids),
+                    Booking.start_time >= prev_day,
+                    Booking.start_time < prev_day_end,
+                    Booking.status.in_([BookingStatus.CONFIRMED, BookingStatus.COMPLETED])
+                )
+            )
+            prev_revenue_data[i] = prev_rev.scalar() or 0
+        else:
+            prev_revenue_data[i] = 0
+
+    total_revenue = sum(revenue_data.values())
+    prev_total_revenue = sum(prev_revenue_data.values())
+    revenue_diff = total_revenue - prev_total_revenue
+    revenue_trend = "▲" if revenue_diff > 0 else "▼" if revenue_diff < 0 else "—"
+    revenue_color = "#22c55e" if revenue_diff > 0 else "#ef4444" if revenue_diff < 0 else "var(--color-muted)"
+
+    # --- Сегодняшние записи (детальный список) ---
+    today_bookings_list = []
+    if master_ids:
+        bookings_today = await db.execute(
+            select(Booking, Service, UserModel)
+            .join(Service, Service.id == Booking.service_id)
+            .join(UserModel, UserModel.id == Booking.client_id)
+            .where(
+                Booking.master_id.in_(master_ids),
+                Booking.start_time >= today,
+                Booking.start_time < tomorrow,
+                Booking.status != BookingStatus.CANCELLED
+            )
+            .order_by(Booking.start_time)
+        )
+        today_bookings_list = bookings_today.all()
+
+    # Рендерим вкладки
     tabs_html = []
     tab_buttons = []
 
-    tab_buttons.append(('overview', '📊 Обзор', True))
-    tabs_html.append(await render_overview_tab(db, salon, masters, master_ids, services_count, promotions, today_bookings))
+    # Обзор (передаём все данные)
+    tab_buttons.append(('overview', ICON_LAYOUT_DASHBOARD, 'Обзор', True))
+    tabs_html.append(await render_overview_tab(
+        db, salon, masters, master_ids, services_count, promotions,
+        today_bookings, today_bookings_list,
+        revenue_data, prev_revenue_data, total_revenue, revenue_diff, revenue_trend, revenue_color,
+        week_operations, days
+    ))
 
-    tab_buttons.append(('analytics', '📈 Аналитика', perms["view_finances"]))
+    # Аналитика (только с правом view_finances)
+    tab_buttons.append(('analytics', ICON_CHART_COLUMN, 'Аналитика', perms["view_finances"]))
     if perms["view_finances"]:
         tabs_html.append(await render_analytics_tab(db, salon, master_ids))
 
-    tab_buttons.append(('schedule', '📅 Расписание', True))
+    # Расписание
+    tab_buttons.append(('schedule', ICON_CLOCK, 'Расписание', True))
     tabs_html.append(await render_schedule_tab(db, salon, masters, perms["manage_schedule"], schedule_master_id))
 
-    tab_buttons.append(('employees', '💇 Мастера', True))
+    # Мастера (сотрудники)
+    tab_buttons.append(('employees', ICON_USERS, 'Сотрудники', True))
     tabs_html.append(await render_employees_tab(db, salon, masters))
 
-    tab_buttons.append(('services', '✂️ Услуги', True))
+    # Услуги
+    tab_buttons.append(('services', ICON_USER_CHECK, 'Услуги', True))
     tabs_html.append(await render_services_tab(db, salon, masters))
 
-    tab_buttons.append(('payroll', '💰 Зарплаты', perms["manage_payroll"]))
+    # Зарплаты (с правом manage_payroll)
+    tab_buttons.append(('payroll', ICON_WALLET, 'Зарплаты', perms["manage_payroll"]))
     if perms["manage_payroll"]:
         tabs_html.append(await render_payroll_tab(db, salon, masters, master_ids, period_raw))
 
-    tab_buttons.append(('cost', '📉 Себестоимость', perms["view_finances"]))
+    # Себестоимость (с правом view_finances)
+    tab_buttons.append(('cost', ICON_PACKAGE, 'Себестоимость', perms["view_finances"]))
     if perms["view_finances"]:
         tabs_html.append(await render_cost_tab(db, salon, masters, master_ids, period_raw))
 
-    tab_buttons.append(('records', '🧾 Записи', True))
+    # Записи
+    tab_buttons.append(('records', ICON_CALENDAR_DAYS, 'Записи', True))
     tabs_html.append(await render_records_tab(db, salon, masters, master_ids, records_filters))
 
-    tab_buttons.append(('warehouse', '📦 Склад', perms["manage_inventory"]))
+    # Склад (с правом manage_inventory)
+    tab_buttons.append(('warehouse', ICON_PACKAGE, 'Склад', perms["manage_inventory"]))
     if perms["manage_inventory"]:
         tabs_html.append(await render_warehouse_tab(db, salon, masters, master_ids, warehouse_filters, membership))
 
-    tab_buttons.append(('chat', '💬 Чат', True))
+    # Чат
+    tab_buttons.append(('chat', ICON_MESSAGE_CIRCLE, 'Чат', True))
     tabs_html.append(await render_chat_tab(db, salon, user))
 
-    tab_buttons.append(('staff', '👤 Сотрудники', perms["manage_admins"] or perms["manage_owners"]))
+    # Сотрудники (админы/владельцы) – с правом manage_admins или manage_owners
+    tab_buttons.append(('staff', ICON_USERS, 'Сотрудники', perms["manage_admins"] or perms["manage_owners"]))
     if perms["manage_admins"] or perms["manage_owners"]:
         tabs_html.append(await render_staff_tab(db, salon, user, membership, perms, staff_notice))
 
-    tab_buttons.append(('models', '🎭 Модели', perms["manage_masters"]))
+    # Модели (с правом manage_masters)
+    tab_buttons.append(('models', ICON_HEART, 'Модели', perms["manage_masters"]))
     if perms["manage_masters"]:
         tabs_html.append(await render_promo_models_tab(db, salon))
 
-    tab_buttons.append(('promos', f'🎉 Акции ({len(promotions)})', True))
+    # Акции
+    tab_buttons.append(('promos', ICON_SPARKLES, f'Акции ({len(promotions)})', True))
     tabs_html.append(render_promos_tab(promotions))
 
-    tab_buttons.append(('reviews', f'⭐ Отзывы ({len(reviews)})', True))
+    # Отзывы
+    tab_buttons.append(('reviews', ICON_STAR_FILLED, f'Отзывы ({len(reviews)})', True))
     tabs_html.append(await render_reviews_tab(db, reviews, salon, perms["manage_reviews"]))
 
-    tab_buttons.append(('crm', '👥 Клиенты', True))
+    # CRM – Клиенты
+    tab_buttons.append(('crm', ICON_USER_CHECK, 'Клиенты', True))
     tabs_html.append(await render_crm_tab(db, salon, masters, master_ids))
 
-    visible_slugs = [slug for slug, _label, visible in tab_buttons if visible]
-    # Если вкладка из ?tab= недоступна (гейтится правом) или не существует —
-    # откатываемся на Обзор, он есть всегда.
+    # Редактировать салон (всегда видна, в конце)
+    tab_buttons.append(('edit', ICON_SETTINGS_GEAR_SMALL, 'Редактировать салон', True))
+    tabs_html.append("""
+    <div id="tab-edit" class="tab-content">
+        <div class="card" style="padding:2rem;text-align:center;">
+            <p style="margin-bottom:1rem;color:var(--color-muted);">Перенаправление на страницу редактирования салона...</p>
+            <a href="/business/my-salon" class="btn-primary">Перейти к редактированию</a>
+        </div>
+    </div>
+    """)
+
+    visible_slugs = [slug for slug, _, _, visible in tab_buttons if visible]
     if active_tab not in visible_slugs:
         active_tab = "overview"
 
-    nav_buttons_html = "".join(
-        f'<button class="tab-btn{" active" if slug == active_tab else ""}" onclick="switchTab(\'{slug}\')">{label}</button>'
-        for slug, label, visible in tab_buttons if visible
-    )
+    nav_buttons_html = ""
+    for slug, icon, label, visible in tab_buttons:
+        if not visible:
+            continue
+        active_class = " active" if slug == active_tab else ""
+        nav_buttons_html += f'<button class="tab-btn{active_class}" onclick="switchTab(\'{slug}\')">{icon} {label}</button>'
 
-    # Проставляем class="active" тому <div id="tab-{active_tab}" ...>, который
-    # пришёл из query-параметра ?tab= (по умолчанию — overview).
     tabs_body_html = "\n".join(tabs_html).replace(
         f'id="tab-{active_tab}" class="tab-content"',
         f'id="tab-{active_tab}" class="tab-content active"',
@@ -188,60 +311,38 @@ async def render_business_dashboard(db: AsyncSession, user, salon: Salon, member
             {options}
         </select>"""
 
+    # ===== ВЕРХНЯЯ ЧАСТЬ =====
+    header_html = f"""
+    <div class="dashboard-header">
+        <div class="dashboard-header-inner">
+            <div>
+                <h1>Панель салона</h1>
+                <p>Салон «{salon.name}» • {salon.address.split(',')[0] if salon.address else 'Адрес не указан'}</p>
+            </div>
+            <span class="dashboard-badge">
+                {ICON_SPARKLES} Бизнес PRO
+            </span>
+        </div>
+    </div>
+    """
+
+    # Основная разметка
     html = f"""<!DOCTYPE html>
-<html lang="ru">
+<html lang="ru" class="dashboard-page">
 <head>
     <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Бизнес-панель — {salon.name} — руми</title>
     {get_base_styles()}
-    <style>
-        .tab-nav {{ display:flex; gap:0.25rem; border-bottom:1px solid var(--color-border); margin-bottom:2rem; flex-wrap:wrap }}
-        .tab-btn {{ padding:0.75rem 1.5rem; border:none; background:transparent; cursor:pointer; font-size:0.875rem; font-weight:500; color:var(--color-muted); border-bottom:2px solid transparent; transition:all 0.2s; white-space:nowrap }}
-        .tab-btn.active {{ color:var(--color-primary); border-bottom-color:var(--color-primary) }}
-        .tab-content {{ display:none }}
-        .tab-content.active {{ display:block }}
-        .stat-card {{ background:var(--color-surface); border:1px solid var(--color-border); border-radius:1rem; padding:1.5rem; text-align:center }}
-        .stat-value {{ font-size:2rem; font-weight:700; color:var(--color-primary) }}
-        .stat-label {{ font-size:0.85rem; color:var(--color-muted); margin-top:0.25rem }}
-        .promo-badge {{ display:inline-block; border-radius:2rem; padding:0.125rem 0.5rem; font-size:0.625rem; font-weight:700; color:white; background:linear-gradient(135deg,var(--color-primary),var(--color-accent)) }}
-        table {{ width:100%; border-collapse:collapse }}
-        th {{ text-align:left; padding:0.75rem; border-bottom:2px solid var(--color-border); font-weight:600; color:var(--color-heading); white-space:nowrap }}
-        td {{ padding:0.75rem; border-bottom:1px solid var(--color-border) }}
-        .chart-bar {{ height:200px; display:flex; align-items:flex-end; gap:1rem; padding:1rem 0 }}
-        .chart-column {{ flex:1; display:flex; flex-direction:column; align-items:center; gap:0.25rem; min-width:40px }}
-        .chart-fill {{ width:100%; max-width:3.5rem; border-radius:0.5rem 0.5rem 0 0; background:linear-gradient(to top,var(--color-primary),var(--color-accent)); transition:height 0.3s }}
-        .chart-fill.highest {{ background:linear-gradient(to top,#22c55e,#4ade80) }}
-        .chart-fill.prev {{ background:var(--color-border) }}
-        .chart-label {{ font-size:0.75rem; color:var(--color-muted) }}
-        .chart-value {{ font-size:0.7rem; font-weight:600; color:var(--color-heading); white-space:nowrap }}
-        .rating-summary {{ display:flex; gap:1rem; align-items:center; margin-bottom:1.5rem; flex-wrap:wrap }}
-        .rating-big {{ font-size:3rem; font-weight:800; color:var(--color-primary); line-height:1 }}
-        .analytics-kpi {{ display:flex; gap:1rem; margin-bottom:1.5rem; flex-wrap:wrap }}
-        .kpi-card {{ background:var(--color-surface); border:1px solid var(--color-border); border-radius:1rem; padding:1.25rem 1.5rem; flex:1; min-width:150px }}
-        .kpi-value {{ font-size:1.75rem; font-weight:700; color:var(--color-heading) }}
-        .kpi-label {{ font-size:0.8rem; color:var(--color-muted) }}
-        .kpi-trend {{ font-size:0.85rem; font-weight:600 }}
-        .legend {{ display:flex; gap:1.5rem; align-items:center; margin-bottom:1rem; font-size:0.85rem }}
-        .legend-dot {{ width:12px; height:12px; border-radius:3px; display:inline-block }}
-    </style>
+    <link rel="stylesheet" href="/static/src/css/business/dashboard.css">
+    <link rel="stylesheet" href="/static/src/css/business/tabs/overview.css">
 </head>
 <body>
     {render_header("business")}
-    {render_sidebar("business", user)}
-    <main style="margin-right:16rem;padding-top:2rem">
-        <div class="section-container">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:0.75rem">
-                <div>
-                    <h1 class="text-display" style="font-size:2rem">{salon.name}</h1>
-                    <p class="text-muted">Панель управления · ⭐ {salon.rating} ({salon.reviews_count} отзывов)</p>
-                </div>
-                <div style="display:flex;align-items:center;gap:0.75rem">
-                    {switcher_html}
-                    {f'<a href="/business/my-salon?salon_id={salon.id}" class="btn-outline">✏️ Редактировать салон</a>' if perms["manage_salon"] else ''}
-                </div>
-            </div>
+    {render_sidebar("business_dashboard", user)}
+    <main style="margin-right:0;padding-top:0">
+        {header_html}
 
-            <!-- Вкладки -->
+        <div class="section-container" style="padding-top: 1.5rem;">
             <div class="tab-nav">
                 {nav_buttons_html}
             </div>
@@ -249,24 +350,7 @@ async def render_business_dashboard(db: AsyncSession, user, salon: Salon, member
             {tabs_body_html}
         </div>
     </main>
-
     {render_footer(user)}
-
-    <script>
-        function switchTab(tabName) {{
-            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-            document.getElementById('tab-' + tabName).classList.add('active');
-            event.target.classList.add('active');
-        }}
-
-        function showDayDetails(index, dayName, revenue, prevRevenue) {{
-            const diff = revenue - prevRevenue;
-            const trend = diff > 0 ? '▲' : diff < 0 ? '▼' : '—';
-            alert(`${{dayName}}\\nВыручка: ${{revenue.toLocaleString()}} ₽\\nПрошлая неделя: ${{prevRevenue.toLocaleString()}} ₽\\n${{trend}} ${{Math.abs(diff).toLocaleString()}} ₽`);
-        }}
-    </script>
 </body>
 </html>"""
-
     return html

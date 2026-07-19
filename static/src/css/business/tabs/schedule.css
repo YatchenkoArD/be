@@ -1,0 +1,236 @@
+/* static/src/css/business/tabs/schedule.css */
+
+.dashboard-page .schedule-master-select {
+    margin-bottom: 1rem;
+}
+
+.dashboard-page .schedule-calendar {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 1rem;
+    padding: 1.5rem;
+}
+
+.dashboard-page .schedule-month-nav {
+    display: flex;
+    gap: 0.4rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+    border-bottom: 1px solid var(--color-border);
+    padding-bottom: 0.75rem;
+}
+
+.dashboard-page .schedule-month-btn,
+.dashboard-page .schedule-week-btn {
+    border: 1px solid var(--color-border);
+    background: white;
+    color: var(--color-heading);
+    padding: 0.4rem 0.9rem;
+    border-radius: 2rem;
+    font-size: 0.8rem;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s;
+}
+
+.dashboard-page .schedule-month-btn:hover,
+.dashboard-page .schedule-week-btn:hover {
+    background: var(--color-surface-alt);
+}
+
+.dashboard-page .schedule-month-btn.active,
+.dashboard-page .schedule-week-btn.active {
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+    color: white;
+}
+
+.dashboard-page .schedule-month-panel,
+.dashboard-page .schedule-week-panel {
+    display: none;
+}
+
+.dashboard-page .schedule-month-panel.active,
+.dashboard-page .schedule-week-panel.active {
+    display: block;
+}
+
+.dashboard-page .schedule-week-tabs {
+    display: flex;
+    gap: 0.4rem;
+    margin-bottom: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.dashboard-page .schedule-grid table {
+    border-collapse: collapse;
+    width: 100%;
+}
+
+.dashboard-page .schedule-grid th,
+.dashboard-page .schedule-grid td {
+    border-bottom: 1px solid var(--color-border);
+    padding: 0.2rem;
+    vertical-align: top;
+}
+
+.dashboard-page .schedule-grid th {
+    text-align: center;
+    font-size: 0.75rem;
+    padding: 0.4rem;
+    min-width: 110px;
+}
+
+.dashboard-page .schedule-grid td {
+    padding: 0.2rem;
+    vertical-align: top;
+}
+
+.dashboard-page .schedule-grid .time-label {
+    font-size: 0.75rem;
+    color: var(--color-muted);
+    padding: 0.3rem;
+    white-space: nowrap;
+}
+
+.dashboard-page .schedule-booking {
+    background: #dcfce7;
+    padding: 0.2rem 0.4rem;
+    border-radius: 0.25rem;
+    margin-bottom: 0.15rem;
+    font-size: 0.65rem;
+}
+
+.dashboard-page .schedule-booking.pending {
+    background: #fef9c3;
+}
+
+.dashboard-page .schedule-booking .actions {
+    display: flex;
+    gap: 0.15rem;
+    margin-top: 0.15rem;
+}
+
+.dashboard-page .schedule-booking .actions button {
+    border: none;
+    border-radius: 0.2rem;
+    font-size: 0.6rem;
+    padding: 0.1rem 0.25rem;
+    cursor: pointer;
+}
+
+.dashboard-page .schedule-booking .actions .complete-btn {
+    background: #22c55e;
+    color: white;
+}
+
+.dashboard-page .schedule-booking .actions .no-show-btn {
+    background: #ef4444;
+    color: white;
+}
+
+.dashboard-page .schedule-legend {
+    display: flex;
+    gap: 1rem;
+    margin-top: 0.75rem;
+    font-size: 0.75rem;
+    color: var(--color-muted);
+    flex-wrap: wrap;
+}
+
+.dashboard-page .schedule-legend .dot {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 2px;
+    margin-right: 0.25rem;
+}
+
+.dashboard-page .schedule-legend .dot.confirmed {
+    background: #dcfce7;
+}
+
+.dashboard-page .schedule-legend .dot.pending {
+    background: #fef9c3;
+}
+
+.dashboard-page .schedule-legend .dot.closed {
+    background: repeating-linear-gradient(45deg, #f3f4f6, #f3f4f6 3px, #fafafa 3px, #fafafa 6px);
+}
+
+/* Модалки */
+.dashboard-page .schedule-modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+}
+
+.dashboard-page .schedule-modal-overlay.active {
+    display: flex;
+}
+
+.dashboard-page .schedule-modal-box {
+    background: white;
+    border-radius: 1rem;
+    padding: 2rem;
+    max-width: 500px;
+    width: 90%;
+    position: relative;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.dashboard-page .schedule-modal-close {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: var(--color-muted);
+}
+
+.dashboard-page .schedule-modal-close:hover {
+    color: var(--color-heading);
+}
+
+.dashboard-page .schedule-closures {
+    margin-top: 1.5rem;
+}
+
+.dashboard-page .schedule-closures-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.dashboard-page .schedule-closures-header h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--color-heading);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.dashboard-page .schedule-closures-list .closure-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--color-border);
+    font-size: 0.85rem;
+}
+
+.dashboard-page .schedule-closures-list .closure-item:last-child {
+    border-bottom: none;
+}

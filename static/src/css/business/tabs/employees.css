@@ -1,0 +1,217 @@
+/* static/src/css/business/tabs/employees.css */
+
+.dashboard-page .employees-stats {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.dashboard-page .employees-stats .stat-card {
+    padding: 1rem 1.5rem;
+}
+
+.dashboard-page .employees-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.dashboard-page .employees-table-wrap {
+    overflow-x: auto;
+}
+
+.dashboard-page .employees-table-wrap table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+
+.dashboard-page .employees-table-wrap th {
+    text-align: left;
+    padding: 0.75rem;
+    border-bottom: 2px solid var(--color-border);
+    font-weight: 600;
+    color: var(--color-heading);
+    white-space: nowrap;
+}
+
+.dashboard-page .employees-table-wrap td {
+    padding: 0.75rem;
+    border-bottom: 1px solid var(--color-border);
+    vertical-align: middle;
+}
+
+.dashboard-page .employee-cell {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.dashboard-page .employee-avatar {
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--color-primary), var(--color-accent));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    color: white;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.dashboard-page .employee-name {
+    font-weight: 600;
+}
+
+.dashboard-page .employee-phone {
+    font-size: 0.8rem;
+    color: var(--color-muted);
+}
+
+.dashboard-page .status-badge {
+    font-size: 0.85rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+.dashboard-page .status-badge.on {
+    color: #22c55e;
+}
+
+.dashboard-page .status-badge.off {
+    color: #ef4444;
+}
+
+.dashboard-page .employee-actions {
+    display: flex;
+    gap: 0.3rem;
+    align-items: center;
+}
+
+.dashboard-page .employee-actions button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0.25rem;
+    border-radius: 0.25rem;
+    transition: background 0.2s;
+    color: var(--color-muted);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.dashboard-page .employee-actions button:hover {
+    background: var(--color-surface-alt);
+}
+
+.dashboard-page .employee-actions .edit-btn {
+    color: var(--color-primary);
+}
+
+.dashboard-page .employee-actions .edit-btn:hover {
+    color: var(--color-accent-hover);
+}
+
+.dashboard-page .employee-actions .toggle-btn.on {
+    color: #ef4444;
+}
+
+.dashboard-page .employee-actions .toggle-btn.off {
+    color: #22c55e;
+}
+
+.dashboard-page .employee-actions .delete-btn {
+    color: #ef4444;
+}
+
+.dashboard-page .employee-actions .delete-btn:hover {
+    color: #dc2626;
+}
+
+/* Модальное окно */
+.dashboard-page .employee-modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+}
+
+.dashboard-page .employee-modal-overlay.active {
+    display: flex;
+}
+
+.dashboard-page .employee-modal-box {
+    background: white;
+    border-radius: 1rem;
+    padding: 2rem;
+    max-width: 500px;
+    width: 90%;
+    position: relative;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.dashboard-page .employee-modal-close {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: var(--color-muted);
+}
+
+.dashboard-page .employee-modal-close:hover {
+    color: var(--color-heading);
+}
+
+.dashboard-page .employee-modal-box h2 {
+    margin-bottom: 1.5rem;
+    font-family: var(--font-heading);
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--color-heading);
+}
+
+.dashboard-page .employee-form-group {
+    margin-bottom: 1rem;
+}
+
+.dashboard-page .employee-form-group label {
+    display: block;
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+    color: var(--color-heading);
+    font-size: 0.9rem;
+}
+
+.dashboard-page .employee-form-group input,
+.dashboard-page .employee-form-group select {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.5rem;
+    font-size: 0.9rem;
+    background: var(--color-surface);
+    color: var(--color-heading);
+    transition: border-color 0.2s;
+}
+
+.dashboard-page .employee-form-group input:focus,
+.dashboard-page .employee-form-group select:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(192, 129, 184, 0.15);
+}

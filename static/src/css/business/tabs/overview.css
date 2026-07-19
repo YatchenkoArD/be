@@ -1,0 +1,400 @@
+/* static/src/css/business/tabs/overview.css */
+
+/* ===== Карточки статистики (4 карточки как в образце) ===== */
+.dashboard-page .stats-grid-4 {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+@media (max-width: 768px) {
+    .dashboard-page .stats-grid-4 {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+@media (max-width: 480px) {
+    .dashboard-page .stats-grid-4 {
+        grid-template-columns: 1fr;
+    }
+}
+
+.dashboard-page .stat-card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 1rem;
+    padding: 1.25rem 1.25rem;
+    transition: box-shadow 0.2s;
+}
+.dashboard-page .stat-card:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+.dashboard-page .stat-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.dashboard-page .stat-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 0.75rem;
+    background: var(--color-accent-light);
+    color: var(--color-primary);
+    flex-shrink: 0;
+}
+.dashboard-page .stat-icon svg {
+    width: 1.25rem;
+    height: 1.25rem;
+}
+
+.dashboard-page .stat-trend {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #22c55e;
+}
+.dashboard-page .stat-trend svg {
+    width: 0.9rem;
+    height: 0.9rem;
+}
+
+.dashboard-page .stat-value {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--color-heading);
+    line-height: 1.2;
+    margin: 0;
+}
+.dashboard-page .stat-label {
+    font-size: 0.8rem;
+    color: var(--color-muted);
+    margin: 0.25rem 0 0 0;
+}
+
+/* ===== Сетка 2/1 для выручки и сегодня ===== */
+.dashboard-page .overview-grid-2-1 {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 1.5rem;
+    align-items: start;
+    margin-top: 1.5rem;
+}
+
+@media (max-width: 768px) {
+    .dashboard-page .overview-grid-2-1 {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ===== Общие стили для блоков ===== */
+.dashboard-page .chart-wrapper {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 1rem;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.dashboard-page .chart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+.dashboard-page .chart-header h3 {
+    font-family: var(--font-heading);
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--color-heading);
+    margin: 0;
+}
+.dashboard-page .chart-header .chart-total {
+    font-size: 0.85rem;
+    color: var(--color-muted);
+}
+
+.dashboard-page .chart-bar {
+    height: 130px;
+    display: flex;
+    align-items: flex-end;
+    gap: 1rem;
+    padding: 0.5rem 0;
+}
+.dashboard-page .chart-column {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.3rem;
+    min-width: 40px;
+}
+.dashboard-page .chart-fill {
+    width: 100%;
+    max-width: 3rem;
+    border-radius: 0.375rem 0.375rem 0 0;
+    transition: height 0.3s;
+    min-height: 4px;
+}
+.dashboard-page .chart-fill.highest {
+    box-shadow: 0 0 0 2px rgba(5, 150, 105, 0.2);
+}
+.dashboard-page .chart-value {
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: var(--color-heading);
+    white-space: nowrap;
+}
+.dashboard-page .chart-label {
+    font-size: 0.7rem;
+    color: var(--color-muted);
+}
+
+.dashboard-page .kpi-row {
+    display: flex;
+    gap: 1.5rem;
+    margin-top: 1rem;
+    flex-wrap: wrap;
+    font-size: 0.85rem;
+}
+.dashboard-page .kpi-label {
+    color: var(--color-muted);
+}
+
+/* ===== Сегодняшние записи ===== */
+.dashboard-page .booking-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    border-radius: 0.75rem;
+    border: 1px solid var(--color-border);
+    background: var(--color-surface-alt);
+}
+.dashboard-page .booking-item .avatar {
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--color-primary), var(--color-accent));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 700;
+    font-size: 0.8rem;
+    flex-shrink: 0;
+}
+.dashboard-page .booking-item .info {
+    flex: 1;
+    min-width: 0;
+}
+.dashboard-page .booking-item .info .name {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--color-heading);
+}
+.dashboard-page .booking-item .info .desc {
+    font-size: 0.75rem;
+    color: var(--color-muted);
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+.dashboard-page .booking-item .price {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--color-heading);
+    text-align: right;
+}
+.dashboard-page .booking-item .status {
+    font-size: 0.7rem;
+    font-weight: 500;
+}
+.dashboard-page .status-paid { color: #22c55e; }
+.dashboard-page .status-waiting { color: #f59e0b; }
+
+.dashboard-page .card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 1rem;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    transition: box-shadow 0.2s;
+}
+.dashboard-page .card:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+}
+
+.dashboard-page .space-y-3 > * + * {
+    margin-top: 0.75rem;
+}
+
+.dashboard-page .text-muted {
+    color: var(--color-muted);
+}
+
+/* ===== Аккордеон для деталей дня внутри блока выручки ===== */
+.dashboard-page .day-accordion {
+    margin-top: 1.5rem;
+    border-top: 1px solid var(--color-border);
+    padding-top: 1rem;
+    animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.dashboard-page .day-accordion-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+}
+.dashboard-page .day-accordion-header h4 {
+    font-family: var(--font-heading);
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--color-heading);
+    margin: 0;
+}
+.dashboard-page .day-accordion-header .text-muted {
+    font-size: 0.85rem;
+    color: var(--color-muted);
+    margin: 0;
+}
+.dashboard-page .day-accordion-header .accordion-close {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--color-muted);
+    margin-left: auto;
+    transition: color 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.25rem;
+}
+.dashboard-page .day-accordion-header .accordion-close:hover {
+    color: var(--color-heading);
+}
+.dashboard-page .day-accordion-header .accordion-close svg {
+    width: 1.25rem;
+    height: 1.25rem;
+}
+
+.dashboard-page .day-accordion-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    max-height: 400px;
+    overflow-y: auto;
+    padding-right: 0.5rem;
+}
+.dashboard-page .day-accordion-body .booking-item {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    padding: 0.75rem 1rem;
+    border-radius: 0.75rem;
+}
+.dashboard-page .day-accordion-body .booking-item .avatar {
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--color-primary), var(--color-accent));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 700;
+    font-size: 0.8rem;
+    flex-shrink: 0;
+}
+.dashboard-page .day-accordion-body .booking-item .info {
+    flex: 1;
+    min-width: 0;
+}
+.dashboard-page .day-accordion-body .booking-item .info .name {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--color-heading);
+}
+.dashboard-page .day-accordion-body .booking-item .info .desc {
+    font-size: 0.75rem;
+    color: var(--color-muted);
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+.dashboard-page .day-accordion-body .booking-item .price {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--color-heading);
+    text-align: right;
+    flex-shrink: 0;
+}
+.dashboard-page .day-accordion-body .booking-item .status {
+    font-size: 0.7rem;
+    font-weight: 500;
+}
+
+/* ===== График выручки ===== */
+.dashboard-page .chart-bar {
+    height: 160px;
+    display: flex;
+    align-items: flex-end;
+    gap: 1rem;
+    padding: 0.5rem 0;
+    overflow: visible;
+}
+
+.dashboard-page .chart-column {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.3rem;
+    min-width: 40px;
+    height: 100%;
+    justify-content: flex-end;
+}
+
+.dashboard-page .chart-fill {
+    width: 100%;
+    max-width: 3rem;
+    border-radius: 0.375rem 0.375rem 0 0;
+    transition: height 0.3s;
+    min-height: 4px;
+    max-height: 100px;
+    flex-shrink: 0;
+}
+
+.dashboard-page .chart-value {
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: var(--color-heading);
+    white-space: nowrap;
+    margin-bottom: 0.1rem;
+}
+
+.dashboard-page .chart-label {
+    font-size: 0.7rem;
+    color: var(--color-muted);
+}

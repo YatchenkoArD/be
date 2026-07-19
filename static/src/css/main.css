@@ -24,3 +24,11 @@
 @import './settings.css';
 @import './bookings.css';
 @import './favorites.css';
+
+/* Стили панели бизнеса */
+@import './business/dashboard.css';
+@import './business/tabs/overview.css';
+@import './business/tabs/schedule.css';
+@import './business/tabs/employees.css';
+@import './business/tabs/records.css';
+@import './my-salon.css';

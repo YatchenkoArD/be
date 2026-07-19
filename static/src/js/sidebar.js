@@ -8,13 +8,13 @@ document.addEventListener('DOMContentLoaded', function () {
     function openSidebar() {
         if (sidebar) sidebar.classList.add('open');
         if (overlay) overlay.classList.add('active');
-        if (burger) burger.classList.add('hidden'); // скрываем бургер
+        if (burger) burger.classList.add('hidden');
     }
 
     function closeSidebar() {
         if (sidebar) sidebar.classList.remove('open');
         if (overlay) overlay.classList.remove('active');
-        if (burger) burger.classList.remove('hidden'); // показываем бургер
+        if (burger) burger.classList.remove('hidden'); 
     }
 
     function toggleSidebar() {
