@@ -342,3 +342,54 @@ async def test_review_routes_by_reviews_permission(db_session, fake_pool):
 
     # мастер (отзыв о нём) + создатель + админ с manage_reviews
     assert _chats(fake_pool) == [1001, 1003, 1005]
+
+
+# ── Этап 2: личные подписки поверх прав ─────────────────────────────────────
+
+def test_wants_defaults_on_and_respects_off():
+    u = User(phone="+70000000010", hashed_password="x", tg_chat_id=1)
+    assert notif.wants(u, notif.TOPIC_BOOKINGS) is True          # нет настройки
+    u.tg_notify_prefs = {"bookings": False}
+    assert notif.wants(u, notif.TOPIC_BOOKINGS) is False         # отключил
+    assert notif.wants(u, notif.TOPIC_WAREHOUSE) is True         # прочее не тронуто
+
+
+async def test_muted_member_not_notified_despite_permission(db_session, fake_pool):
+    """Право есть, но тема лично отключена — уведомления нет."""
+    ids = await _matrix_fixture(db_session)
+    async with db_session() as db:
+        sched_admin = (
+            await db.execute(select(User).where(User.tg_chat_id == 1002))
+        ).scalar_one()
+        sched_admin.tg_notify_prefs = {"bookings": False}
+        await db.commit()
+
+        booking = Booking(
+            client_id=ids["client_id"], master_id=ids["master_id"], service_id=ids["service_id"],
+            start_time=datetime.now() + timedelta(days=1),
+            end_time=datetime.now() + timedelta(days=1, hours=1),
+            status=BookingStatus.PENDING, final_price=1000,
+        )
+        db.add(booking)
+        await db.commit()
+        await db.refresh(booking)
+        await notif.notify_booking_created(db, booking)
+
+    # 1002 замьютил тему — выпал; остальные на месте
+    assert _chats(fake_pool) == [1001, 1005, 1006]
+
+
+async def test_available_topics_follow_roles(db_session):
+    from app.tg_bot import _available_topics
+
+    await _matrix_fixture(db_session)
+    async with db_session() as db:
+        client = (await db.execute(select(User).where(User.tg_chat_id == 1006))).scalar_one()
+        master = (await db.execute(select(User).where(User.tg_chat_id == 1005))).scalar_one()
+        inv_admin = (await db.execute(select(User).where(User.tg_chat_id == 1003))).scalar_one()
+        creator = (await db.execute(select(User).where(User.tg_chat_id == 1001))).scalar_one()
+
+        assert await _available_topics(db, client) == ["bookings", "reminders"]
+        assert set(await _available_topics(db, master)) == {"bookings", "reminders", "warehouse", "reviews"}
+        assert set(await _available_topics(db, inv_admin)) == {"bookings", "reminders", "warehouse", "reviews", "reports"}
+        assert set(await _available_topics(db, creator)) == {"bookings", "reminders", "warehouse", "reviews", "reports"}

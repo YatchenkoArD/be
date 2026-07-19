@@ -138,6 +138,10 @@ async def send_booking_reminder(ctx: dict[str, Any], booking_id: int) -> str:
             if client is None or not client.tg_chat_id:
                 return "skipped:no-chat"
 
+            from app.services.notifications import TOPIC_REMINDERS, wants
+            if not wants(client, TOPIC_REMINDERS):
+                return "skipped:muted"  # клиент отключил напоминания в боте
+
             master = (
                 await db.execute(select(Master).where(Master.id == booking.master_id))
             ).scalar_one()

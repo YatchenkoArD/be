@@ -129,6 +129,10 @@ class User(Base):
     # Привязка Telegram для уведомлений (блок 18+): chat_id из бота.
     # BigInteger — телеграмовские id не влезают в int32. NULL = не привязан.
     tg_chat_id: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True, index=True)
+    # Личные подписки на темы уведомлений {тема: bool}; NULL/нет ключа =
+    # включено. Права салона решают «кто может», это — «кто хочет».
+    # Управляется кнопками в боте (/start → «Мои уведомления»).
+    tg_notify_prefs: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
 
     subscription_tier: Mapped[Optional[SubscriptionTier]] = mapped_column(Enum(SubscriptionTier), nullable=True)
     subscription_expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)

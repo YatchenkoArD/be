@@ -46,6 +46,30 @@ logger = logging.getLogger(__name__)
 
 REMINDER_BEFORE = timedelta(hours=2)
 
+# Темы личных подписок (users.tg_notify_prefs). Ключи стабильные — на них
+# завязаны кнопки в боте (app/tg_bot.py) и сохранённые настройки.
+TOPIC_BOOKINGS = "bookings"
+TOPIC_REMINDERS = "reminders"
+TOPIC_WAREHOUSE = "warehouse"
+TOPIC_REVIEWS = "reviews"
+TOPIC_REPORTS = "reports"
+
+TOPIC_LABELS = {
+    TOPIC_BOOKINGS: "Записи (новые и отмены)",
+    TOPIC_REMINDERS: "Напоминания о визите",
+    TOPIC_WAREHOUSE: "Склад и заявки",
+    TOPIC_REVIEWS: "Отзывы",
+    TOPIC_REPORTS: "Жалобы на фото",
+}
+
+
+def wants(user: User | None, topic: str) -> bool:
+    """Личная подписка: нет настройки — включено (opt-out, не opt-in)."""
+    if user is None:
+        return False
+    prefs = user.tg_notify_prefs or {}
+    return bool(prefs.get(topic, True))
+
 
 async def _members_with_permission(
     db: AsyncSession, salon_id: int, permission: str
@@ -79,8 +103,10 @@ class _Fanout:
     def __init__(self) -> None:
         self._sent: set[int] = set()
 
-    async def send(self, user: User | None, text: str) -> None:
+    async def send(self, user: User | None, text: str, topic: str | None = None) -> None:
         if user is None or not user.tg_chat_id or user.tg_chat_id in self._sent:
+            return
+        if topic is not None and not wants(user, topic):
             return
         await _enqueue(user.tg_chat_id, text)
         self._sent.add(user.tg_chat_id)
@@ -148,16 +174,19 @@ async def notify_booking_created(db: AsyncSession, booking: Booking) -> None:
             f"✅ Вы записаны: {service_name} в «{salon.name}»\n"
             f"{when}, мастер {master_name}\n"
             f"Адрес: {salon.address or 'уточните у салона'}",
+            topic=TOPIC_BOOKINGS,
         )
         await fanout.send(
             ctx["master_user"],
             f"📅 К вам новая запись: {client_name} — {service_name}\n{when}",
+            topic=TOPIC_BOOKINGS,
         )
         for member in await _members_with_permission(db, salon.id, "manage_schedule"):
             await fanout.send(
                 member,
                 f"📅 Новая запись в «{salon.name}»: {client_name} — {service_name}\n"
                 f"{when}, мастер {master_name}",
+                topic=TOPIC_BOOKINGS,
             )
 
         if client and client.tg_chat_id:
@@ -186,14 +215,17 @@ async def notify_booking_cancelled(db: AsyncSession, booking: Booking) -> None:
         await fanout.send(
             ctx["client"],
             f"❌ Ваша запись отменена: {service_name} в «{salon.name}», {when}",
+            topic=TOPIC_BOOKINGS,
         )
         await fanout.send(
             ctx["master_user"],
             f"❌ Запись к вам отменена: {service_name}, {when}",
+            topic=TOPIC_BOOKINGS,
         )
         for member in await _members_with_permission(db, salon.id, "manage_schedule"):
             await fanout.send(
-                member, f"❌ Запись отменена в «{salon.name}»: {service_name}, {when}"
+                member, f"❌ Запись отменена в «{salon.name}»: {service_name}, {when}",
+                topic=TOPIC_BOOKINGS,
             )
     except Exception:
         logger.exception("notify_booking_cancelled(%s): уведомления не поставлены", booking.id)
@@ -238,6 +270,7 @@ async def notify_warehouse_request_created(db: AsyncSession, request: WarehouseR
                 member,
                 f"📦 Заявка от {author_name}: {label} — «{subject_name}»"
                 + (f"\nКомментарий: {request.comment}" if request.comment else ""),
+                topic=TOPIC_WAREHOUSE,
             )
     except Exception:
         logger.exception("notify_warehouse_request_created(%s): не поставлено", request.id)
@@ -255,7 +288,7 @@ async def notify_warehouse_request_resolved(db: AsyncSession, request: Warehouse
             "✅ выполнена" if request.status == WarehouseRequestStatus.RESOLVED
             else "❌ отклонена"
         )
-        await _Fanout().send(author, f"📦 Ваша заявка на склад {verdict}")
+        await _Fanout().send(author, f"📦 Ваша заявка на склад {verdict}", topic=TOPIC_WAREHOUSE)
     except Exception:
         logger.exception("notify_warehouse_request_resolved(%s): не поставлено", request.id)
 
@@ -284,11 +317,13 @@ async def notify_new_review(db: AsyncSession, review: Review) -> None:
                 )
             ).scalar_one_or_none()
             await fanout.send(
-                master_user, f"⭐ Новый отзыв о вас: {stars} ({verified})"
+                master_user, f"⭐ Новый отзыв о вас: {stars} ({verified})",
+                topic=TOPIC_REVIEWS,
             )
         for member in await _members_with_permission(db, salon.id, "manage_reviews"):
             await fanout.send(
-                member, f"⭐ Новый отзыв в «{salon.name}»: {stars} ({verified})"
+                member, f"⭐ Новый отзыв в «{salon.name}»: {stars} ({verified})",
+                topic=TOPIC_REVIEWS,
             )
     except Exception:
         logger.exception("notify_new_review(%s): не поставлено", review.id)
@@ -302,13 +337,13 @@ async def notify_photo_report(db: AsyncSession, salon_id: int | None) -> None:
         fanout = _Fanout()
         if salon_id is not None:
             for member in await _members_with_permission(db, salon_id, "manage_reviews"):
-                await fanout.send(member, "🚩 Новая жалоба на фото — загляните в модерацию")
+                await fanout.send(member, "🚩 Новая жалоба на фото — загляните в модерацию", topic=TOPIC_REPORTS)
         admins = (
             await db.execute(
                 select(User).where(User.role == UserRole.ADMIN, User.tg_chat_id.isnot(None))
             )
         ).scalars().all()
         for admin in admins:
-            await fanout.send(admin, "🚩 Новая жалоба на фото (платформа)")
+            await fanout.send(admin, "🚩 Новая жалоба на фото (платформа)", topic=TOPIC_REPORTS)
     except Exception:
         logger.exception("notify_photo_report: не поставлено")
