@@ -19,6 +19,7 @@ import logging
 from aiogram import Bot, Dispatcher, F
 from aiogram.filters import Command, CommandObject, CommandStart
 from aiogram.types import (
+    BotCommand,
     CallbackQuery,
     InlineKeyboardButton,
     InlineKeyboardMarkup,
@@ -86,6 +87,14 @@ _CONTACT_KB = ReplyKeyboardMarkup(
     keyboard=[[KeyboardButton(text="📱 Поделиться контактом", request_contact=True)]],
     resize_keyboard=True,
     one_time_keyboard=True,
+)
+
+# Постоянная кнопка внизу у привязанного пользователя: открыть меню подписок,
+# не набирая /settings. Ставится после привязки и держится в чате.
+MENU_BTN_PREFS = "⚙️ Мои уведомления"
+_MENU_KB = ReplyKeyboardMarkup(
+    keyboard=[[KeyboardButton(text=MENU_BTN_PREFS)]],
+    resize_keyboard=True,
 )
 
 
@@ -286,8 +295,9 @@ async def _link_existing_account(message: Message) -> None:
         "linked: tg_user=%s phone=%s", message.from_user.id, _mask_phone(phone)
     )
     await message.answer(
-        "Telegram привязан ✅ Теперь уведомления о записях будут приходить сюда.",
-        reply_markup=ReplyKeyboardRemove(),
+        "Telegram привязан ✅ Теперь уведомления о записях будут приходить сюда.\n\n"
+        "Кнопка «⚙️ Мои уведомления» внизу — управление подписками.",
+        reply_markup=_MENU_KB,
     )
 
 
@@ -326,8 +336,9 @@ async def on_contact(message: Message) -> None:
             _mask_phone(try_normalize_phone(message.contact.phone_number) or ""),
         )
         await message.answer(
-            "Номер подтверждён ✅\nВернитесь на сайт — регистрация продолжится сама.",
-            reply_markup=ReplyKeyboardRemove(),
+            "Номер подтверждён ✅\nВернитесь на сайт — регистрация продолжится сама.\n\n"
+            "Кнопка «⚙️ Мои уведомления» внизу — управление подписками.",
+            reply_markup=_MENU_KB,
         )
     elif verdict == VERDICT_FOREIGN_CONTACT:
         await message.answer(
@@ -366,8 +377,16 @@ async def main() -> None:
     dp = Dispatcher()
     dp.message.register(on_start, CommandStart())
     dp.message.register(_show_prefs_menu, Command("settings"))
+    # Нижняя кнопка-клавиатура: открыть меню подписок без набора /settings.
+    dp.message.register(_show_prefs_menu, F.text == MENU_BTN_PREFS)
     dp.message.register(on_contact, F.contact)
     dp.callback_query.register(on_prefs_toggle, F.data.startswith("ntf:"))
+
+    # Пункты в кнопке «Меню» (≡) рядом с полем ввода — тапнуть, а не печатать.
+    await bot.set_my_commands([
+        BotCommand(command="settings", description="⚙️ Мои уведомления"),
+        BotCommand(command="start", description="Меню и привязка аккаунта"),
+    ])
 
     logger.info("Бот подтверждения номера запущен (long polling)")
     await dp.start_polling(bot)
