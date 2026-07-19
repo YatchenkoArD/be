@@ -306,6 +306,9 @@ async def create_warehouse_request_web(
     except InventoryError as e:
         raise HTTPException(status_code=e.status, detail=e.message)
 
+    from app.services.notifications import notify_warehouse_request_created
+    await notify_warehouse_request_created(db, req)
+
     return {"id": req.id, "status": req.status.value}
 
 
@@ -337,3 +340,28 @@ async def dismiss_warehouse_request_web(
     except InventoryError as e:
         raise HTTPException(status_code=e.status, detail=e.message)
     return {"id": req.id, "status": req.status.value}
+
+
+@router.post("/salon/{salon_id}/notify-toggle")
+async def toggle_warehouse_notify_web(
+    salon_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Личный тумблер: получать ли Telegram-пуш о заявках склада. Каждый
+    участник переключает только свою запись — не общая настройка салона."""
+    from app.models.models import SalonMember
+
+    member = (await db.execute(
+        select(SalonMember).where(
+            SalonMember.salon_id == salon_id,
+            SalonMember.user_id == current_user.id,
+            SalonMember.is_active == True,
+        )
+    )).scalar_one_or_none()
+    if member is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Вы не участник этого салона")
+
+    member.notify_warehouse_requests = not member.notify_warehouse_requests
+    await db.commit()
+    return {"notify_warehouse_requests": member.notify_warehouse_requests}

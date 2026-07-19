@@ -136,7 +136,7 @@ async def render_business_dashboard(db: AsyncSession, user, salon: Salon, member
 
     tab_buttons.append(('warehouse', '📦 Склад', perms["manage_inventory"]))
     if perms["manage_inventory"]:
-        tabs_html.append(await render_warehouse_tab(db, salon, masters, master_ids, warehouse_filters))
+        tabs_html.append(await render_warehouse_tab(db, salon, masters, master_ids, warehouse_filters, membership))
 
     tab_buttons.append(('chat', '💬 Чат', True))
     tabs_html.append(await render_chat_tab(db, salon, user))

@@ -20,7 +20,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.worker import get_arq_pool
-from app.models.models import Booking, Master, Salon, SalonMember, Service, User
+from app.models.models import (
+    Booking, Equipment, InventoryItem, Master, Salon, SalonMember, Service, User,
+    WarehouseRequest, WarehouseRequestType,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -148,3 +151,54 @@ async def notify_booking_cancelled(db: AsyncSession, booking: Booking) -> None:
             )
     except Exception:
         logger.exception("notify_booking_cancelled(%s): уведомления не поставлены", booking.id)
+
+
+async def notify_warehouse_request_created(db: AsyncSession, request: WarehouseRequest) -> None:
+    """Пуш владельцу/админам салона: мастер сообщил, что расходник
+    заканчивается или техника сломалась. Получают только те, у кого личный
+    тумблер SalonMember.notify_warehouse_requests включён (по умолчанию да)
+    и привязан Telegram — как и остальные уведомления, сервис вежливости,
+    не имеет права ломать создание заявки."""
+    if not settings.TG_NOTIFY_ENABLED:
+        return
+    try:
+        salon = (await db.execute(select(Salon).where(Salon.id == request.salon_id))).scalar_one_or_none()
+        if not salon:
+            return
+
+        if request.type == WarehouseRequestType.CONSUMABLE_LOW:
+            target_name = "расходник"
+            if request.item_id:
+                item = (await db.execute(select(InventoryItem).where(InventoryItem.id == request.item_id))).scalar_one_or_none()
+                if item:
+                    target_name = item.name
+            text = f"⚠️ Заканчивается: {target_name}"
+        else:
+            target_name = "техника"
+            if request.equipment_id:
+                equipment = (await db.execute(select(Equipment).where(Equipment.id == request.equipment_id))).scalar_one_or_none()
+                if equipment:
+                    target_name = equipment.name
+            text = f"🔧 Сломалась техника: {target_name}"
+
+        if request.comment:
+            text += f"\n«{request.comment}»"
+        text += f"\nСалон «{salon.name}»"
+
+        recipients = (await db.execute(
+            select(User)
+            .join(SalonMember, SalonMember.user_id == User.id)
+            .where(
+                SalonMember.salon_id == salon.id,
+                SalonMember.is_active == True,
+                SalonMember.notify_warehouse_requests == True,
+            )
+        )).scalars().all()
+
+        notified: set[int] = set()
+        for person in recipients:
+            if person.tg_chat_id and person.tg_chat_id not in notified:
+                await _enqueue(person.tg_chat_id, text)
+                notified.add(person.tg_chat_id)
+    except Exception:
+        logger.exception("notify_warehouse_request_created(%s): уведомление не поставлено", request.id)

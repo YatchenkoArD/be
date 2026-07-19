@@ -9,7 +9,7 @@ from app.models.models import (
 from app.services.inventory_service import InventoryService
 
 
-async def render_warehouse_tab(db: AsyncSession, salon, masters, master_ids, warehouse_filters: dict) -> str:
+async def render_warehouse_tab(db: AsyncSession, salon, masters, master_ids, warehouse_filters: dict, membership=None) -> str:
     """Вкладка «Склад» — мини-склады мастеров, приход, инвентаризация."""
 
     master_user_names = {}
@@ -132,6 +132,15 @@ async def render_warehouse_tab(db: AsyncSession, salon, masters, master_ids, war
                 <button id="confirmAuditBtn" class="btn-primary" style="margin-top:1rem" data-audit-id="{audit.id}">Подтвердить инвентаризацию</button>
             </div>"""
 
+    notify_toggle_html = ""
+    if membership is not None:
+        checked = "checked" if membership.notify_warehouse_requests else ""
+        notify_toggle_html = f"""
+        <label style="display:flex;align-items:center;gap:0.5rem;margin-bottom:1.5rem;font-size:0.9rem;cursor:pointer">
+            <input type="checkbox" id="notifyWarehouseToggle" {checked} onchange="toggleWarehouseNotify()">
+            Присылать мне в Telegram, когда расходник заканчивается или техника ломается
+        </label>"""
+
     return f"""
     <div id="tab-warehouse" class="tab-content">
         <div class="analytics-kpi">
@@ -140,6 +149,8 @@ async def render_warehouse_tab(db: AsyncSession, salon, masters, master_ids, war
             <div class="kpi-card"><div class="kpi-label">Визитов без списания</div><div class="kpi-value" style="color:#f59e0b">{len(unreported)}</div></div>
             <div class="kpi-card"><div class="kpi-label">Заявок в очереди</div><div class="kpi-value" style="color:#f59e0b">{len(pending_requests)}</div></div>
         </div>
+
+        {notify_toggle_html}
 
         {f'<div style="margin-bottom:1.5rem"><h3 style="margin-bottom:0.75rem">📋 Заявки от мастеров</h3>{request_rows}</div>' if request_rows else ''}
 
@@ -237,6 +248,15 @@ async def render_warehouse_tab(db: AsyncSession, salon, masters, master_ids, war
         window.toggleEquipment = async function(equipmentId) {{
             const res = await fetch('/api/v1/inventory/salon/' + salonId + '/equipment/' + equipmentId + '/toggle', {{ method: 'POST' }});
             if (res.ok) location.reload(); else alert('Не удалось изменить статус');
+        }};
+
+        window.toggleWarehouseNotify = async function() {{
+            const checkbox = document.getElementById('notifyWarehouseToggle');
+            const res = await fetch('/api/v1/inventory/salon/' + salonId + '/notify-toggle', {{ method: 'POST' }});
+            if (!res.ok) {{
+                alert('Не удалось сохранить настройку');
+                checkbox.checked = !checkbox.checked;  // откатываем визуально
+            }}
         }};
 
         window.resolveWarehouseRequest = async function(requestId) {{
