@@ -49,7 +49,6 @@ def render_about_page(user=None) -> str:
                     <p class="about-footer-text">Для клиентов — 4 клика до записи. Для салонов — всё для управления в одном окне.</p>
                     <div class="about-footer-buttons">
                         <a href="/salons" class="about-btn-primary">Найти салон</a>
-                        <a href="/business" class="about-btn-secondary">Для бизнеса</a>
                     </div>
                 </div>
             </div>

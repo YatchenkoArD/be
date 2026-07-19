@@ -91,7 +91,7 @@ async def render_home_page(db: AsyncSession, user=None) -> str:
                         Красота — это просто<span class="dot-primary">.</span>
                     </h1>
                     <p class="home-hero-subtitle text-body-lg">
-                        Услуга, салон, время — готово. Без звонков и ожиданий.
+                        Салон, услуга, время — готово. Без звонков и ожиданий.
                     </p>
 
                     <!-- Поиск -->
@@ -110,21 +110,7 @@ async def render_home_page(db: AsyncSession, user=None) -> str:
                         </a>
                     </div>
 
-                    <!-- Теги -->
-                    <div class="home-hero-tags">
-                        <a href="/salons?service=стрижка" class="home-tag">
-                            {ICON_SCISSORS} Стрижка
-                        </a>
-                        <a href="/salons?service=маникюр" class="home-tag">
-                            {ICON_SPARKLES} Маникюр
-                        </a>
-                        <a href="/salons?service=окрашивание" class="home-tag">
-                            {ICON_SPARKLES} Окрашивание
-                        </a>
-                        <a href="/salons?service=брови" class="home-tag">
-                            {ICON_SPARKLES} Брови
-                        </a>
-                    </div>
+                    <!-- Теги удалены по запросу -->
                 </div>
             </div>
         </section>
@@ -150,8 +136,8 @@ async def render_home_page(db: AsyncSession, user=None) -> str:
                                 <span class="step-num">01</span>
                                 <span class="step-dot" style="color:var(--color-primary);">.</span>
                             </div>
-                            <h3 class="step-headline">Услуга</h3>
-                            <p class="step-desc">Выберите, что нужно сделать.</p>
+                            <h3 class="step-headline">Салон</h3>
+                            <p class="step-desc">Выберите подходящий салон с нужным мастером.</p>
                         </div>
                         <!-- 02 -->
                         <div class="step-item">
@@ -159,8 +145,8 @@ async def render_home_page(db: AsyncSession, user=None) -> str:
                                 <span class="step-num">02</span>
                                 <span class="step-dot" style="color:var(--color-primary);">.</span>
                             </div>
-                            <h3 class="step-headline">Салон</h3>
-                            <p class="step-desc">Найдите ближайший с нужным мастером.</p>
+                            <h3 class="step-headline">Услуга</h3>
+                            <p class="step-desc">Выберите что нужно сделать.</p>
                         </div>
                         <!-- 03 -->
                         <div class="step-item">
@@ -169,7 +155,7 @@ async def render_home_page(db: AsyncSession, user=None) -> str:
                                 <span class="step-dot" style="color:var(--color-primary);">.</span>
                             </div>
                             <h3 class="step-headline">Время</h3>
-                            <p class="step-desc">Возьмите свободное окно в один тап.</p>
+                            <p class="step-desc">Возьмите свободное окно.</p>
                         </div>
                         <!-- 04 -->
                         <div class="step-item">
@@ -201,12 +187,12 @@ async def render_home_page(db: AsyncSession, user=None) -> str:
             </div>
         </section>
 
-        <!-- Партнёр Т‑Банк -->
+        <!-- Партнёр Т‑Банк (временно скрыт) -->
+        <!--
         <section class="section-py">
             <div class="section-container">
                 <div class="partner-card">
                     <div class="partner-inner">
-                        <!-- Левая колонка -->
                         <div class="partner-left">
                             <div class="partner-badge">Партнёр руми</div>
                             <div class="partner-logo-wrapper">
@@ -231,7 +217,6 @@ async def render_home_page(db: AsyncSession, user=None) -> str:
                                 <a href="https://www.tbank.ru/business/" target="_blank" rel="noopener noreferrer" class="partner-btn-secondary">Для салонов</a>
                             </div>
                         </div>
-                        <!-- Правая колонка -->
                         <div class="partner-right">
                             <div class="partner-stat-card">
                                 <div class="partner-stat-icon">
@@ -262,6 +247,7 @@ async def render_home_page(db: AsyncSession, user=None) -> str:
                 </div>
             </div>
         </section>
+        -->
 
         <!-- Стать моделью -->
         <section class="section-py" id="become-model">
@@ -323,7 +309,7 @@ async def render_home_page(db: AsyncSession, user=None) -> str:
                     </div>
                     <div class="business-item">
                         <div class="business-number">03<span class="business-number-dot">.</span></div>
-                        <h3 class="business-item-title">Оплаты</h3>
+                        <h3 class="business-item-title">Оплата</h3>
                         <p class="business-item-desc">Касса, чаевые, отчёты — внутри.</p>
                     </div>
                     <div class="business-item">
@@ -334,21 +320,9 @@ async def render_home_page(db: AsyncSession, user=None) -> str:
                 </div>
                 <div class="business-cta">
                     <a href="/business" class="btn-primary business-btn">
-                        Подключить салон
+                        Подробнее
                         {ICON_ARROW_RIGHT}
                     </a>
-                </div>
-
-                <!-- ===== Мы убрали из красоты всё лишнее... ===== -->
-                <div class="home-footer-block">
-                    <p class="home-footer-banner-text">
-                        Мы убрали из красоты всё лишнее.<br>
-                        <span style="color: var(--color-muted);">Остались вы и мастер</span><span class="home-footer-banner-dot">.</span>
-                    </p>
-                    <div class="home-footer-buttons-wrap">
-                        <a class="home-footer-btn-primary" href="/salons">Найти салон</a>
-                        <a class="home-footer-btn-outline" href="/about">Манифест →</a>
-                    </div>
                 </div>
             </div>
         </section>

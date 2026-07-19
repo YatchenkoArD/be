@@ -35,7 +35,7 @@ def render_business_landing_page(user=None) -> str:
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Для бизнеса | Руми</title>
-    <meta name="description" content="руми — платформа, которая приводит клиентов и управляет салоном. Запись, оплаты, касса, команда и аналитика — в одном окне.">
+    <meta name="description" content="руми — платформа, которая приводит клиентов и управляет салоном. Запись, оплата, касса, команда и аналитика — в одном окне.">
     {get_base_styles()}
 </head>
 <body>
@@ -87,7 +87,7 @@ def render_business_landing_page(user=None) -> str:
             <div class="section-container">
                 <div class="bl-section-header">
                     <span class="bl-badge">Зачем это салону</span>
-                    <h2>Закрываем реальные боли</h2>
+                    <h2>Решаем реальные проблемы<span class="dot-primary">:</span></h2>
                 </div>
                 <div class="bl-pains-grid">
                     <!-- Карточка 1 -->
@@ -149,7 +149,7 @@ def render_business_landing_page(user=None) -> str:
                         </div>
                         <div class="bl-pain-solution">
                             {ICON_CIRCLE_CHECK}
-                            <p>Онлайн-запись за 4 клика — без звонков и форм. Клиент выбирает услугу, мастера и время сам, в любое время суток, а расписание обновляется в реальном времени.</p>
+                            <p>Онлайн-запись за 4 шага — без звонков и форм. Клиент выбирает услугу, мастера и время сам, в любое время суток, а расписание обновляется в реальном времени.</p>
                         </div>
                         <a href="#pricing" class="bl-pain-link">
                             {ICON_TRENDING_UP}
@@ -238,7 +238,8 @@ def render_business_landing_page(user=None) -> str:
             </div>
         </section>
 
-        <!-- Партнёр Т‑Банк -->
+        <!-- Партнёр Т‑Банк (временно скрыт) -->
+        <!--
         <section class="section-py bl-partner">
             <div class="section-container">
                 <div class="bl-partner-block">
@@ -275,9 +276,10 @@ def render_business_landing_page(user=None) -> str:
                 </div>
             </div>
         </section>
+        -->
 
-        <!-- Сравнение -->
-        <section class="section-py bl-comparison bl-bg-surface-alt">
+        <!-- Сравнение (белый фон) -->
+        <section class="section-py bl-comparison" style="background: #ffffff;">
             <div class="section-container">
                 <div class="bl-section-header">
                     <span class="bl-badge">Сравнение</span>

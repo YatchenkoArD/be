@@ -11,7 +11,7 @@
 /* ---------- HERO СЕКЦИЯ ---------- */
 .home-hero {
     position: relative;
-    background: var(--color-surface); 
+    background: var(--color-surface);
     overflow: hidden;
     min-height: 100vh;
     display: flex;
@@ -54,7 +54,7 @@
     width: 100%;
     z-index: 3;
     padding-top: 12vh;
-    padding-bottom: 12vh; 
+    padding-bottom: 12vh;
     padding-left: 0;
 }
 
@@ -150,16 +150,21 @@
     align-items: flex-start;
     min-width: 0;
 }
+
+/* Увеличены шрифты на 20% */
 .home-search-title {
-    font-size: 1rem;
+    font-size: 1.2rem;          /* было 1rem, +20% */
     font-weight: 600;
     color: var(--color-heading);
 }
 @media (min-width: 640px) {
-    .home-search-title { font-size: 1.125rem; }
+    .home-search-title {
+        font-size: 1.35rem;     /* было 1.125rem, +20% */
+    }
 }
+
 .home-search-desc {
-    font-size: 0.875rem;
+    font-size: 1.05rem;         /* было 0.875rem, +20% */
     color: var(--color-muted);
 }
 
@@ -183,55 +188,15 @@
     .home-search-btn { display: flex; }
 }
 
-.home-hero-tags {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    margin-top: 1.25rem;
-    margin-bottom: 1.5rem; 
-}
-@media (min-width: 640px) {
-    .home-hero-tags { gap: 0.75rem; }
-}
-
-.home-hero {
-    position: relative;
-}
-
-.home-tag {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.625rem 1rem;
-    border-radius: 9999px;
-    border: 1px solid var(--color-border);
-    background: var(--color-surface-alt);
-    font-size: 0.875rem;
-    font-weight: 500;
-    color: var(--color-heading);
-    text-decoration: none;
-    transition: all 0.2s ease;
-    cursor: pointer;
-}
-.home-tag:hover {
-    background: var(--color-surface);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-    border-color: var(--color-primary);
-}
-.home-tag svg {
-    width: 1rem;
-    height: 1rem;
-    color: var(--color-primary);
-    flex-shrink: 0;
-}
+/* Теги удалены, стили для них не нужны */
 
 /* ---------- СЕКЦИЯ "КАК ЗАПИСАТЬСЯ" ---------- */
 .steps-four-grid {
     display: grid;
     grid-template-columns: 1fr;
-    gap: 1.5rem;             
-    background: transparent;    
-    border: none;               
+    gap: 1.5rem;
+    background: transparent;
+    border: none;
     border-radius: 0;
     overflow: visible;
 }
@@ -245,8 +210,8 @@
 
 .step-four-card {
     padding: 2rem;
-    background: var(--color-surface) !important;  
-    border-radius: 1rem;           
+    background: var(--color-surface) !important;
+    border-radius: 1rem;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
     transition: box-shadow 0.2s;
 }
@@ -534,7 +499,6 @@
     color: var(--color-primary);
 }
 
-/* Заголовок шага */
 .step-headline {
     font-family: var(--font-heading);
     font-size: 1.5rem;
@@ -552,14 +516,14 @@
 }
 
 .how-title-wrapper {
-    max-width: 42rem;         
+    max-width: 42rem;
     margin: 0 auto 3rem;
-    text-align: center;        
+    text-align: center;
 }
 
 .how-title {
     font-family: var(--font-heading);
-    font-size: 2.25rem;       
+    font-size: 2.25rem;
     font-weight: 700;
     line-height: 1.1;
     color: var(--color-heading);
@@ -567,7 +531,7 @@
 
 @media (min-width: 1024px) {
     .how-title {
-        font-size: 3rem;      
+        font-size: 3rem;
     }
 }
 
@@ -577,8 +541,8 @@
 
 .how-subtitle {
     font-family: var(--font-body);
-    font-size: 1.125rem;       
-    margin-top: 0.75rem;       
+    font-size: 1.125rem;
+    margin-top: 0.75rem;
     color: var(--color-muted);
 }
 
@@ -858,8 +822,6 @@
 }
 
 /* ---------- БЛОК "СТАТЬ МОДЕЛЬЮ" ---------- */
-
-/* Лейбл "Для клиентов" в левом верхнем углу */
 .model-label {
     font-family: var(--font-body);
     font-size: 0.75rem;
@@ -871,7 +833,6 @@
     display: block;
 }
 
-/* Шапка: заголовок слева, подзаголовок справа на десктопе */
 .model-header {
     display: flex;
     flex-direction: column;
@@ -975,7 +936,7 @@
 .model-item {
     background: var(--color-surface);
     padding: 2rem;
-    border: none;        /* убираем все границы */
+    border: none;
 }
 
 @media (min-width: 1024px) {
@@ -984,7 +945,6 @@
     }
 }
 
-/* Убираем hover-эффект */
 .model-item:hover {
     background: var(--color-surface);
 }
@@ -1016,7 +976,6 @@
     margin: 0;
 }
 
-/* Кнопка — выравнивание по левому краю */
 .model-cta {
     text-align: left;
     margin-top: 2.5rem;
@@ -1049,8 +1008,6 @@
 }
 
 /* ---------- БЛОК "ДЛЯ БИЗНЕСА" ---------- */
-
-/* Лейбл "Для бизнеса" в левом верхнем углу */
 .business-label {
     font-family: var(--font-body);
     font-size: 0.75rem;
@@ -1062,7 +1019,6 @@
     display: block;
 }
 
-/* Шапка: заголовок слева, подзаголовок справа на десктопе */
 .business-header {
     display: flex;
     flex-direction: column;
@@ -1136,7 +1092,6 @@
     }
 }
 
-/* Сетка карточек — без разделителей */
 .business-grid {
     display: grid;
     grid-template-columns: 1fr;
@@ -1176,7 +1131,6 @@
     }
 }
 
-/* Убираем hover-эффект */
 .business-item:hover {
     background: var(--color-surface);
 }
@@ -1216,7 +1170,6 @@
     margin: 0;
 }
 
-/* Кнопка — выравнивание по левому краю */
 .business-cta {
     text-align: left;
     margin-top: 2.5rem;
@@ -1332,16 +1285,16 @@
 .mt-10 { margin-top: 2.5rem; }
 
 /* ---------- АДАПТИВНОСТЬ ДЛЯ МОБИЛЬНЫХ ---------- */
-
 @media (max-width: 768px) {
     .home-hero-title { font-size: 2.5rem; }
     .home-hero-subtitle { font-size: 0.95rem; }
     .home-search-link { padding: 0.75rem 1rem; min-height: 56px; }
     .home-search-icon-wrapper { padding: 0.5rem; }
     .home-search-icon-wrapper svg { width: 1rem; height: 1rem; }
-    .home-search-title { font-size: 0.9rem; }
-    .home-search-desc { font-size: 0.75rem; }
-    .home-tag { padding: 0.4rem 0.75rem; font-size: 0.75rem; }
+
+    .home-search-title { font-size: 1.2rem; }  
+    .home-search-desc { font-size: 1rem; }       
+    .home-tag { padding: 0.4rem 0.75rem; font-size: 0.75rem; } 
     .home-tag svg { width: 0.875rem; height: 0.875rem; }
     .section-title { font-size: 2rem; }
 }

@@ -32,7 +32,6 @@ def render_model_landing_page(user=None) -> str:
     <main class="home-main">
         <!-- Hero -->
         <section class="model-hero">
-            <!-- Фоновое изображение удалено, оставлен только градиент из CSS -->
             <div class="section-container">
                 <div class="model-hero-content">
                     <div class="model-hero-badge">
@@ -97,7 +96,8 @@ def render_model_landing_page(user=None) -> str:
             </div>
         </section>
 
-        <!-- Партнёр Альфа-Банк -->
+        <!-- Партнёр Альфа-Банк — временно скрыт -->
+        <!--
         <section class="section-py model-partner">
             <div class="section-container">
                 <div class="partner-horizontal">
@@ -125,6 +125,7 @@ def render_model_landing_page(user=None) -> str:
                 </div>
             </div>
         </section>
+        -->
 
         <!-- Тарифы -->
         <section id="plans" class="section-py model-plans">

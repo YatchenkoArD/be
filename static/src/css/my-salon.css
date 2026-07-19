@@ -55,6 +55,13 @@
     margin-bottom: 1rem;
 }
 
+.my-salon-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
 /* Сетка 2 колонки */
 .my-salon-grid-2 {
     display: grid;
@@ -69,12 +76,14 @@
     }
 }
 
-.my-salon-grid-2 > div {
+.my-salon-grid-2 > div,
+.loyalty-field {
     display: flex;
     flex-direction: column;
 }
 
-.my-salon-grid-2 label {
+.my-salon-grid-2 label,
+.loyalty-field label {
     font-weight: 500;
     margin-bottom: 0.5rem;
     font-size: 0.9rem;
@@ -82,7 +91,7 @@
 }
 
 .my-salon-grid-2 input,
-.my-salon-grid-2 textarea {
+.loyalty-field input {
     width: 100%;
     padding: 0.75rem;
     border: 1px solid var(--color-border);
@@ -94,7 +103,35 @@
 }
 
 .my-salon-grid-2 input:focus,
-.my-salon-grid-2 textarea:focus {
+.loyalty-field input:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(192, 129, 184, 0.15);
+}
+
+.my-salon-full-width {
+    margin-bottom: 1.5rem;
+}
+
+.my-salon-full-width label {
+    display: block;
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+    color: var(--color-heading);
+}
+
+.my-salon-full-width input {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.5rem;
+    font-size: 0.95rem;
+    background: var(--color-surface);
+    color: var(--color-heading);
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.my-salon-full-width input:focus {
     outline: none;
     border-color: var(--color-primary);
     box-shadow: 0 0 0 3px rgba(192, 129, 184, 0.15);
@@ -110,6 +147,7 @@
     color: var(--color-heading);
     resize: vertical;
     transition: border-color 0.2s, box-shadow 0.2s;
+    font-family: var(--font-body);
 }
 
 .my-salon-textarea:focus {
@@ -118,7 +156,22 @@
     box-shadow: 0 0 0 3px rgba(192, 129, 184, 0.15);
 }
 
+.loyalty-field.full-width {
+    max-width: calc(50% - 0.75rem);
+    margin-bottom: 1.5rem;
+}
+
+@media (max-width: 640px) {
+    .loyalty-field.full-width {
+        max-width: 100%;
+    }
+}
+
 /* Часы работы */
+.hours-container {
+    margin-bottom: 1rem;
+}
+
 .my-salon-hours-row {
     display: flex;
     align-items: center;
@@ -161,7 +214,18 @@
     color: var(--color-muted);
 }
 
+.hours-actions {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
 /* Таблицы */
+.table-wrap {
+    overflow-x: auto;
+}
+
 .my-salon-table {
     width: 100%;
     border-collapse: collapse;
@@ -179,6 +243,40 @@
     padding: 0.75rem;
     border-bottom: 1px solid var(--color-border);
     vertical-align: middle;
+}
+
+.my-salon-table .empty-state {
+    text-align: center;
+    padding: 2rem;
+    color: var(--color-muted);
+}
+
+.my-salon-table .delete-btn-icon {
+    background: none;
+    border: none;
+    color: #ef4444;
+    cursor: pointer;
+    font-size: 1.1rem;
+    padding: 0.25rem;
+    transition: color 0.2s;
+}
+
+.my-salon-table .delete-btn-icon:hover {
+    color: #dc2626;
+}
+
+/* Лояльность */
+.loyalty-offers-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 2rem 0 1rem;
+}
+
+.loyalty-offers-header h3 {
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--color-heading);
 }
 
 /* Фото галерея */
@@ -236,6 +334,10 @@
     height: 1.5rem;
     cursor: pointer;
     line-height: 1;
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .my-salon-photo-item .cover-border {
@@ -348,6 +450,7 @@
     background: var(--color-surface);
     color: var(--color-heading);
     transition: border-color 0.2s, box-shadow 0.2s;
+    font-family: var(--font-body);
 }
 
 .my-salon-form-group input:focus,
@@ -357,6 +460,7 @@
     box-shadow: 0 0 0 3px rgba(192, 129, 184, 0.15);
 }
 
+/* Кнопки */
 .my-salon-btn-primary {
     display: inline-flex;
     align-items: center;
@@ -396,4 +500,60 @@
 .my-salon-btn-outline:hover {
     background: var(--color-surface-alt);
     border-color: var(--color-primary);
+}
+
+/* Алерты */
+.alert {
+    padding: 0.75rem 1rem;
+    border-radius: 0.5rem;
+    margin-bottom: 1.5rem;
+    font-size: 0.875rem;
+}
+
+.alert.success {
+    background: #dcfce7;
+    color: #166534;
+    border: 1px solid #86efac;
+}
+
+.alert.error {
+    background: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #fca5a5;
+}
+
+.alert .temp-pw {
+    background: white;
+    padding: 0.15rem 0.5rem;
+    border-radius: 0.25rem;
+    font-weight: 700;
+}
+
+/* Адаптив */
+@media (max-width: 640px) {
+    .my-salon-main {
+        padding-top: 80px;
+    }
+    .my-salon-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.75rem;
+    }
+    .my-salon-header h1 {
+        font-size: 1.5rem;
+    }
+    .my-salon-card {
+        padding: 1rem;
+    }
+    .my-salon-hours-row .day-label {
+        width: 100px;
+    }
+    .my-salon-hours-row .closed-label {
+        width: 80px;
+    }
+    .loyalty-offers-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.75rem;
+    }
 }

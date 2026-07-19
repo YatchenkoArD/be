@@ -221,7 +221,7 @@ async def render_business_dashboard(db: AsyncSession, user, salon: Salon, member
 
     # Мастера (сотрудники)
     tab_buttons.append(('employees', ICON_USERS, 'Сотрудники', True))
-    tabs_html.append(await render_employees_tab(db, salon, masters))
+    tabs_html.append(await render_employees_tab(db, salon, masters, user, membership, perms))
 
     # Услуги
     tab_buttons.append(('services', ICON_USER_CHECK, 'Услуги', True))
@@ -249,11 +249,6 @@ async def render_business_dashboard(db: AsyncSession, user, salon: Salon, member
     # Чат
     tab_buttons.append(('chat', ICON_MESSAGE_CIRCLE, 'Чат', True))
     tabs_html.append(await render_chat_tab(db, salon, user))
-
-    # Сотрудники (админы/владельцы) – с правом manage_admins или manage_owners
-    tab_buttons.append(('staff', ICON_USERS, 'Сотрудники', perms["manage_admins"] or perms["manage_owners"]))
-    if perms["manage_admins"] or perms["manage_owners"]:
-        tabs_html.append(await render_staff_tab(db, salon, user, membership, perms, staff_notice))
 
     # Модели (с правом manage_masters)
     tab_buttons.append(('models', ICON_HEART, 'Модели', perms["manage_masters"]))

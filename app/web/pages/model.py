@@ -134,28 +134,6 @@ def render_model_page(user=None) -> str:
             font-weight: 700;
             margin: 0 auto 1rem;
         }}
-        .partner-banner {{
-            margin-top: 2rem;
-            background: linear-gradient(135deg, #fef2f2, #fff5f5);
-            border: 1px solid #fecaca;
-            border-radius: 1rem;
-            padding: 1.25rem 1.5rem;
-            display: flex;
-            align-items: center;
-            gap: 1.5rem;
-            flex-wrap: wrap;
-        }}
-        .partner-banner .alfa-logo {{
-            font-size: 1.5rem;
-            font-weight: 900;
-            color: #EE3424;
-        }}
-        .partner-banner p {{
-            flex: 1;
-            font-size: 0.9rem;
-            color: var(--color-body);
-            margin: 0;
-        }}
         .benefits {{
             background: linear-gradient(135deg, #FFF8F6, #F8C8DC33);
             padding: 4rem 0;
@@ -270,13 +248,15 @@ def render_model_page(user=None) -> str:
                     </div>
                 </div>
                 
-                <!-- Партнёр (Альфа-Банк) -->
+                <!-- Партнёр (Альфа-Банк) — временно скрыт -->
+                <!--
                 <div class="partner-banner" style="max-width:60rem;margin:2rem auto 0">
                     <div class="alfa-logo">A</div>
                     <p>Оплачивай подписку <strong>Альфа‑Картой</strong> — получай <strong style="color:#EE3424">кешбэк 5%</strong> на все услуги мастеров</p>
                     <a href="https://alfabank.ru" target="_blank" class="btn-primary" style="background:#EE3424;font-size:0.8rem;padding:0.5rem 1rem;white-space:nowrap">Оформить карту →</a>
                     <span style="font-size:0.65rem;color:var(--color-muted)">Реклама · Альфа-Банк</span>
                 </div>
+                -->
                 
                 <!-- Как это работает -->
                 <div style="margin-top:5rem;text-align:center">

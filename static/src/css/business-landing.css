@@ -209,6 +209,11 @@
     background: var(--color-surface);
     transition: box-shadow 0.2s;
 }
+
+.bl-section-header .dot-primary {
+    color: var(--color-primary);
+}
+
 .bl-pain-card:hover {
     box-shadow: 0 8px 30px -8px rgba(0, 0, 0, 0.06);
 }
@@ -778,3 +783,4 @@
     font-size: 0.875rem;
     color: var(--color-muted);
 }
+

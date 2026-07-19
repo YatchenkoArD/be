@@ -3,7 +3,7 @@ import html
 import json
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from app.models.models import Salon, Master, Promotion, SalonLoyaltySettings, LoyaltyOffer, User as UserModel, SalonPhoto
+from app.models.models import Salon, Promotion, SalonLoyaltySettings, LoyaltyOffer, User as UserModel, SalonPhoto
 
 DAY_KEYS_RU = [
     ("mon", "Понедельник"), ("tue", "Вторник"), ("wed", "Среда"), ("thu", "Четверг"),
@@ -14,7 +14,6 @@ from app.web.components.footer import render_footer
 from app.web.components.sidebar import render_sidebar
 from app.web.components.styles import get_base_styles
 from app.web.components.icons import (
-    ICON_EDIT,
     ICON_TRASH,
     ICON_SAVE,
     ICON_PLUS,
@@ -80,8 +79,7 @@ async def render_my_salon_page(db: AsyncSession, salon: Salon, user=None, query_
     if error_code:
         message = _ERROR_MESSAGES.get(error_code, "Что-то пошло не так, попробуйте ещё раз.")
         error_banner = (
-            '<div style="background:#FEE2E2;color:#991B1B;border:1px solid #FCA5A5;'
-            'border-radius:0.5rem;padding:0.75rem 1rem;margin-bottom:1.5rem;font-size:0.875rem">'
+            '<div class="alert error">'
             f'{message}</div>'
         )
 
@@ -90,22 +88,15 @@ async def render_my_salon_page(db: AsyncSession, salon: Salon, user=None, query_
     if temp_pw:
         safe_temp_pw = html.escape(temp_pw, quote=True)
         success_banner = (
-            '<div style="background:#DCFCE7;color:#166534;border:1px solid #86EFAC;'
-            'border-radius:0.5rem;padding:0.75rem 1rem;margin-bottom:1.5rem;font-size:0.875rem">'
+            '<div class="alert success">'
             f'Мастер добавлен. Временный пароль (передайте его мастеру, он больше нигде не отобразится): '
-            f'<code style="background:white;padding:0.15rem 0.5rem;border-radius:0.25rem;font-weight:700">{safe_temp_pw}</code>'
+            f'<code class="temp-pw">{safe_temp_pw}</code>'
             '</div>'
         )
     elif query_params.get("added"):
         success_banner = (
-            '<div style="background:#DCFCE7;color:#166534;border:1px solid #86EFAC;'
-            'border-radius:0.5rem;padding:0.75rem 1rem;margin-bottom:1.5rem;font-size:0.875rem">'
-            'Мастер добавлен.</div>'
+            '<div class="alert success">Мастер добавлен.</div>'
         )
-
-    # Мастера
-    masters_result = await db.execute(select(Master).where(Master.salon_id == salon.id))
-    masters = masters_result.scalars().all()
 
     # Акции
     promos_result = await db.execute(select(Promotion).where(Promotion.salon_id == salon.id))
@@ -120,41 +111,17 @@ async def render_my_salon_page(db: AsyncSession, salon: Salon, user=None, query_
     )
     loyalty_offers = loyalty_offers_result.scalars().all()
 
-    # Таблица мастеров
-    masters_rows = ""
-    for m in masters:
-        user_result = await db.execute(select(UserModel).where(UserModel.id == m.user_id))
-        master_user = user_result.scalar_one_or_none()
-        user_name = master_user.full_name if master_user else "—"
-
-        masters_rows += f"""
-        <tr>
-            <td style="padding: 0.75rem; border-bottom: 1px solid var(--color-border);">
-                <strong>{user_name}</strong>
-            </td>
-            <td style="padding: 0.75rem; border-bottom: 1px solid var(--color-border);">{m.specialization}</td>
-            <td style="padding: 0.75rem; border-bottom: 1px solid var(--color-border);">
-                <button onclick="editMaster({m.id}, '{user_name}', '{m.specialization}', {m.experience_years})" style="background: none; border: none; color: var(--color-primary); cursor: pointer; font-size:1.1rem" title="Редактировать">
-                    {ICON_EDIT}
-                </button>
-                <button onclick="deleteMaster({m.id}, '{user_name}')" style="background: none; border: none; color: #ef4444; cursor: pointer; font-size:1.1rem; margin-left:0.5rem" title="Удалить">
-                    {ICON_TRASH}
-                </button>
-            </td>
-        </tr>
-        """
-
     # Таблица лояльности
     loyalty_offers_rows = ""
     for o in loyalty_offers:
         code_str = o.promo_code or "—"
         loyalty_offers_rows += f"""
         <tr>
-            <td style="padding: 0.75rem; border-bottom: 1px solid var(--color-border);"><strong>{o.title}</strong></td>
-            <td style="padding: 0.75rem; border-bottom: 1px solid var(--color-border);">{o.discount_percent}%</td>
-            <td style="padding: 0.75rem; border-bottom: 1px solid var(--color-border);"><code>{code_str}</code></td>
-            <td style="padding: 0.75rem; border-bottom: 1px solid var(--color-border);">
-                <button onclick="deleteLoyaltyOffer({o.id}, '{o.title}')" style="background: none; border: none; color: red; cursor: pointer;">{ICON_TRASH}</button>
+            <td><strong>{o.title}</strong></td>
+            <td>{o.discount_percent}%</td>
+            <td><code>{code_str}</code></td>
+            <td>
+                <button onclick="deleteLoyaltyOffer({o.id}, '{o.title}')" class="delete-btn-icon">{ICON_TRASH}</button>
             </td>
         </tr>
         """
@@ -194,10 +161,10 @@ async def render_my_salon_page(db: AsyncSession, salon: Salon, user=None, query_
     for p in promotions:
         promos_rows += f"""
         <tr>
-            <td style="padding: 0.75rem; border-bottom: 1px solid var(--color-border);"><strong>{p.title}</strong></td>
-            <td style="padding: 0.75rem; border-bottom: 1px solid var(--color-border);">{p.tag}</td>
-            <td style="padding: 0.75rem; border-bottom: 1px solid var(--color-border);">
-                <button onclick="deletePromo({p.id}, '{p.title}')" style="background: none; border: none; color: red; cursor: pointer;">{ICON_TRASH}</button>
+            <td><strong>{p.title}</strong></td>
+            <td>{p.tag}</td>
+            <td>
+                <button onclick="deletePromo({p.id}, '{p.title}')" class="delete-btn-icon">{ICON_TRASH}</button>
             </td>
         </tr>
         """
@@ -245,12 +212,12 @@ async def render_my_salon_page(db: AsyncSession, salon: Salon, user=None, query_
                             <input type="tel" id="salonPhone" name="phone" value="{salon.phone or ''}">
                         </div>
                     </div>
-                    <div style="margin-bottom: 1.5rem;">
-                        <label for="salonAddress" style="display:block;font-weight:500;margin-bottom:0.5rem;">Адрес</label>
-                        <input type="text" id="salonAddress" name="address" value="{salon.address or ''}" style="width:100%;padding:0.75rem;border:1px solid var(--color-border);border-radius:0.5rem;">
+                    <div class="my-salon-full-width">
+                        <label for="salonAddress">Адрес</label>
+                        <input type="text" id="salonAddress" name="address" value="{salon.address or ''}">
                     </div>
-                    <div style="margin-bottom: 1.5rem;">
-                        <label for="salonDescription" style="display:block;font-weight:500;margin-bottom:0.5rem;">Описание</label>
+                    <div class="my-salon-full-width">
+                        <label for="salonDescription">Описание</label>
                         <textarea id="salonDescription" name="description" rows="3" class="my-salon-textarea">{salon.description or ''}</textarea>
                     </div>
                     <button type="submit" class="my-salon-btn-primary">{ICON_SAVE} Сохранить изменения</button>
@@ -263,59 +230,39 @@ async def render_my_salon_page(db: AsyncSession, salon: Salon, user=None, query_
                 <p class="my-salon-card-hint">
                     Без часов работы расписание пустое и клиенты не могут записаться — заполните хотя бы будни.
                 </p>
-                <div style="margin-bottom: 1rem">
+                <div class="hours-container">
                     {hours_rows}
                 </div>
-                <div style="display:flex;gap:0.75rem;align-items:center;flex-wrap:wrap">
+                <div class="hours-actions">
                     <button type="button" class="my-salon-btn-primary" onclick="saveWorkingHours({salon.id})">{ICON_SAVE} Сохранить часы работы</button>
                     <button type="button" class="my-salon-btn-outline" onclick="copyMondayToWeekdays()">{ICON_COPY} Скопировать понедельник на пн–пт</button>
                 </div>
-            </div>
-
-            <!-- Мастера -->
-            <div class="my-salon-card">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                    <h2 class="my-salon-card-title" style="margin:0;">Мастера</h2>
-                    <button class="my-salon-btn-primary" style="font-size:0.85rem;padding:0.5rem 1rem" onclick="document.getElementById('addMasterModal').classList.add('active')">
-                        {ICON_PLUS} Добавить мастера
-                    </button>
-                </div>
-                <table class="my-salon-table">
-                    <thead>
-                        <tr>
-                            <th>Имя</th>
-                            <th>Специализация</th>
-                            <th style="width:80px">Действия</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {masters_rows or '<tr><td colspan="3" style="padding:2rem;text-align:center;color:var(--color-muted)">Пока нет мастеров</td></tr>'}
-                    </tbody>
-                </table>
             </div>
 
             {photos_section}
 
             <!-- Акции -->
             <div class="my-salon-card">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <div class="my-salon-card-header">
                     <h2 class="my-salon-card-title" style="margin:0;">Акции</h2>
-                    <button class="my-salon-btn-primary" style="font-size:0.85rem;padding:0.5rem 1rem" onclick="document.getElementById('addPromoModal').classList.add('active')">
+                    <button class="my-salon-btn-primary" onclick="document.getElementById('addPromoModal').classList.add('active')">
                         {ICON_PLUS} Добавить акцию
                     </button>
                 </div>
-                <table class="my-salon-table">
-                    <thead>
-                        <tr>
-                            <th>Название</th>
-                            <th>Тег</th>
-                            <th>Действия</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {promos_rows or '<tr><td colspan="3" style="padding:2rem;text-align:center;color:var(--color-muted)">Пока нет акций</td></tr>'}
-                    </tbody>
-                </table>
+                <div class="table-wrap">
+                    <table class="my-salon-table">
+                        <thead>
+                            <tr>
+                                <th>Название</th>
+                                <th>Тег</th>
+                                <th>Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {promos_rows or '<tr><td colspan="3" class="empty-state">Пока нет акций</td></tr>'}
+                        </tbody>
+                    </table>
+                </div>
             </div>
 
             <!-- Лояльность -->
@@ -327,96 +274,46 @@ async def render_my_salon_page(db: AsyncSession, salon: Salon, user=None, query_
                 </p>
 
                 <div class="my-salon-grid-2">
-                    <div>
+                    <div class="loyalty-field">
                         <label for="loyaltyRegularPercent">Скидка «постоянному клиенту», %</label>
                         <input type="number" id="loyaltyRegularPercent" min="0" max="99" value="{loyalty_settings.regular_client_discount_percent if loyalty_settings else 0}">
                     </div>
-                    <div>
+                    <div class="loyalty-field">
                         <label for="loyaltyVisitsThreshold">Визитов за год для авто-статуса</label>
                         <input type="number" id="loyaltyVisitsThreshold" min="1" placeholder="Не задано — только вручную" value="{loyalty_settings.regular_client_visits_threshold if loyalty_settings and loyalty_settings.regular_client_visits_threshold else ''}">
                     </div>
                 </div>
-                <div style="margin-bottom: 1.5rem; max-width: calc(50% - 0.75rem);">
+                <div class="loyalty-field full-width">
                     <label for="loyaltyBonusAccrual">Автоначисление баллов после оплаты, % от чека</label>
                     <input type="number" id="loyaltyBonusAccrual" min="0" max="99" step="0.1" placeholder="0 — выключено" value="{loyalty_settings.bonus_accrual_percent if loyalty_settings else 0}">
                 </div>
                 <button type="button" class="my-salon-btn-primary" onclick="saveLoyaltySettings({salon.id})">{ICON_SAVE} Сохранить настройки лояльности</button>
 
-                <div style="display: flex; justify-content: space-between; align-items: center; margin: 2rem 0 1rem;">
-                    <h3 style="font-size: 1.05rem; font-weight:600; color:var(--color-heading);">Именные скидки и промокоды</h3>
-                    <button class="my-salon-btn-primary" style="font-size:0.85rem;padding:0.5rem 1rem" onclick="document.getElementById('addLoyaltyOfferModal').classList.add('active')">
+                <div class="loyalty-offers-header">
+                    <h3>Именные скидки и промокоды</h3>
+                    <button class="my-salon-btn-primary" onclick="document.getElementById('addLoyaltyOfferModal').classList.add('active')">
                         {ICON_PLUS} Добавить
                     </button>
                 </div>
-                <table class="my-salon-table">
-                    <thead>
-                        <tr>
-                            <th>Название</th>
-                            <th>Скидка</th>
-                            <th>Промокод</th>
-                            <th></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {loyalty_offers_rows or '<tr><td colspan="4" style="padding:2rem;text-align:center;color:var(--color-muted)">Пока нет именных скидок</td></tr>'}
-                    </tbody>
-                </table>
+                <div class="table-wrap">
+                    <table class="my-salon-table">
+                        <thead>
+                            <tr>
+                                <th>Название</th>
+                                <th>Скидка</th>
+                                <th>Промокод</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {loyalty_offers_rows or '<tr><td colspan="4" class="empty-state">Пока нет именных скидок</td></tr>'}
+                        </tbody>
+                    </table>
+                </div>
             </div>
 
         </div>
     </main>
-
-    <!-- Модальное окно: Добавить мастера -->
-    <div class="my-salon-modal-overlay" id="addMasterModal">
-        <div class="my-salon-modal-box">
-            <button class="my-salon-modal-close" onclick="document.getElementById('addMasterModal').classList.remove('active')">&times;</button>
-            <h2>Добавить мастера</h2>
-            <form action="/api/v1/master/create-web" method="post">
-                <input type="hidden" name="salon_id" value="{salon.id}">
-                <div class="my-salon-form-group">
-                    <label for="masterName">Имя *</label>
-                    <input type="text" id="masterName" name="full_name" required placeholder="Имя мастера">
-                </div>
-                <div class="my-salon-form-group">
-                    <label for="masterPhone">Телефон *</label>
-                    <input type="tel" id="masterPhone" name="phone" required placeholder="+7XXXXXXXXXX">
-                </div>
-                <div class="my-salon-form-group">
-                    <label for="masterSpec">Специализация *</label>
-                    <input type="text" id="masterSpec" name="specialization" required placeholder="Например: барбер-стилист">
-                </div>
-                <div class="my-salon-form-group">
-                    <label for="masterExp">Опыт (лет)</label>
-                    <input type="number" id="masterExp" name="experience_years" value="0">
-                </div>
-                <button type="submit" class="my-salon-btn-primary" style="width:100%">Добавить мастера</button>
-            </form>
-        </div>
-    </div>
-
-    <!-- Модальное окно: Редактировать мастера -->
-    <div class="my-salon-modal-overlay" id="editMasterModal">
-        <div class="my-salon-modal-box">
-            <button class="my-salon-modal-close" onclick="document.getElementById('editMasterModal').classList.remove('active')">&times;</button>
-            <h2>Редактировать мастера</h2>
-            <form id="editMasterForm" method="post">
-                <input type="hidden" name="master_id" id="editMasterId">
-                <div class="my-salon-form-group">
-                    <label for="editMasterName">Имя *</label>
-                    <input type="text" id="editMasterName" name="full_name" required>
-                </div>
-                <div class="my-salon-form-group">
-                    <label for="editMasterSpec">Специализация *</label>
-                    <input type="text" id="editMasterSpec" name="specialization" required>
-                </div>
-                <div class="my-salon-form-group">
-                    <label for="editMasterExp">Опыт (лет)</label>
-                    <input type="number" id="editMasterExp" name="experience_years" value="0">
-                </div>
-                <button type="submit" class="my-salon-btn-primary" style="width:100%">Сохранить изменения</button>
-            </form>
-        </div>
-    </div>
 
     <!-- Модальное окно: Добавить акцию -->
     <div class="my-salon-modal-overlay" id="addPromoModal">

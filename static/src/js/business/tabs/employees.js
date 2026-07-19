@@ -3,66 +3,104 @@
 (function() {
     // Переменные для модального окна
     let currentEmployeeId = null;
+    let currentPermissionsMemberId = null;
 
-    // Открытие модалки редактирования
+    // ---- Мастера ----
+
+    // Открытие модалки редактирования мастера
     window.editEmployee = function(id, name, spec, exp) {
-        const modal = document.getElementById('addEmployeeModal');
-        const title = document.getElementById('employeeModalTitle');
-        const form = document.getElementById('employeeForm');
-        
-        currentEmployeeId = id;
-        title.textContent = 'Редактировать мастера';
-        document.getElementById('employeeId').value = id;
-        document.getElementById('employeeName').value = name;
-        document.getElementById('employeeSpec').value = spec;
-        document.getElementById('employeeExp').value = exp;
-        form.action = '/api/v1/master/' + id + '/update';
+        const modal = document.getElementById('editEmployeeModal');
+        if (!modal) return;
+        document.getElementById('editMasterId').value = id;
+        document.getElementById('editMasterName').value = name;
+        document.getElementById('editMasterSpec').value = spec;
+        document.getElementById('editMasterExp').value = exp;
+        document.getElementById('editMasterForm').action = '/api/v1/master/' + id + '/update';
         modal.classList.add('active');
     };
-
-    // Сброс формы при открытии модалки "Добавить"
-    document.querySelector('[onclick*="addEmployeeModal"]')?.addEventListener('click', function() {
-        const form = document.getElementById('employeeForm');
-        const modal = document.getElementById('addEmployeeModal');
-        const title = document.getElementById('employeeModalTitle');
-        title.textContent = 'Добавить мастера';
-        form.reset();
-        document.getElementById('employeeId').value = '';
-        form.action = '/api/v1/master/create-web';
-        modal.classList.add('active');
-    });
 
     // Включение/отключение мастера
     window.toggleEmployee = function(id, name, isActive) {
         const action = isActive ? 'отключить' : 'включить';
-        if (confirm(`${action.charAt(0).toUpperCase() + action.slice(1)} мастера "${name}"?`)) {
-            fetch(`/api/v1/master/${id}/toggle`, { method: 'POST' })
-                .then(r => {
-                    if (r.ok) location.reload();
-                    else alert('Ошибка');
-                });
-        }
+        if (!confirm(`${action.charAt(0).toUpperCase() + action.slice(1)} мастера "${name}"?`)) return;
+        fetch(`/api/v1/master/${id}/toggle`, { method: 'POST' })
+            .then(r => {
+                if (r.ok) location.reload();
+                else alert('Ошибка при изменении статуса');
+            });
     };
 
     // Удаление мастера
     window.deleteEmployee = function(id, name) {
-        if (confirm(`Удалить мастера "${name}"? Это действие нельзя отменить.`)) {
-            fetch(`/api/v1/master/${id}/delete`, { method: 'POST' })
-                .then(r => {
-                    if (r.ok) location.reload();
-                    else alert('Ошибка при удалении');
-                });
-        }
+        if (!confirm(`Удалить мастера "${name}"? Это действие нельзя отменить.`)) return;
+        fetch(`/api/v1/master/${id}/delete`, { method: 'POST' })
+            .then(r => {
+                if (r.ok) location.reload();
+                else alert('Ошибка при удалении');
+            });
     };
 
-    // Закрытие модалки по крестику и оверлею
-    document.querySelectorAll('.employee-modal-close').forEach(btn => {
+    // ---- Участники (владельцы/админы) ----
+
+    // Открытие модалки прав
+    window.openPermissionsModal = function(memberId, name, currentPermissions) {
+        currentPermissionsMemberId = memberId;
+        const modal = document.getElementById('editPermissionsModal');
+        if (!modal) return;
+        document.getElementById('permissionsModalTitle').textContent = 'Права: ' + name;
+        for (const k in currentPermissions) {
+            const el = document.getElementById('perm-' + k);
+            if (el) el.checked = !!currentPermissions[k];
+        }
+        modal.classList.add('active');
+    };
+
+    // Сохранение прав
+    window.submitPermissions = function() {
+        const keys = ["manage_salon", "manage_owners", "manage_admins", "manage_masters",
+                      "manage_schedule", "manage_promotions", "manage_reviews",
+                      "view_finances", "manage_tariff", "view_audit_log",
+                      "manage_inventory", "manage_payroll"];
+        const permissions = {};
+        for (const k of keys) {
+            const el = document.getElementById('perm-' + k);
+            permissions[k] = el ? el.checked : false;
+        }
+        fetch(`/api/v1/business/staff/${currentPermissionsMemberId}/permissions`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ permissions })
+        }).then(async r => {
+            if (r.ok) location.reload();
+            else { const d = await r.json(); alert(d.detail || 'Ошибка'); }
+        });
+    };
+
+    // Снятие участника
+    window.removeMember = function(memberId, name) {
+        if (!confirm(`Снять «${name}» с бизнес-панели салона?`)) return;
+        fetch(`/api/v1/business/staff/${memberId}`, { method: 'DELETE' })
+            .then(async r => {
+                if (r.ok) location.reload();
+                else { const d = await r.json(); alert(d.detail || 'Ошибка'); }
+            });
+    };
+
+    // ---- Закрытие модалок ----
+
+    function closeModal(modalId) {
+        const el = document.getElementById(modalId);
+        if (el) el.classList.remove('active');
+    }
+
+    document.querySelectorAll('.modal-close').forEach(btn => {
         btn.addEventListener('click', function() {
-            this.closest('.employee-modal-overlay').classList.remove('active');
+            const modal = this.closest('.modal-overlay');
+            if (modal) modal.classList.remove('active');
         });
     });
 
-    document.querySelectorAll('.employee-modal-overlay').forEach(overlay => {
+    document.querySelectorAll('.modal-overlay').forEach(overlay => {
         overlay.addEventListener('click', function(e) {
             if (e.target === this) {
                 this.classList.remove('active');
@@ -72,7 +110,17 @@
 
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') {
-            document.querySelectorAll('.employee-modal-overlay.active').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.modal-overlay.active').forEach(el => el.classList.remove('active'));
         }
     });
+
+    // При клике на кнопку "Добавить мастера" (если она есть) — сброс формы
+    document.querySelector('[onclick*="addEmployeeModal"]')?.addEventListener('click', function() {
+        const form = document.getElementById('employeeForm');
+        if (form) form.reset();
+        document.getElementById('employeeId').value = '';
+        form.action = '/api/v1/master/create-web';
+    });
+
+    console.log('Employees JS loaded');
 })();

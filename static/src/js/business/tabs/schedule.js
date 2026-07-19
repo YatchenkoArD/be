@@ -1,4 +1,4 @@
-// static/src/js/business/schedule.js
+// static/src/js/tabs/schedule.js
 
 (function() {
     // Переключение месяцев
@@ -130,4 +130,49 @@
             document.querySelectorAll('.schedule-modal-overlay.active').forEach(el => el.classList.remove('active'));
         }
     });
+
+    // ===== Раскрывающиеся карточки записей =====
+    function closeAllBookingCards() {
+        document.querySelectorAll('.schedule-booking-wrapper.open').forEach(w => {
+            w.classList.remove('open');
+            w.querySelector('.schedule-booking-header')?.classList.remove('open');
+        });
+    }
+
+    function toggleBookingCard(header) {
+        const wrapper = header.closest('.schedule-booking-wrapper');
+        if (!wrapper) return;
+        const isOpen = wrapper.classList.contains('open');
+        // Закрываем все остальные
+        closeAllBookingCards();
+        if (!isOpen) {
+            wrapper.classList.add('open');
+            header.classList.add('open');
+        }
+    }
+
+    // Делегирование на клик по заголовкам карточек
+    document.addEventListener('click', function(e) {
+        const header = e.target.closest('.schedule-booking-header');
+        if (header) {
+            e.stopPropagation();
+            toggleBookingCard(header);
+            return;
+        }
+        // Если клик вне карточки, закрываем все
+        const wrapper = e.target.closest('.schedule-booking-wrapper');
+        if (!wrapper) {
+            closeAllBookingCards();
+        }
+    });
+
+    // Закрытие при нажатии Escape
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            closeAllBookingCards();
+        }
+    });
+
+    // При смене мастера или страницы не нужно дополнительно закрывать, это произойдёт при перезагрузке
+    console.log('Schedule JS loaded');
 })();

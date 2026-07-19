@@ -133,7 +133,8 @@ def render_model_checkout_page(plan: str = "start", user=None) -> str:
                         </div>
                     </div>
 
-                    <!-- Партнёр Альфа-Банк (внутри чекаута) -->
+                    <!-- Партнёр Альфа-Банк (внутри чекаута) — временно скрыт -->
+                    <!--
                     <div class="partner-mini" style="margin-top: 2rem; padding: 1rem; border: 1px solid #ffcaca; border-radius: 1rem; background: #fef2f2; display: flex; align-items: center; flex-wrap: wrap; gap: 1rem;">
                         <div style="display: flex; align-items: center; gap: 0.75rem;">
                             <div style="display: flex; height: 2.5rem; width: 2.5rem; align-items: center; justify-content: center; border-radius: 0.75rem; background: #EE3424;">
@@ -147,6 +148,7 @@ def render_model_checkout_page(plan: str = "start", user=None) -> str:
                         <p style="flex:1; font-size: 0.875rem; color: #1a1a1f;">Оплачивай подписку Альфа‑Картой — <span style="color: #EE3424; font-weight: 600;">кешбэк 5%</span></p>
                         <a href="https://alfabank.ru" target="_blank" rel="noopener noreferrer" style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; border-radius: 9999px; background: #EE3424; color: #fff; font-size: 0.75rem; font-weight: 500; text-decoration: none;">Оформить карту</a>
                     </div>
+                    -->
                 </div>
             </div>
         </section>
@@ -207,7 +209,7 @@ def render_model_checkout_page(plan: str = "start", user=None) -> str:
                 alert('Пожалуйста, согласитесь с условиями использования и политикой конфиденциальности.');
                 return;
             }}
-            this.textContent = '✅ Заявка отправлена';
+            this.textContent = 'Заявка отправлена';
             this.disabled = true;
             this.style.opacity = '0.7';
             this.style.cursor = 'default';

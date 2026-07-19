@@ -26,14 +26,7 @@ async def render_schedule_tab(
     schedule_master_id: int = None, can_close_dates: bool = None,
 ) -> str:
     """Вкладка «Расписание»: выбор мастера → месяц → неделя → сетка
-    дни×часы на MAX_BOOKING_DAYS_AHEAD (2 месяца) вперёд, плюс закрытие дат.
-
-    can_manage_schedule — можно отмечать записи выполненными/неявкой (владелец/
-    админ салона, либо сам мастер — на своих записях это уже разрешено бэкендом
-    независимо от SalonMember). can_close_dates по умолчанию равен
-    can_manage_schedule (владелец/админ), но у мастера, просматривающего только
-    свой календарь, эти права разные: закрытие дат требует SalonMember,
-    которого у мастера нет, поэтому вызывающий код передаёт False явно."""
+    дни×часы на MAX_BOOKING_DAYS_AHEAD (2 месяца) вперёд, плюс закрытие дат."""
     if can_close_dates is None:
         can_close_dates = can_manage_schedule
 
@@ -110,20 +103,56 @@ async def render_schedule_tab(
         svc = services_by_id.get(b.service_id)
         client = clients_by_id.get(b.client_id)
         status = "confirmed" if b.status == BookingStatus.CONFIRMED else "pending"
-        bg = "#dcfce7" if status == "confirmed" else "#fef9c3"
-        actions = ""
-        if can_manage_schedule and status == "confirmed":
-            actions = f"""<div class="actions">
-                <button onclick="event.stopPropagation();openCompleteModal({b.id}, {b.client_id})" title="Выполнено" class="complete-btn">{ICON_CHECK_SMALL}</button>
-                <button onclick="event.stopPropagation();markBooking({b.id}, 'no-show')" title="Неявка" class="no-show-btn">{ICON_X}</button>
-            </div>"""
         svc_name = svc.name if svc else "—"
         client_name = client.full_name if client else "Клиент"
+        client_phone = client.phone if client else "—"
+        price = b.final_price if b.final_price is not None else (svc.price if svc else 0)
+        price_str = f"{price:,}".replace(",", " ")
+        status_label = "Подтверждена" if b.status == BookingStatus.CONFIRMED else "Ожидает"
         time_str = f"{b.start_time.strftime('%H:%M')}-{b.end_time.strftime('%H:%M')}"
-        booking_class = "schedule-booking" + (" pending" if status == "pending" else "")
-        return f"""<div class="{booking_class}" title="{client_name} — {svc_name} ({time_str})">
-            {time_str}<br>{svc_name[:14]}{actions}
-        </div>"""
+
+        actions = ""
+        if can_manage_schedule and b.status == BookingStatus.CONFIRMED:
+            actions = f"""
+                <button onclick="event.stopPropagation();openCompleteModal({b.id}, {b.client_id})" 
+                        title="Выполнено" class="complete-btn">{ICON_CHECK_SMALL} Выполнено</button>
+                <button onclick="event.stopPropagation();markBooking({b.id}, 'no-show')" 
+                        title="Неявка" class="no-show-btn">{ICON_X} Неявка</button>
+            """
+
+        return f"""
+        <div class="schedule-booking-wrapper" data-booking-id="{b.id}">
+            <div class="schedule-booking-header">
+                <span class="booking-time">{time_str}</span>
+                <span class="booking-service">{svc_name}</span>
+                <span class="booking-client">{client_name}</span>
+                <span class="booking-arrow">▼</span>
+            </div>
+            <div class="schedule-booking-details">
+                <div class="detail-row">
+                    <span class="detail-label">Клиент:</span>
+                    <span class="detail-value">{client_name}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Телефон:</span>
+                    <span class="detail-value">{client_phone}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Услуга:</span>
+                    <span class="detail-value">{svc_name}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Цена:</span>
+                    <span class="detail-value">{price_str} ₽</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Статус:</span>
+                    <span class="detail-value status-{status}">{status_label}</span>
+                </div>
+                {f'<div class="detail-actions">{actions}</div>' if actions else ''}
+            </div>
+        </div>
+        """
 
     def build_week_grid(week_days) -> str:
         day_headers = ""
@@ -175,6 +204,19 @@ async def render_schedule_tab(
             weeks.append(cur)
         return weeks
 
+    # Строим селект мастера
+    master_select_options = "".join(
+        f'<option value="{m.id}"{" selected" if m.id == selected_master.id else ""}>{master_names.get(m.id, "—")} — {m.specialization}</option>'
+        for m in masters
+    )
+    master_select_html = f"""
+    <div class="schedule-master-select">
+        <select onchange="window.location.href='/business/dashboard?tab=schedule&salon_id={salon.id}&schedule_master_id=' + this.value">
+            {master_select_options}
+        </select>
+    </div>
+    """
+
     if not row_hours:
         calendar_html = ('<div class="card" style="padding:2rem;text-align:center;color:var(--color-muted)">'
                           'У салона не задан рабочий график — нечего показывать</div>')
@@ -211,14 +253,14 @@ async def render_schedule_tab(
 
         calendar_html = f"""
         <div class="schedule-calendar">
-            <div class="schedule-month-nav">{month_tabs}</div>
+            <div class="schedule-month-nav">
+                <div class="schedule-month-buttons">
+                    {month_tabs}
+                </div>
+                {master_select_html}
+            </div>
             {month_panels}
         </div>"""
-
-    master_select_options = "".join(
-        f'<option value="{m.id}"{" selected" if m.id == selected_master.id else ""}>{master_names.get(m.id, "—")} — {m.specialization}</option>'
-        for m in masters
-    )
 
     # Закрытие дат — отдельное право от отметки записей (см. docstring)
     closures_section = ""
@@ -272,13 +314,6 @@ async def render_schedule_tab(
 
     return f"""
     <div id="tab-schedule" class="tab-content">
-        <div class="schedule-master-select">
-            <select onchange="window.location.href='/business/dashboard?tab=schedule&salon_id={salon.id}&schedule_master_id=' + this.value"
-                    style="padding:0.5rem 0.75rem;border:1px solid var(--color-border);border-radius:0.5rem;font-size:0.85rem;min-width:220px">
-                {master_select_options}
-            </select>
-        </div>
-
         {calendar_html}
 
         <div class="schedule-legend">

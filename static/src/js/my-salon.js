@@ -1,23 +1,6 @@
 // static/src/js/pages/my-salon.js
 
 (function() {
-    // === Мастера ===
-    window.editMaster = function(id, name, spec, exp) {
-        document.getElementById('editMasterId').value = id;
-        document.getElementById('editMasterName').value = name;
-        document.getElementById('editMasterSpec').value = spec;
-        document.getElementById('editMasterExp').value = exp;
-        document.getElementById('editMasterForm').action = '/api/v1/master/' + id + '/update';
-        document.getElementById('editMasterModal').classList.add('active');
-    };
-
-    window.deleteMaster = function(id, name) {
-        if (confirm('Удалить мастера "' + name + '"? Это действие нельзя отменить.')) {
-            fetch('/api/v1/master/' + id + '/delete', { method: 'POST' })
-                .then(r => { if (r.ok) location.reload(); else alert('Ошибка при удалении'); });
-        }
-    };
-
     // === Акции ===
     window.deletePromo = function(id, title) {
         if (confirm('Удалить акцию "' + title + '"? Это действие нельзя отменить.')) {

@@ -1,4 +1,4 @@
-// static/src/js/pages/salon-detail.js
+// static/src/js/salon-detail.js
 
 (function() {
     const container = document.getElementById('booking-flow-container');
@@ -27,28 +27,22 @@
         confirm: document.getElementById('step-confirm'),
     };
 
-    // Функция переключения шага
+    // Функция переключения шага (без скролла вверх)
     function goToStep(stepName) {
         Object.keys(steps).forEach(key => {
             steps[key].style.display = (key === stepName) ? 'block' : 'none';
         });
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        // Убираем принудительный скролл вверх
     }
 
-    // Если только один мастер, сразу переходим к услугам
-    if (masters.length === 1) {
-        state.master = masters[0];
-        goToStep('services');
-        renderServices();
-    } else {
-        goToStep('masters');
-        renderMasters();
-    }
+    // Всегда показываем список мастеров, даже если только один
+    goToStep('masters');
+    renderMasters();
 
     // ---- Шаг 1: Мастера ----
     function renderMasters() {
         const grid = document.querySelector('.masters-grid');
-        // уже отрендерено через HTML, но можно добавить обработчики
+        // Уже отрендерено через HTML, добавляем обработчики
         document.querySelectorAll('.master-card .master-book-btn').forEach(btn => {
             btn.addEventListener('click', function(e) {
                 e.stopPropagation();
@@ -346,7 +340,7 @@
     document.querySelectorAll('.breadcrumb-btn').forEach(btn => {
         btn.addEventListener('click', function() {
             const step = this.dataset.step;
-            // Если идём на шаг мастера, сбрасываем выбор, если нужно
+            // Если идём на шаг мастера, сбрасываем выбор
             if (step === 'masters') {
                 state.master = null;
                 state.service = null;
