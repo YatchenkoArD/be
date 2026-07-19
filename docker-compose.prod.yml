@@ -30,6 +30,7 @@ services:
     environment:
       # переопределяем локальные значения из .env под контейнерную сеть
       ENVIRONMENT: production
+      TZ: Asia/Novosibirsk
       COOKIE_SECURE: "true"
       REDIS_URL: redis://redis:6379/0
       CORS_ORIGINS: '["https://${DOMAIN:-localhost}"]'
@@ -54,6 +55,7 @@ services:
     command: ["arq", "app.core.worker.WorkerSettings"]
     environment:
       ENVIRONMENT: production
+      TZ: Asia/Novosibirsk
       REDIS_URL: redis://redis:6379/0
     volumes:
       - ./keys:/app/keys:ro           # понадобятся задачам, работающим с БД/токенами

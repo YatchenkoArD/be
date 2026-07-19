@@ -148,7 +148,7 @@ async def get_available_slots(
     )
     booked_slots = booked.scalars().all()
     
-    now = get_salon_time(salon.timezone or "Europe/Moscow")
+    now = get_salon_time(salon.timezone)
     now = now.replace(tzinfo=None)
     
     slots = []

@@ -11,6 +11,7 @@ from datetime import datetime
 from typing import Optional
 
 from sqlalchemy import select
+from sqlalchemy.sql import func as sql_func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.models import (
@@ -179,7 +180,7 @@ class InventoryService:
                 item.quantity = actual
 
         audit.status = InventoryAuditStatus.CONFIRMED
-        audit.confirmed_at = datetime.now()
+        audit.confirmed_at = sql_func.now()  # серверное время БД: naive now() поехал бы при смене TZ контейнера
         await db.commit()
         await db.refresh(audit)
         return audit
@@ -282,7 +283,7 @@ class InventoryService:
 
         request.status = new_status
         request.resolved_by_id = actor.id
-        request.resolved_at = datetime.now()
+        request.resolved_at = sql_func.now()  # серверное время БД, см. confirmed_at
         await db.commit()
         await db.refresh(request)
         return request

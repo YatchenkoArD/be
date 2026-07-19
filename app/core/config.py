@@ -18,6 +18,12 @@ class Settings(BaseSettings):
     # Окружение: development | production. Влияет на флаги cookie, HSTS и т.п.
     ENVIRONMENT: str = "development"
 
+    # Часовой пояс продукта по умолчанию: запуск — Сибирь (решение Артёма
+    # 19.07.2026). Дефолт для зоны новых салонов и всех сравнений «который
+    # час»; контейнеры приложения живут в этой же зоне (TZ в compose).
+    # Хост и Postgres остаются в UTC — timestamptz-метки от этого не зависят.
+    DEFAULT_TIMEZONE: str = "Asia/Novosibirsk"
+
     # --- Аутентификация (JWT RS256, асимметричная подпись) ---
     ALGORITHM: str = "RS256"
     # Пути к PEM-ключам. Приватным подписываем, публичным проверяем.

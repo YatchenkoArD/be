@@ -34,7 +34,7 @@ def reminder_eta_utc(start_naive: datetime, salon_tz: str) -> datetime | None:
     zoneinfo и переводим в UTC; если момент уже в прошлом, напоминание
     не ставим (запись «на через час» получает только подтверждение).
     """
-    tz = ZoneInfo(salon_tz or "Europe/Moscow")
+    tz = ZoneInfo(salon_tz or settings.DEFAULT_TIMEZONE)
     aware = start_naive.replace(tzinfo=tz)
     eta = aware.astimezone(timezone.utc) - REMINDER_BEFORE
     return eta if eta > datetime.now(timezone.utc) else None

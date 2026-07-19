@@ -43,6 +43,7 @@ services:
       # ENVIRONMENT=production сознательно: staging должен вести себя как прод
       # (secure-cookie, HSTS, guard'ы). Отличия — только в .env.staging.
       ENVIRONMENT: production
+      TZ: Asia/Novosibirsk
       COOKIE_SECURE: "true"
       POSTGRES_HOST: db
       POSTGRES_PORT: "5432"
@@ -72,6 +73,7 @@ services:
     command: ["python", "-m", "app.tg_bot"]
     environment:
       ENVIRONMENT: production
+      TZ: Asia/Novosibirsk
       REDIS_URL: redis://redis:6379/0
     depends_on:
       redis:
@@ -90,6 +92,7 @@ services:
     command: ["python", "-m", "app.max_bot"]
     environment:
       ENVIRONMENT: production
+      TZ: Asia/Novosibirsk
       REDIS_URL: redis://redis:6379/0
     depends_on:
       redis:
@@ -105,6 +108,7 @@ services:
     command: ["arq", "app.core.worker.WorkerSettings"]
     environment:
       ENVIRONMENT: production
+      TZ: Asia/Novosibirsk
       POSTGRES_HOST: db
       POSTGRES_PORT: "5432"
       REDIS_URL: redis://redis:6379/0

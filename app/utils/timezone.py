@@ -1,10 +1,15 @@
-from zoneinfo import ZoneInfo
 from datetime import datetime
+from typing import Optional
+from zoneinfo import ZoneInfo
 
-def get_salon_time(salon_timezone: str = "Europe/Moscow") -> datetime:
-    """Текущее время в часовом поясе салона."""
-    return datetime.now(ZoneInfo(salon_timezone))
+from app.core.config import settings
 
-def localize_time(naive_dt: datetime, salon_timezone: str) -> datetime:
+
+def get_salon_time(salon_timezone: Optional[str] = None) -> datetime:
+    """Текущее время в часовом поясе салона (дефолт — зона продукта)."""
+    return datetime.now(ZoneInfo(salon_timezone or settings.DEFAULT_TIMEZONE))
+
+
+def localize_time(naive_dt: datetime, salon_timezone: Optional[str] = None) -> datetime:
     """Привязать наивное время к часовому поясу салона."""
-    return naive_dt.replace(tzinfo=ZoneInfo(salon_timezone))
+    return naive_dt.replace(tzinfo=ZoneInfo(salon_timezone or settings.DEFAULT_TIMEZONE))

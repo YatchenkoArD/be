@@ -171,7 +171,9 @@ class Salon(Base):
 
     working_hours: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     business_tier: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
-    timezone: Mapped[str] = mapped_column(String(50), default="Europe/Moscow", server_default="Europe/Moscow", nullable=False)
+    # Зона продукта по умолчанию — Сибирь (запуск в Новосибирске); салоны в
+    # других поясах задают свою явно
+    timezone: Mapped[str] = mapped_column(String(50), default="Asia/Novosibirsk", server_default="Asia/Novosibirsk", nullable=False)
 
     masters: Mapped[List["Master"]] = relationship(back_populates="salon")
     promotions: Mapped[List["Promotion"]] = relationship(back_populates="salon")
