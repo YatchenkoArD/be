@@ -34,10 +34,13 @@ async def _run(phone: str, name: str | None, password: str) -> None:
                 return
             user.role = UserRole.ADMIN
             user.is_active = True
+            # Через этот скрипт всегда создаётся Старший модератор — иначе
+            # некому было бы назначать остальных через веб-панель.
+            user.is_senior_admin = True
             if password:
                 user.hashed_password = get_password_hash(password)
             await db.commit()
-            print(f"Пользователь {phone} повышен до ADMIN.")
+            print(f"Пользователь {phone} повышен до ADMIN (старший модератор).")
         else:
             user = User(
                 phone=phone,
@@ -45,10 +48,11 @@ async def _run(phone: str, name: str | None, password: str) -> None:
                 hashed_password=get_password_hash(password),
                 role=UserRole.ADMIN,
                 is_active=True,
+                is_senior_admin=True,
             )
             db.add(user)
             await db.commit()
-            print(f"Создан администратор {phone}.")
+            print(f"Создан администратор {phone} (старший модератор).")
 
 
 def main() -> None:

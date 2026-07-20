@@ -124,6 +124,13 @@ class User(Base):
     role: Mapped[UserRole] = mapped_column(Enum(UserRole), default=UserRole.CLIENT, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
+    # Уровень доступа платформенного модератора (role=ADMIN). Базовый
+    # модератор: только заявки на подключение салона + жалобы на фото.
+    # Старший модератор (is_senior_admin=True): + пользователи, блокировка
+    # салонов, отзывы, аудит-лог, назначение других модераторов. Не имеет
+    # смысла для не-ADMIN ролей.
+    is_senior_admin: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false", nullable=False)
+
     avatar_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
 
     # Привязка Telegram для уведомлений (блок 18+): chat_id из бота.

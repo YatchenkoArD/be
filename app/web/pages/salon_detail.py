@@ -4,15 +4,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from datetime import datetime, timedelta
 from app.models.models import (
-    Salon, SalonPhoto, Master, Service, Promotion, User, Booking, BookingStatus,
-    Review, ReviewPhoto, ReviewTargetType, SalonMember, SalonModerationStatus,
+    Salon, SalonPhoto, Master, Service, Promotion, User,
+    Review, ReviewPhoto, ReviewTargetType, SalonModerationStatus,
 )
 from app.web.components.header import render_header
 from app.web.components.footer import render_footer
 from app.web.components.sidebar import render_sidebar
 from app.web.components.styles import get_base_styles
 from app.services.loyalty_service import LoyaltyService
-from app.services.schedule_utils import MAX_BOOKING_DAYS_AHEAD
+from app.services.schedule_utils import MAX_BOOKING_DAYS_AHEAD, format_working_hours_summary
 from app.web.components.icons import (
     ICON_ARROW_LEFT,
     ICON_HEART,
@@ -27,57 +27,6 @@ from app.web.components.icons import (
     ICON_SCISSORS,
     ICON_STAR_FILLED,
 )
-
-DAY_NAMES_RU = {
-    "mon": "Пн", "tue": "Вт", "wed": "Ср", "thu": "Чт",
-    "fri": "Пт", "sat": "Сб", "sun": "Вс"
-}
-
-def format_working_hours(wh_json: str | None) -> str:
-    """Преобразует JSON-строку вида {"mon":"10:00-21:00", ...} в читаемый формат.
-       Пример: "Пн–Пт: 10:00–21:00, Сб: 11:00–19:00, Вс: выходной"
-    """
-    if not wh_json:
-        return "Пн–Вс: 10:00 – 21:00"
-    try:
-        data = json.loads(wh_json)
-    except (json.JSONDecodeError, TypeError):
-        return "Пн–Вс: 10:00 – 21:00"
-
-    days_order = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
-    groups = []
-    current_group = []
-    last_time = None
-
-    for day in days_order:
-        value = data.get(day, "").strip()
-        if not value or value.lower() in ("выходной", "closed", "day off"):
-            time_str = None
-        else:
-            time_str = value.replace("-", "–")
-        if time_str == last_time:
-            current_group.append(day)
-        else:
-            if current_group:
-                groups.append((current_group, last_time))
-            current_group = [day]
-            last_time = time_str
-    if current_group:
-        groups.append((current_group, last_time))
-
-    parts = []
-    for days, time_str in groups:
-        day_labels = [DAY_NAMES_RU[d] for d in days]
-        if len(day_labels) == 1:
-            label = day_labels[0]
-        else:
-            label = f"{day_labels[0]}–{day_labels[-1]}"
-        if time_str is None:
-            parts.append(f"{label}: выходной")
-        else:
-            parts.append(f"{label}: {time_str}")
-    return ", ".join(parts)
-
 
 async def render_salon_detail(db: AsyncSession, salon_id: int, user=None) -> str:
     # Публично видны только одобренные активные салоны (модерация регистрации).
@@ -109,14 +58,6 @@ async def render_salon_detail(db: AsyncSession, salon_id: int, user=None) -> str
     verified_count = (await db.execute(
         select(func.count(Review.id)).where(Review.salon_id == salon.id, Review.is_verified == True)
     )).scalar() or 0
-
-    # Сотрудники (владелец/админ) салона — цель отзыва «Сотрудник»
-    staff_result = await db.execute(
-        select(SalonMember, User)
-        .join(User, User.id == SalonMember.user_id)
-        .where(SalonMember.salon_id == salon.id, SalonMember.is_active == True)
-    )
-    staff_members = staff_result.all()
 
     # Лояльность видна клиенту заранее, до записи — скидку/бонусы даёт салон,
     # не РУМИ (портировано из main при слиянии с редизайном).
@@ -205,8 +146,6 @@ async def render_salon_detail(db: AsyncSession, salon_id: int, user=None) -> str
         """
 
     # ----- Верхний блок (салон) -----
-    working_hours_display = format_working_hours(salon.working_hours)
-
     top_block = f"""
     <section class="salon-top-section">
         <div class="section-container">
@@ -242,7 +181,7 @@ async def render_salon_detail(db: AsyncSession, salon_id: int, user=None) -> str
                     <div class="salon-contacts">
                         <span class="contact-item">{ICON_MAP_PIN} {salon.address or 'Адрес не указан'}</span>
                         <span class="contact-item">{ICON_PHONE} {salon.phone or '—'}</span>
-                        <span class="contact-item">{ICON_CLOCK} {working_hours_display}</span>
+                        <span class="contact-item">{ICON_CLOCK} {format_working_hours_summary(salon.working_hours)}</span>
                     </div>
                 </div>
             </div>
@@ -547,7 +486,6 @@ async def render_salon_detail(db: AsyncSession, salon_id: int, user=None) -> str
     else:
         reviews_html = '<p class="empty-state">Пока нет отзывов. Будьте первым!</p>'
 
-    # ----- Форма отзыва -----
     reviews_filter_html = """
     <div class="review-filters">
         <button class="btn-outline review-filter-btn active" data-filter="all" onclick="reviewFilter('all', this)">Все</button>

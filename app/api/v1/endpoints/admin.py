@@ -33,22 +33,46 @@ ASSIGNABLE_ROLES = {UserRole.CLIENT, UserRole.MODEL, UserRole.BUSINESS, UserRole
 
 # ── helpers ──────────────────────────────────────────────────────────────────
 async def _get_admin(request: Request, db: AsyncSession):
+    """Любой модератор (базовый или старший) — доступ к заявкам и жалобам на фото."""
     user = await get_current_user_from_cookie(request, db)
     if not user or user.role != UserRole.ADMIN or not user.is_active:
         return None
     return user
 
 
-def _audit(db, actor_id, action, target_type, target_id, detail):
+async def _get_senior_admin(request: Request, db: AsyncSession):
+    """Только старший модератор — пользователи, блокировка салонов, отзывы, аудит."""
+    user = await _get_admin(request, db)
+    if not user or not user.is_senior_admin:
+        return None
+    return user
+
+
+def _audit(db, actor_id, action, target_type, target_id, detail, salon_id=None):
+    """salon_id: заполняется для действий модератора над конкретным салоном
+    (одобрение/отклонение заявки, блокировка, смена владельца, удаление,
+    удаление отзыва/фото по жалобе) — иначе они не попадают в собственный
+    лог владельца салона (staff.py фильтрует именно по salon_id). Для
+    чисто платформенных действий (роли, блокировка пользователей и т.п.)
+    остаётся None."""
     db.add(AdminAudit(
         actor_id=actor_id, action=action,
         target_type=target_type, target_id=target_id, detail=detail,
+        salon_id=salon_id,
     ))
 
 
 async def _active_admins_excluding(db, exclude_id) -> int:
     q = select(func.count(User.id)).where(
         User.role == UserRole.ADMIN, User.is_active == True, User.id != exclude_id
+    )
+    return (await db.execute(q)).scalar() or 0
+
+
+async def _active_seniors_excluding(db, exclude_id) -> int:
+    q = select(func.count(User.id)).where(
+        User.role == UserRole.ADMIN, User.is_active == True,
+        User.is_senior_admin == True, User.id != exclude_id,
     )
     return (await db.execute(q)).scalar() or 0
 
@@ -67,7 +91,7 @@ def _back(tab: str, ok: str = "", err: str = "", extra: str = "") -> RedirectRes
 # ── ПОЛЬЗОВАТЕЛИ ─────────────────────────────────────────────────────────────
 @router.post("/users/{uid}/role")
 async def change_role(uid: int, request: Request, role: str = Form(...), db: AsyncSession = Depends(get_db)):
-    admin = await _get_admin(request, db)
+    admin = await _get_senior_admin(request, db)
     if not admin:
         return RedirectResponse("/login?redirect=/admin", status_code=302)
 
@@ -84,8 +108,14 @@ async def change_role(uid: int, request: Request, role: str = Form(...), db: Asy
         return _back("users", err="Нельзя менять собственную роль")
     if target.role == UserRole.ADMIN and new_role != UserRole.ADMIN and await _active_admins_excluding(db, target.id) == 0:
         return _back("users", err="Нельзя разжаловать последнего администратора")
+    if target.role == UserRole.ADMIN and target.is_senior_admin and new_role != UserRole.ADMIN and await _active_seniors_excluding(db, target.id) == 0:
+        return _back("users", err="Нельзя разжаловать последнего старшего модератора")
 
     old = target.role.value
+    # Роль ушла с ADMIN — теряется и старшинство, чтобы не оставалось
+    # мёртвого senior-флага на пользователе без прав модератора.
+    if new_role != UserRole.ADMIN:
+        target.is_senior_admin = False
     target.role = new_role
     _audit(db, admin.id, "change_role", "user", target.id, f"{target.phone}: {old} → {new_role.value}")
     await db.commit()
@@ -94,7 +124,7 @@ async def change_role(uid: int, request: Request, role: str = Form(...), db: Asy
 
 @router.post("/users/{uid}/toggle-active")
 async def toggle_active(uid: int, request: Request, db: AsyncSession = Depends(get_db)):
-    admin = await _get_admin(request, db)
+    admin = await _get_senior_admin(request, db)
     if not admin:
         return RedirectResponse("/login?redirect=/admin", status_code=302)
 
@@ -105,6 +135,8 @@ async def toggle_active(uid: int, request: Request, db: AsyncSession = Depends(g
         return _back("users", err="Нельзя заблокировать самого себя")
     if target.role == UserRole.ADMIN and target.is_active and await _active_admins_excluding(db, target.id) == 0:
         return _back("users", err="Нельзя заблокировать последнего администратора")
+    if target.role == UserRole.ADMIN and target.is_active and target.is_senior_admin and await _active_seniors_excluding(db, target.id) == 0:
+        return _back("users", err="Нельзя заблокировать последнего старшего модератора")
 
     target.is_active = not target.is_active
     state = "разблокирован" if target.is_active else "заблокирован"
@@ -113,9 +145,33 @@ async def toggle_active(uid: int, request: Request, db: AsyncSession = Depends(g
     return _back("users", ok=f"{target.phone} {state}")
 
 
+@router.post("/users/{uid}/toggle-senior")
+async def toggle_senior(uid: int, request: Request, db: AsyncSession = Depends(get_db)):
+    """Назначить/снять статус старшего модератора — только среди пользователей с role=ADMIN."""
+    admin = await _get_senior_admin(request, db)
+    if not admin:
+        return RedirectResponse("/login?redirect=/admin", status_code=302)
+
+    target = (await db.execute(select(User).where(User.id == uid))).scalar_one_or_none()
+    if not target:
+        return _back("users", err="Пользователь не найден")
+    if target.role != UserRole.ADMIN:
+        return _back("users", err="Статус старшего модератора применим только к модераторам")
+    if target.id == admin.id:
+        return _back("users", err="Нельзя менять собственный статус старшинства")
+    if target.is_senior_admin and await _active_seniors_excluding(db, target.id) == 0:
+        return _back("users", err="Нельзя снять последнего старшего модератора")
+
+    target.is_senior_admin = not target.is_senior_admin
+    state = "назначен старшим модератором" if target.is_senior_admin else "снят со старшего модератора"
+    _audit(db, admin.id, "toggle_senior", "user", target.id, f"{target.phone}: {state}")
+    await db.commit()
+    return _back("users", ok=f"{target.phone} {state}")
+
+
 @router.post("/users/{uid}/reset-password")
 async def reset_password(uid: int, request: Request, db: AsyncSession = Depends(get_db)):
-    admin = await _get_admin(request, db)
+    admin = await _get_senior_admin(request, db)
     if not admin:
         return RedirectResponse("/login?redirect=/admin", status_code=302)
 
@@ -133,7 +189,7 @@ async def reset_password(uid: int, request: Request, db: AsyncSession = Depends(
 
 @router.post("/users/{uid}/delete")
 async def delete_user(uid: int, request: Request, db: AsyncSession = Depends(get_db)):
-    admin = await _get_admin(request, db)
+    admin = await _get_senior_admin(request, db)
     if not admin:
         return RedirectResponse("/login?redirect=/admin", status_code=302)
 
@@ -144,6 +200,8 @@ async def delete_user(uid: int, request: Request, db: AsyncSession = Depends(get
         return _back("users", err="Нельзя удалить самого себя")
     if target.role == UserRole.ADMIN and await _active_admins_excluding(db, target.id) == 0:
         return _back("users", err="Нельзя удалить последнего администратора")
+    if target.role == UserRole.ADMIN and target.is_senior_admin and await _active_seniors_excluding(db, target.id) == 0:
+        return _back("users", err="Нельзя удалить последнего старшего модератора")
 
     # Сложные связи блокируем — их надо разрулить явно (заблокируйте пользователя)
     owns_salon = (await db.execute(select(func.count(Salon.id)).where(Salon.creator_id == target.id))).scalar() or 0
@@ -215,7 +273,7 @@ async def report_resolve(rid: int, request: Request, db: AsyncSession = Depends(
     report.status = PhotoReportStatus.RESOLVED
     report.resolved_by_id = admin.id
     report.resolved_at = datetime.now(timezone.utc)
-    _audit(db, admin.id, "report_resolve", "photo_report", rid, "фото удалено")
+    _audit(db, admin.id, "report_resolve", "photo_report", rid, "фото удалено", salon_id=_sid)
     await db.commit()
     if url and url.startswith("/uploads/"):
         delete_stored(url)
@@ -228,13 +286,16 @@ async def report_dismiss(rid: int, request: Request, db: AsyncSession = Depends(
     admin = await _get_admin(request, db)
     if not admin:
         return RedirectResponse("/login?redirect=/admin", status_code=302)
+    from app.api.v1.endpoints.reports import _photo_and_salon_id
+
     report = (await db.execute(select(PhotoReport).where(PhotoReport.id == rid))).scalar_one_or_none()
     if not report or report.status != PhotoReportStatus.PENDING:
         return _back("reports", err="Жалоба не найдена или уже обработана")
+    _, sid = await _photo_and_salon_id(db, report)
     report.status = PhotoReportStatus.DISMISSED
     report.resolved_by_id = admin.id
     report.resolved_at = datetime.now(timezone.utc)
-    _audit(db, admin.id, "report_dismiss", "photo_report", rid, "оставлено")
+    _audit(db, admin.id, "report_dismiss", "photo_report", rid, "оставлено", salon_id=sid)
     await db.commit()
     return _back("reports", ok="Жалоба отклонена, фото оставлено")
 
@@ -252,7 +313,7 @@ async def salon_approve(sid: int, request: Request, db: AsyncSession = Depends(g
     salon.moderation_status = SalonModerationStatus.APPROVED
     salon.rejection_reason = None
     salon.is_active = True
-    _audit(db, admin.id, "salon_approve", "salon", sid, salon.name)
+    _audit(db, admin.id, "salon_approve", "salon", sid, salon.name, salon_id=sid)
     await db.commit()
     await _notify_owner_moderation(db, salon, approved=True)
     return _back("applications", ok=f"«{salon.name}» одобрен")
@@ -270,7 +331,7 @@ async def salon_reject(sid: int, request: Request, reason: str = Form(""), db: A
     salon.moderation_status = SalonModerationStatus.REJECTED
     salon.rejection_reason = reason.strip() or None
     salon.is_active = False
-    _audit(db, admin.id, "salon_reject", "salon", sid, f"{salon.name}: {reason.strip()[:200]}")
+    _audit(db, admin.id, "salon_reject", "salon", sid, f"{salon.name}: {reason.strip()[:200]}", salon_id=sid)
     await db.commit()
     await _notify_owner_moderation(db, salon, approved=False)
     return _back("applications", ok=f"«{salon.name}» отклонён")
@@ -278,7 +339,7 @@ async def salon_reject(sid: int, request: Request, reason: str = Form(""), db: A
 
 @router.post("/salons/{sid}/toggle-active")
 async def salon_toggle(sid: int, request: Request, db: AsyncSession = Depends(get_db)):
-    admin = await _get_admin(request, db)
+    admin = await _get_senior_admin(request, db)
     if not admin:
         return RedirectResponse("/login?redirect=/admin", status_code=302)
 
@@ -287,14 +348,14 @@ async def salon_toggle(sid: int, request: Request, db: AsyncSession = Depends(ge
         return _back("salons", err="Салон не найден")
     salon.is_active = not salon.is_active
     state = "активирован" if salon.is_active else "деактивирован"
-    _audit(db, admin.id, "salon_toggle", "salon", sid, f"{salon.name}: {state}")
+    _audit(db, admin.id, "salon_toggle", "salon", sid, f"{salon.name}: {state}", salon_id=sid)
     await db.commit()
     return _back("salons", ok=f"«{salon.name}» {state}")
 
 
 @router.post("/salons/{sid}/owner")
 async def salon_owner(sid: int, request: Request, owner_phone: str = Form(""), db: AsyncSession = Depends(get_db)):
-    admin = await _get_admin(request, db)
+    admin = await _get_senior_admin(request, db)
     if not admin:
         return RedirectResponse("/login?redirect=/admin", status_code=302)
 
@@ -314,7 +375,7 @@ async def salon_owner(sid: int, request: Request, owner_phone: str = Form(""), d
 
     if not owner_phone:  # снять владельца
         salon.creator_id = None
-        _audit(db, admin.id, "salon_owner", "salon", sid, f"{salon.name}: владелец снят")
+        _audit(db, admin.id, "salon_owner", "salon", sid, f"{salon.name}: владелец снят", salon_id=sid)
         await db.commit()
         return _back("salons", ok=f"«{salon.name}»: владелец снят")
 
@@ -340,14 +401,14 @@ async def salon_owner(sid: int, request: Request, owner_phone: str = Form(""), d
     salon.creator_id = owner.id
     if owner.role != UserRole.ADMIN:
         owner.role = UserRole.BUSINESS  # владелец салона → бизнес-роль (для навигации/UX)
-    _audit(db, admin.id, "salon_owner", "salon", sid, f"{salon.name}: владелец → {owner.phone}")
+    _audit(db, admin.id, "salon_owner", "salon", sid, f"{salon.name}: владелец → {owner.phone}", salon_id=sid)
     await db.commit()
     return _back("salons", ok=f"«{salon.name}»: владелец → {owner.phone}")
 
 
 @router.post("/salons/{sid}/delete")
 async def salon_delete(sid: int, request: Request, db: AsyncSession = Depends(get_db)):
-    admin = await _get_admin(request, db)
+    admin = await _get_senior_admin(request, db)
     if not admin:
         return RedirectResponse("/login?redirect=/admin", status_code=302)
 
@@ -364,6 +425,9 @@ async def salon_delete(sid: int, request: Request, db: AsyncSession = Depends(ge
     await db.execute(delete(Review).where(Review.salon_id == sid))
     await db.execute(delete(SalonPhoto).where(SalonPhoto.salon_id == sid))
     await db.delete(salon)
+    # salon_id тут намеренно не проставляем (не salon_id=sid): салон удалён,
+    # его собственную страницу «Сотрудники» с логом больше некому открыть —
+    # событие остаётся только в платформенном логе для модератора.
     _audit(db, admin.id, "salon_delete", "salon", sid, f"удалён «{name}»")
     await db.commit()
     return _back("salons", ok=f"Салон «{name}» удалён")
@@ -372,7 +436,7 @@ async def salon_delete(sid: int, request: Request, db: AsyncSession = Depends(ge
 # ── ОТЗЫВЫ ───────────────────────────────────────────────────────────────────
 @router.post("/reviews/{rid}/delete")
 async def review_delete(rid: int, request: Request, db: AsyncSession = Depends(get_db)):
-    admin = await _get_admin(request, db)
+    admin = await _get_senior_admin(request, db)
     if not admin:
         return RedirectResponse("/login?redirect=/admin", status_code=302)
 
@@ -384,19 +448,25 @@ async def review_delete(rid: int, request: Request, db: AsyncSession = Depends(g
     await db.delete(review)
     await db.flush()
 
-    # пересчёт рейтинга мастера
+    # пересчёт рейтинга мастера (только по подтверждённым — как в ReviewService)
     master = (await db.execute(select(Master).where(Master.id == master_id))).scalar_one_or_none()
     if master:
-        avg = (await db.execute(select(func.avg(Review.rating)).where(Review.master_id == master_id))).scalar()
+        avg = (await db.execute(
+            select(func.avg(Review.rating)).where(Review.master_id == master_id, Review.is_verified == True)
+        )).scalar()
         master.rating = round(float(avg or 0.0), 1)
-    # пересчёт рейтинга и счётчика салона
+    # пересчёт рейтинга и счётчика салона (только по подтверждённым)
     salon = (await db.execute(select(Salon).where(Salon.id == salon_id))).scalar_one_or_none()
     if salon:
-        cnt = (await db.execute(select(func.count(Review.id)).where(Review.salon_id == salon_id))).scalar() or 0
-        avg = (await db.execute(select(func.avg(Review.rating)).where(Review.salon_id == salon_id))).scalar()
+        cnt = (await db.execute(
+            select(func.count(Review.id)).where(Review.salon_id == salon_id, Review.is_verified == True)
+        )).scalar() or 0
+        avg = (await db.execute(
+            select(func.avg(Review.rating)).where(Review.salon_id == salon_id, Review.is_verified == True)
+        )).scalar()
         salon.reviews_count = cnt
         salon.rating = round(float(avg or 0.0), 1)
 
-    _audit(db, admin.id, "review_delete", "review", rid, f"удалён отзыв #{rid}")
+    _audit(db, admin.id, "review_delete", "review", rid, f"удалён отзыв #{rid}", salon_id=salon_id)
     await db.commit()
     return _back("reviews", ok="Отзыв удалён, рейтинг пересчитан")

@@ -18,6 +18,9 @@ async def _make_admin(db_session, phone: str = ADMIN_PHONE) -> User:
             full_name="Тест Админ",
             hashed_password=get_password_hash("Adminpass1"),
             role=UserRole.ADMIN,
+            # Смена роли пользователя — действие старшего модератора
+            # (see app/api/v1/endpoints/admin.py: _get_senior_admin).
+            is_senior_admin=True,
         )
         db.add(admin)
         await db.commit()
