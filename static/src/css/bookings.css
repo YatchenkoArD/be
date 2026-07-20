@@ -66,11 +66,7 @@
 }
 .tab-btn.active .badge {
     background: rgba(255,255,255,0.25);
-}
-
-.tab-btn.active .badge {
-    background: rgba(255,255,255,0.25);
-    color: white; 
+    color: white;
 }
 
 .tab-content {
@@ -253,6 +249,20 @@
 }
 .review-modal-box .star-rating .star:hover {
     transform: scale(1.1);
+}
+
+/* Сообщение об успехе */
+#reviewSuccess {
+    display: none;
+    text-align: center;
+    padding: 1rem;
+    color: #22c55e;
+}
+#reviewSuccess svg {
+    width: 1.2rem;
+    height: 1.2rem;
+    vertical-align: middle;
+    margin-right: 0.3rem;
 }
 
 /* Пустое состояние */

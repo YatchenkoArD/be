@@ -6,17 +6,29 @@ document.addEventListener('DOMContentLoaded', function() {
         return;
     }
 
-    // === Переключение вкладок ===
-    const tabButtons = document.querySelectorAll('.tab-btn');
-    const tabContents = document.querySelectorAll('.tab-content');
+    // === Восстановление активной вкладки из localStorage ===
+    const tabs = document.querySelectorAll('.tab-btn');
+    const contents = document.querySelectorAll('.tab-content');
+    const activeTab = localStorage.getItem('bookingsActiveTab') || 'upcoming';
 
-    tabButtons.forEach(btn => {
+    function activateTab(tabId) {
+        tabs.forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.tab === tabId);
+        });
+        contents.forEach(content => {
+            content.classList.toggle('active', content.id === 'tab-' + tabId);
+        });
+        localStorage.setItem('bookingsActiveTab', tabId);
+    }
+
+    // Активируем сохранённую вкладку
+    activateTab(activeTab);
+
+    // === Переключение вкладок ===
+    tabs.forEach(btn => {
         btn.addEventListener('click', function() {
             const target = this.dataset.tab;
-            tabButtons.forEach(b => b.classList.remove('active'));
-            tabContents.forEach(c => c.classList.remove('active'));
-            this.classList.add('active');
-            document.getElementById('tab-' + target).classList.add('active');
+            activateTab(target);
         });
     });
 
@@ -143,7 +155,6 @@ document.addEventListener('DOMContentLoaded', function() {
         if (masterId) formData.append('master_id', masterId);
         formData.append('rating', rating);
         formData.append('comment', comment);
-        // добавляем booking_id для привязки
         formData.append('booking_id', bookingId);
         for (let file of files) {
             formData.append('files', file);
@@ -152,13 +163,9 @@ document.addEventListener('DOMContentLoaded', function() {
         let url = '/api/v1/reviews/create';
         let method = 'POST';
         if (reviewId) {
-            // Редактирование
             url = '/api/v1/reviews/' + reviewId;
             method = 'PATCH';
-            // Для PATCH нужно удалить файлы, если они есть – отдельно
-            // Но пока проще: если редактируем, файлы не перезагружаем
             formData.delete('files');
-            // Добавим флаг, что это редактирование
             formData.append('_method', 'PATCH');
         }
 
@@ -198,7 +205,6 @@ document.addEventListener('DOMContentLoaded', function() {
             e.preventDefault();
             const bookingId = editBtn.dataset.bookingId;
             const reviewId = editBtn.dataset.reviewId;
-            // сделаем запрос к /api/v1/reviews/{reviewId} для получения salon_id и master_id
             fetch('/api/v1/reviews/' + reviewId)
                 .then(r => r.json())
                 .then(data => {

@@ -18,7 +18,7 @@ from app.web.components.icons import (
     ICON_EDIT_PENCIL,
     ICON_STAR_EMPTY,
     ICON_X,
-    ICON_CHECK_SMALL,
+    ICON_CHECK_SMALL,      # для сообщения об успехе
     ICON_CLOCK,
     ICON_TRASH,
 )
@@ -100,6 +100,7 @@ async def render_bookings_page(db: AsyncSession, user) -> str:
                 select(Review).where(Review.booking_id == booking.id)
             )).scalar_one_or_none()
             if review:
+                # Используем звёзды из иконок
                 stars = "⭐" * review.rating + "☆" * (5 - review.rating)
                 review_html = f"""
                 <div class="booking-review">
@@ -194,13 +195,13 @@ async def render_bookings_page(db: AsyncSession, user) -> str:
                 <p>Все ваши записи в салоны красоты</p>
             </div>
 
-            <div class="bookings-tabs">
-                <button class="tab-btn active" data-tab="upcoming">Предстоящие</button>
+            <div class="bookings-tabs" id="bookingsTabs">
+                <button class="tab-btn" data-tab="upcoming">Предстоящие</button>
                 <button class="tab-btn" data-tab="completed">Завершённые <span class="badge">{completed_count}</span></button>
                 <button class="tab-btn" data-tab="cancelled">Отменённые <span class="badge">{cancelled_count}</span></button>
             </div>
 
-            <div id="tab-upcoming" class="tab-content active">
+            <div id="tab-upcoming" class="tab-content">
                 {upcoming_html}
             </div>
             <div id="tab-completed" class="tab-content">
@@ -244,9 +245,13 @@ async def render_bookings_page(db: AsyncSession, user) -> str:
                 </div>
                 <button type="submit" class="btn-primary" style="width:100%">Отправить отзыв</button>
             </form>
-            <div id="reviewSuccess" style="display:none;text-align:center;padding:1rem;color:#22c55e">✅ Отзыв сохранён</div>
+            <div id="reviewSuccess" style="display:none;text-align:center;padding:1rem;color:#22c55e">
+                {ICON_CHECK_SMALL} Отзыв сохранён
+            </div>
         </div>
     </div>
+
+    <script src="/static/src/js/bookings.js"></script>
 </body>
 </html>"""
     return html
