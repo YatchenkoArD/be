@@ -474,6 +474,60 @@ async def book_page(request: Request, db: AsyncSession = Depends(get_db)):
     return HTMLResponse(content=html)
 
 
+# ── SEO: robots.txt и sitemap.xml (появился домен rrumi.ru) ─────────────────
+# ВАЖНО: строго ВЫШЕ catch-all «/{path:path}» — иначе перехватит 404-страница
+
+@router.get("/robots.txt", include_in_schema=False)
+async def robots_txt():
+    from fastapi.responses import PlainTextResponse
+
+    # Приватные разделы поисковикам не нужны; staging закрыт basic_auth
+    # и X-Robots-Tag на уровне edge — сюда доходит только прод
+    return PlainTextResponse(
+        "User-agent: *\n"
+        "Disallow: /admin\n"
+        "Disallow: /business/\n"
+        "Disallow: /profile\n"
+        "Disallow: /bookings\n"
+        "Disallow: /favorites\n"
+        "Disallow: /api/\n"
+        "Allow: /\n"
+        f"Sitemap: https://rrumi.ru/sitemap.xml\n"
+    )
+
+
+@router.get("/sitemap.xml", include_in_schema=False)
+async def sitemap_xml(db: AsyncSession = Depends(get_db)):
+    from fastapi.responses import Response
+
+    static_pages = ["", "salons", "business", "model", "login", "register"]
+    urls = [f"https://rrumi.ru/{p}" for p in static_pages]
+
+    salons = (await db.execute(select(Salon.id).where(Salon.is_active == True))).scalars().all()  # noqa: E712
+    urls += [f"https://rrumi.ru/salons/{sid}" for sid in salons]
+
+    body = "".join(f"<url><loc>{u}</loc></url>" for u in urls)
+    xml = (
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+        f"{body}</urlset>"
+    )
+    return Response(content=xml, media_type="application/xml")
+
+
+
+@router.get("/forgot-password", response_class=HTMLResponse)
+async def forgot_password_page(request: Request):
+    from app.web.pages.password_reset import render_forgot_password_page
+    return HTMLResponse(content=render_forgot_password_page(request))
+
+
+@router.get("/reset-password", response_class=HTMLResponse)
+async def reset_password_page(request: Request):
+    from app.web.pages.password_reset import render_reset_password_page
+    return HTMLResponse(content=render_reset_password_page(request))
+
+
 @router.get("/{path:path}", response_class=HTMLResponse)
 async def not_found_page(request: Request, path: str):
     """Страница 404 — для всех несуществующих маршрутов."""

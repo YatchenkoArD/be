@@ -26,17 +26,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
 
                 if (response.ok) {
-                    if (card) {
-                        card.remove();
-                        const section = card.closest('.fav-section');
-                        const remaining = section.querySelectorAll('.fav-card');
-                        if (remaining.length === 0) {
-                            const emptyState = section.querySelector('.empty-state');
-                            if (emptyState) emptyState.style.display = 'block';
-                        }
-                    } else {
-                        location.reload();
-                    }
+                    // Без хрупких прогулок по DOM: убрали карточку; была
+                    // последней — сервер сам нарисует «пусто» при reload.
+                    // (Раньше: card.remove() отсоединял узел, closest() по
+                    // отсоединённому возвращал null → TypeError улетал в catch
+                    // и показывал «Ошибка соединения» при успешном удалении.)
+                    if (card) card.remove();
+                    if (!document.querySelector('.fav-card')) location.reload();
                 } else if (response.status === 302) {
                     window.location.href = '/login?redirect=' + encodeURIComponent(window.location.pathname);
                 } else {

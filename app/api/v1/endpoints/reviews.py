@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_db
 from app.models.models import ReviewPhoto, ReviewTargetType
 from app.services.review_service import ReviewService, ReviewError
+from app.services.notifications import notify_new_review
 from app.services.uploads import UploadError, save_image
 
 router = APIRouter()
@@ -68,4 +69,5 @@ async def create_review_web(
     if saved_any:
         await db.commit()
 
+    await notify_new_review(db, review)
     return RedirectResponse(url=f"/salons/{salon_id}?reviewed=1", status_code=302)

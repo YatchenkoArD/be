@@ -1,7 +1,7 @@
 # app/web/pages/salons.py
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from app.models.models import Salon, Promotion
+from app.models.models import Salon, Promotion, SalonModerationStatus
 from app.web.components.header import render_header
 from app.web.components.footer import render_footer
 from app.web.components.sidebar import render_sidebar
@@ -20,7 +20,7 @@ async def render_salons_page(db: AsyncSession, user=None) -> str:
     """Страница со списком салонов с акциями в карточках."""
 
     result = await db.execute(
-        select(Salon).where(Salon.is_active == True).order_by(Salon.rating.desc())
+        select(Salon).where(Salon.is_active == True, Salon.moderation_status == SalonModerationStatus.APPROVED).order_by(Salon.rating.desc())
     )
     salons = result.scalars().all()
 

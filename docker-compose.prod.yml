@@ -10,6 +10,15 @@
 #   3) docker network create edge  (один раз; deploy.sh делает сам)
 #   4) миграции:  docker compose -p rumi-prod -f docker-compose.prod.yml run --rm app alembic upgrade head
 #   5) docker compose -p rumi-prod -f docker-compose.prod.yml up -d
+
+# Ротация docker-логов (блок 05): контейнеры пишут JSON-логи в stdout, драйвер
+# json-file режет их по 10 МБ × 3 файла, иначе логи растут безгранично.
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   redis:
     image: redis:7-alpine
@@ -35,6 +44,8 @@ services:
       REDIS_URL: redis://redis:6379/0
       CORS_ORIGINS: '["https://${DOMAIN:-localhost}"]'
       WEB_CONCURRENCY: "2"
+      LOG_FORMAT: json                # структурные логи в проде (блок 05)
+    logging: *default-logging
     volumes:
       - ./keys:/app/keys:ro           # RS256-ключи монтируем, не пекём в образ
       - uploads_prod:/app/uploads     # загруженные фото; переживают деплой
@@ -57,6 +68,8 @@ services:
       ENVIRONMENT: production
       TZ: Asia/Novosibirsk
       REDIS_URL: redis://redis:6379/0
+      LOG_FORMAT: json                # структурные логи в проде (блок 05)
+    logging: *default-logging
     volumes:
       - ./keys:/app/keys:ro           # понадобятся задачам, работающим с БД/токенами
     depends_on:

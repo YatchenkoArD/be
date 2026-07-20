@@ -93,3 +93,24 @@ Secrets (Settings → Secrets → Actions, нужна роль Admin): `DEPLOY_H
 ## 4. Когда юристы подключат SMSC (OTP)
 
 В `.env` и `.env.staging`: `OTP_ENABLED=true`, `SMS_MODE=live`, `SMSC_LOGIN/PASSWORD/SENDER_ID`, убрать `OTP_DISABLED_ACK`. Перезапустить стеки.
+
+## 5. Блок 05 — мониторинг и логи
+
+Приложение уже инструментировано: при заданном `SENTRY_DSN` шлёт ошибки в GlitchTip/Sentry, без него — no-op. Логи в проде/стейдже — JSON в stdout (`LOG_FORMAT=json` в compose), ротация docker-драйвером (10 МБ × 3). Телефоны в телеметрии/логах маскируются (152-ФЗ).
+
+**5.1 Поднять GlitchTip (self-host).** Решить, тянет ли VPS ещё один стек (Django web+worker + свои postgres+redis) — на 4 ГБ рядом с prod+staging+edge может быть тесно; альтернатива — отдельный маленький VPS.
+```bash
+cp .env.glitchtip.example .env.glitchtip && chmod 600 .env.glitchtip
+# заполнить GLITCHTIP_SECRET_KEY (openssl rand -hex 32), GLITCHTIP_DB_PASSWORD,
+# GLITCHTIP_DOMAIN=https://glitchtip.rrumi.ru, EMAIL_URL (SMTP Beget для алертов)
+docker compose -p rumi-glitchtip -f docker-compose.glitchtip.yml --env-file .env.glitchtip up -d
+# первый вход в веб → создать пользователя-владельца, оставить open-registration=false
+```
+
+**5.2 Отдать наружу.** DNS: A-запись `glitchtip.rrumi.ru` → IP сервера. В `Caddyfile` добавить хост-блок (по образцу prod), reverse_proxy на `rumi-glitchtip-web:8000`, затем `up -d --force-recreate caddy` (edge).
+
+**5.3 Подключить приложение.** В GlitchTip создать организацию/проект → скопировать **DSN**. Вписать в `.env` и `.env.staging`: `SENTRY_DSN=<dsn>` (по желанию `SENTRY_TRACES_SAMPLE_RATE=0.1`). Пересоздать `app`, `arq-worker` (+ боты) — при старте увидят DSN и начнут слать ошибки. Проверка: `docker exec rumi-staging-app python -c "import sentry_sdk; sentry_sdk.capture_message('test from staging')"` → событие в GlitchTip.
+
+**5.4 Алерт на новые ошибки.** В GlitchTip: проект → Alerts → notification на email (`DEFAULT_FROM_EMAIL`) или webhook в Telegram.
+
+**5.5 Внешний uptime-пинг.** Завести бесплатный монитор (UptimeRobot / healthchecks.io / Уптайм Робот) на `https://rrumi.ru/health` (ожидать `{"status":"ok"}`, интервал 1–5 мин) с оповещением на email/Telegram. Внешний — чтобы поймать и полное падение сервера (self-host мониторинг этого не увидит).

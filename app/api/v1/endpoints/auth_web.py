@@ -16,8 +16,15 @@ from app.core.security import (
     needs_rehash,
     validate_password_strength,
 )
-from app.core.limiter import limiter, is_account_locked, register_login_failure, reset_login_failures
+from app.core.limiter import (
+    limiter,
+    is_account_locked,
+    otp_send_allowed,
+    register_login_failure,
+    reset_login_failures,
+)
 from app.services import otp
+from app.services import password_reset
 
 router = APIRouter()
 
@@ -155,3 +162,68 @@ async def register_web(
     response = RedirectResponse(url="/profile", status_code=302)
     _set_auth_cookie(response, user.id)
     return response
+
+@router.post("/forgot-password")
+@limiter.limit("5/minute")
+async def forgot_password_web(
+    request: Request,
+    phone: str = Form(...),
+    db: AsyncSession = Depends(get_db),
+):
+    """«Забыли пароль»: выпускает токен и шлёт ссылку по каналам пользователя.
+
+    Ответ ОДИНАКОВ для любого номера — существование аккаунта не раскрываем
+    (анти-перебор). Поверх IP-лимита — бюджет попыток на номер (тот же,
+    что у OTP: каналы разные, защита одна).
+    """
+    norm_phone = try_normalize_phone(phone)
+    done_url = "/forgot-password?sent=1"
+
+    if norm_phone is None:
+        return RedirectResponse(url=done_url, status_code=302)
+    if not await otp_send_allowed(norm_phone):
+        return RedirectResponse(url=done_url, status_code=302)
+
+    user = (
+        await db.execute(select(User).where(User.phone == norm_phone))
+    ).scalar_one_or_none()
+    if user and user.is_active:
+        token = await password_reset.issue_token(user)
+        await password_reset.deliver(user, token, request.url.netloc)
+
+    return RedirectResponse(url=done_url, status_code=302)
+
+
+@router.post("/reset-password")
+@limiter.limit("10/minute")
+async def reset_password_web(
+    request: Request,
+    token: str = Form(...),
+    password: str = Form(...),
+    db: AsyncSession = Depends(get_db),
+):
+    """Смена пароля по одноразовому токену из ссылки (TG/email)."""
+    try:
+        validate_password_strength(password)
+    except ValueError:
+        return RedirectResponse(
+            url=f"/reset-password?token={quote(token)}&error=weak_password",
+            status_code=302,
+        )
+
+    user_id = await password_reset.consume_token(token)
+    if user_id is None:
+        return RedirectResponse(url="/reset-password?error=bad_token", status_code=302)
+
+    user = (await db.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
+    if user is None or not user.is_active:
+        return RedirectResponse(url="/reset-password?error=bad_token", status_code=302)
+
+    user.hashed_password = get_password_hash(password)
+    await db.commit()
+
+    # Смена пароля снимает блокировку перебора и уведомляет владельца
+    await reset_login_failures(user.phone)
+    await password_reset.notify_changed(user)
+
+    return RedirectResponse(url="/login?reset=1", status_code=302)

@@ -24,6 +24,16 @@ class Settings(BaseSettings):
     # Хост и Postgres остаются в UTC — timestamptz-метки от этого не зависят.
     DEFAULT_TIMEZONE: str = "Asia/Novosibirsk"
 
+    # --- Мониторинг и логи (блок 05) ---
+    # Трекинг ошибок: GlitchTip (self-host, Sentry-совместим) или Sentry.
+    # DSN пуст → SDK не инициализируется (no-op, поведение не меняется).
+    SENTRY_DSN: str = ""
+    SENTRY_TRACES_SAMPLE_RATE: float = 0.0  # perf-трейсинг выключен по умолчанию
+    # Формат логов: text (дефолт, читаемо в dev) | json (одна строка на событие).
+    LOG_FORMAT: str = "text"
+    LOG_LEVEL: str = "INFO"
+
+
     # --- Аутентификация (JWT RS256, асимметричная подпись) ---
     ALGORITHM: str = "RS256"
     # Пути к PEM-ключам. Приватным подписываем, публичным проверяем.
@@ -95,6 +105,27 @@ class Settings(BaseSettings):
     # volume, переживает деплой. ВРЕМЕННО локально: переезд на S3 Timeweb,
     # когда возьмут креды из панели (см. app/services/uploads.py).
     UPLOADS_DIR: str = "uploads"
+
+    # --- Почта @rrumi.ru (SMTP Beget — домен куплен там, ящики бесплатные) ---
+    # EMAIL_MODE=mock — письма в лог (dev/до кредов), live — реальная отправка.
+    # Ящики созданы в панели Beget (домен куплен там).
+    EMAIL_MODE: str = "mock"
+    SMTP_HOST: str = "smtp.beget.com"
+    SMTP_PORT: int = 465
+    SMTP_USER: str = ""
+    SMTP_PASSWORD: str = ""
+    EMAIL_FROM: str = "noreply@rrumi.ru"
+    EMAIL_FROM_NAME: str = "Руми"
+    # Ящик для алертов платформенным админам (новые заявки/жалобы и т.п.).
+    ADMIN_ALERT_EMAIL: str = "hello@rrumi.ru"
+
+    # --- Вход через Яндекс (OAuth, стало возможно с доменом rrumi.ru) ---
+    # Приложение регистрируется на oauth.yandex.ru (физлицо, без ООО).
+    # Scope login:default_phone даёт ПРОВЕРЕННЫЙ Яндексом номер — вход
+    # одновременно закрывает подтверждение телефона (третий канал после TG).
+    YANDEX_OAUTH_ENABLED: bool = False
+    YANDEX_CLIENT_ID: str = ""
+    YANDEX_CLIENT_SECRET: str = ""
 
     # Временный рубильник: пока нет официального подключения SMS-провайдера,
     # OTP_ENABLED=false пропускает реальную отправку/проверку кода (otp.py

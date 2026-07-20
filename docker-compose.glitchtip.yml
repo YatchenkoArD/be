@@ -1,0 +1,110 @@
+# GlitchTip — self-hosted трекинг ошибок (блок 05). Sentry-совместим, open-source,
+# данные остаются на нашем сервере (152-ФЗ). НЕ входит в автодеплой — поднимается
+# руками (см. server/RUNBOOK.md §«Блок 05»). Наружу — через edge-Caddy по хосту
+# glitchtip.rrumi.ru (нужна A-запись + блок в Caddyfile), напрямую портов нет.
+#
+# Перед запуском заполнить в .env.glitchtip:
+#   GLITCHTIP_SECRET_KEY   (openssl rand -hex 32)
+#   GLITCHTIP_DB_PASSWORD  (любой стойкий)
+#   GLITCHTIP_DOMAIN       (https://glitchtip.rrumi.ru)
+#   EMAIL_URL / DEFAULT_FROM_EMAIL  (для алертов; SMTP Beget, как у приложения)
+#
+# Запуск:
+#   docker network create edge   # если ещё нет (общая с prod/staging)
+#   docker compose -p rumi-glitchtip -f docker-compose.glitchtip.yml --env-file .env.glitchtip up -d
+#   # первый вход: создать пользователя-владельца через веб, затем оставить
+#   # GLITCHTIP_ENABLE_OPEN_USER_REGISTRATION=false
+
+x-glitchtip-env: &glitchtip-env
+  SECRET_KEY: ${GLITCHTIP_SECRET_KEY:?задайте GLITCHTIP_SECRET_KEY}
+  DATABASE_URL: postgres://glitchtip:${GLITCHTIP_DB_PASSWORD:?}@gt-postgres:5432/glitchtip
+  REDIS_URL: redis://gt-redis:6379/0
+  PORT: "8000"
+  GLITCHTIP_DOMAIN: ${GLITCHTIP_DOMAIN:?}
+  DEFAULT_FROM_EMAIL: ${DEFAULT_FROM_EMAIL:-noreply@rrumi.ru}
+  EMAIL_URL: ${EMAIL_URL:-consolemail://}
+  ENABLE_OPEN_USER_REGISTRATION: "false"   # после создания владельца — оставить false
+  GLITCHTIP_MAX_EVENT_LIFE_DAYS: "90"      # ретеншн событий
+
+x-logging: &gt-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  gt-postgres:
+    image: postgres:16-alpine
+    container_name: rumi-glitchtip-postgres
+    environment:
+      POSTGRES_USER: glitchtip
+      POSTGRES_PASSWORD: ${GLITCHTIP_DB_PASSWORD:?}
+      POSTGRES_DB: glitchtip
+    volumes:
+      - gt_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "glitchtip"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging: *gt-logging
+    restart: unless-stopped
+
+  gt-redis:
+    image: redis:7-alpine
+    container_name: rumi-glitchtip-redis
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging: *gt-logging
+    restart: unless-stopped
+
+  # Разовая миграция схемы GlitchTip — отрабатывает и выходит.
+  gt-migrate:
+    image: glitchtip/glitchtip:latest
+    container_name: rumi-glitchtip-migrate
+    command: ["./bin/run-migrate.sh"]
+    environment: *glitchtip-env
+    depends_on:
+      gt-postgres:
+        condition: service_healthy
+    logging: *gt-logging
+    restart: "no"
+
+  gt-web:
+    image: glitchtip/glitchtip:latest
+    container_name: rumi-glitchtip-web
+    environment: *glitchtip-env
+    depends_on:
+      gt-postgres:
+        condition: service_healthy
+      gt-redis:
+        condition: service_healthy
+    networks:
+      - default
+      - edge            # edge-Caddy маршрутизирует glitchtip.rrumi.ru → сюда:8000
+    logging: *gt-logging
+    restart: unless-stopped
+
+  gt-worker:
+    image: glitchtip/glitchtip:latest
+    container_name: rumi-glitchtip-worker
+    command: ["./bin/run-celery-with-beat.sh"]
+    environment: *glitchtip-env
+    depends_on:
+      gt-postgres:
+        condition: service_healthy
+      gt-redis:
+        condition: service_healthy
+    logging: *gt-logging
+    restart: unless-stopped
+
+networks:
+  edge:
+    external: true
+
+volumes:
+  gt_pgdata:

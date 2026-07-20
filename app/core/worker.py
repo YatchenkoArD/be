@@ -17,7 +17,7 @@ from arq import create_pool
 from arq.connections import ArqRedis, RedisSettings
 
 from app.core.config import settings
-from app.tasks import process_payment_webhook, send_booking_reminder, send_sms, send_tg_message
+from app.tasks import process_payment_webhook, send_booking_reminder, send_email, send_sms, send_tg_message
 
 REDIS_SETTINGS = RedisSettings.from_dsn(settings.REDIS_URL)
 
@@ -44,9 +44,19 @@ async def close_arq_pool() -> None:
 # ── Настройки воркера ────────────────────────────────────────────
 
 
+async def _on_startup(ctx: dict) -> None:
+    # Мониторинг и логи (блок 05) для процесса воркера: те же логи + трекинг
+    # ошибок фоновых задач в GlitchTip/Sentry (при заданном SENTRY_DSN).
+    from app.core.observability import init_sentry, setup_logging
+
+    setup_logging()
+    init_sentry()
+
+
 class WorkerSettings:
-    functions = [send_sms, send_tg_message, send_booking_reminder, process_payment_webhook]
+    functions = [send_sms, send_tg_message, send_booking_reminder, send_email, process_payment_webhook]
     redis_settings = REDIS_SETTINGS
+    on_startup = _on_startup
     max_tries = 5            # потолок для Retry из задач (см. app/tasks.py)
     job_timeout = 60         # сек на одну задачу
     keep_result = 3600       # результат храним час (отладка/идемпотентность)

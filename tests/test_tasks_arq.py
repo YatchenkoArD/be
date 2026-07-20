@@ -83,3 +83,30 @@ async def test_webhook_without_order_id_rejected_without_retries(arq_pool):
 
     assert result == "rejected"
     assert worker.jobs_retried == 0
+
+
+async def test_send_email_retries_on_transient(arq_pool, monkeypatch):
+    """Email-задача: временные сбои SMTP ретраятся, как у SMS/TG."""
+    calls = {"n": 0}
+
+    async def flaky(to, subject, body):
+        calls["n"] += 1
+        if calls["n"] < 3:
+            raise tasks.TransientTaskError("SMTP 421")
+
+    monkeypatch.setattr(tasks, "_send_via_smtp", flaky)
+    monkeypatch.setattr(tasks, "RETRY_BASE_DELAY", 0)
+
+    job = await arq_pool.enqueue_job(
+        "send_email", "user@example.com", "Тест", "тело", _queue_name=QUEUE
+    )
+    worker = _worker([tasks.send_email])
+    wtask = asyncio.create_task(worker.async_run())
+    try:
+        result = await job.result(timeout=15)
+    finally:
+        await worker.close()
+        wtask.cancel()
+
+    assert result == "sent"
+    assert calls["n"] == 3

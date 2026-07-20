@@ -9,7 +9,21 @@ from datetime import timedelta, datetime, timezone as tz
 from typing import List
 
 from app.db.session import get_db
-from app.models.models import Booking, Master, Service, User, BookingStatus, Review, Salon
+from app.models.models import Booking, Master, Service, User, BookingStatus, Review, Salon, SalonModerationStatus
+
+
+async def _salon_bookable(db, master_id: int) -> bool:
+    """Салон мастера одобрен и активен → к нему можно записаться.
+
+    Пока заявка салона на модерации (pending) или отклонена — запись закрыта
+    (модерация регистрации бизнеса).
+    """
+    row = (await db.execute(
+        select(Salon.is_active, Salon.moderation_status)
+        .join(Master, Master.salon_id == Salon.id)
+        .where(Master.id == master_id)
+    )).first()
+    return bool(row) and row[0] and row[1] == SalonModerationStatus.APPROVED
 from app.schemas.booking import BookingCreate, BookingResponse, BookingCancel
 from app.api.deps import get_current_user, get_salon_membership
 from app.services.notifications import notify_booking_cancelled, notify_booking_created
@@ -20,7 +34,7 @@ from app.utils.timezone import get_salon_time
 
 router = APIRouter()
 
-@router.post("/", response_model=BookingResponse, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=BookingResponse, status_code=status.HTTP_201_CREATED)
 async def create_booking(
     booking_data: BookingCreate,
     current_user: User = Depends(get_current_user),
@@ -34,7 +48,10 @@ async def create_booking(
     
     if service.master_id != booking_data.master_id:
         raise HTTPException(status_code=400, detail="Услуга не принадлежит этому мастеру")
-    
+
+    if not await _salon_bookable(db, booking_data.master_id):
+        raise HTTPException(status_code=403, detail="Салон ещё не подтверждён — запись недоступна.")
+
     now = datetime.now()
     if booking_data.start_time.replace(tzinfo=None) < now:
         raise HTTPException(status_code=400, detail="Нельзя записаться на прошедшее время.")
@@ -216,6 +233,8 @@ async def create_booking_web(
     master = result.scalar_one_or_none()
     if not master:
         return HTMLResponse(content="<h1>Мастер не найден</h1>", status_code=404)
+    if not await _salon_bookable(db, master_id):
+        return HTMLResponse(content="<h1>Салон ещё не подтверждён — запись недоступна</h1>", status_code=403)
     svc_result = await db.execute(select(Service).where(Service.master_id == master_id).limit(1))
     service = svc_result.scalar_one_or_none()
     if not service:
@@ -302,6 +321,9 @@ async def confirm_booking_web(
         <a href="javascript:history.back()" style="color:#F28C6F">← Назад</a>
         </body></html>""", status_code=409)
     
+    if not await _salon_bookable(db, master_id):
+        return HTMLResponse(content="<h1>Салон ещё не подтверждён — запись недоступна</h1>", status_code=403)
+
     booking = Booking(
         client_id=user.id, master_id=master_id, service_id=service_id,
         start_time=start, end_time=end, status=BookingStatus.PENDING, final_price=service.price

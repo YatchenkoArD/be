@@ -26,7 +26,16 @@ async def render_schedule_tab(
     schedule_master_id: int = None, can_close_dates: bool = None,
 ) -> str:
     """Вкладка «Расписание»: выбор мастера → месяц → неделя → сетка
-    дни×часы на MAX_BOOKING_DAYS_AHEAD (2 месяца) вперёд, плюс закрытие дат."""
+
+    дни×часы на MAX_BOOKING_DAYS_AHEAD (2 месяца) вперёд, плюс закрытие дат.
+
+    can_manage_schedule — можно отмечать записи выполненными/неявкой (владелец/
+    админ салона, либо сам мастер — на своих записях это уже разрешено бэкендом
+    независимо от SalonMember). can_close_dates по умолчанию равен
+    can_manage_schedule (владелец/админ), но у мастера, просматривающего только
+    свой календарь, эти права разные: закрытие дат требует SalonMember,
+    которого у мастера нет, поэтому вызывающий код передаёт False явно."""
+
     if can_close_dates is None:
         can_close_dates = can_manage_schedule
 
@@ -261,6 +270,13 @@ async def render_schedule_tab(
             </div>
             {month_panels}
         </div>"""
+
+
+    master_select_options = "".join(
+        f'<option value="{m.id}"{" selected" if m.id == selected_master.id else ""}>{master_names.get(m.id, "—")} — {m.specialization}</option>'
+        for m in masters
+    )
+
 
     # Закрытие дат — отдельное право от отметки записей (см. docstring)
     closures_section = ""

@@ -5,7 +5,7 @@ from sqlalchemy import select, func
 from datetime import datetime, timedelta
 from app.models.models import (
     Salon, SalonPhoto, Master, Service, Promotion, User, Booking, BookingStatus,
-    Review, ReviewPhoto, ReviewTargetType, SalonMember,
+    Review, ReviewPhoto, ReviewTargetType, SalonMember, SalonModerationStatus,
 )
 from app.web.components.header import render_header
 from app.web.components.footer import render_footer
@@ -80,7 +80,12 @@ def format_working_hours(wh_json: str | None) -> str:
 
 
 async def render_salon_detail(db: AsyncSession, salon_id: int, user=None) -> str:
-    result = await db.execute(select(Salon).where(Salon.id == salon_id))
+    # Публично видны только одобренные активные салоны (модерация регистрации).
+    result = await db.execute(select(Salon).where(
+        Salon.id == salon_id,
+        Salon.is_active == True,
+        Salon.moderation_status == SalonModerationStatus.APPROVED,
+    ))
     salon = result.scalar_one_or_none()
 
     if not salon:
@@ -105,6 +110,7 @@ async def render_salon_detail(db: AsyncSession, salon_id: int, user=None) -> str
         select(func.count(Review.id)).where(Review.salon_id == salon.id, Review.is_verified == True)
     )).scalar() or 0
 
+    # Сотрудники (владелец/админ) салона — цель отзыва «Сотрудник»
     staff_result = await db.execute(
         select(SalonMember, User)
         .join(User, User.id == SalonMember.user_id)
@@ -112,6 +118,8 @@ async def render_salon_detail(db: AsyncSession, salon_id: int, user=None) -> str
     )
     staff_members = staff_result.all()
 
+    # Лояльность видна клиенту заранее, до записи — скидку/бонусы даёт салон,
+    # не РУМИ (портировано из main при слиянии с редизайном).
     loyalty_html = ""
     if user:
         loyalty = await LoyaltyService.get_client_status(db, salon.id, user.id)
@@ -126,7 +134,8 @@ async def render_salon_detail(db: AsyncSession, salon_id: int, user=None) -> str
             loyalty_html = (
                 '<div class="salon-loyalty">'
                 + "".join(
-                    f'<span class="loyalty-chip">{c}</span>'
+                    f'<span class="badge" style="background:var(--color-accent-light);color:var(--color-primary);'
+                    f'padding:0.25rem 0.75rem;border-radius:1rem;font-size:0.85rem">{c}</span>'
                     for c in chips
                 )
                 + "</div>"
@@ -150,6 +159,7 @@ async def render_salon_detail(db: AsyncSession, salon_id: int, user=None) -> str
     heart_svg = ICON_HEART.replace('"', '&quot;')
     heart_filled_svg = ICON_HEART_FILLED.replace('"', '&quot;')
 
+    # Подготовка данных для JS (пошаговый флоу записи — booking_flow_html ниже)
     masters_data = []
     for m in masters:
         user_result = await db.execute(select(User).where(User.id == m.user_id))
@@ -168,6 +178,9 @@ async def render_salon_detail(db: AsyncSession, salon_id: int, user=None) -> str
                 for s in services
             ]
         })
+
+    # Определяем, показывать ли шаг выбора мастера
+    masters_display = "block" if masters_data else "none"
 
     masters_list_html = ""
     for m in masters_data:
@@ -191,6 +204,7 @@ async def render_salon_detail(db: AsyncSession, salon_id: int, user=None) -> str
         </div>
         """
 
+    # ----- Верхний блок (салон) -----
     working_hours_display = format_working_hours(salon.working_hours)
 
     top_block = f"""
@@ -201,10 +215,10 @@ async def render_salon_detail(db: AsyncSession, salon_id: int, user=None) -> str
             </a>
             <div class="salon-header-grid">
                 <div class="salon-image-wrapper">
-                    {f'<img alt="{salon.name}" src="{salon.logo_url}">' if salon.logo_url else f'<div class="salon-logo-placeholder">{salon.name[0].upper()}</div>'}
-                    <button class="favorite-btn top-fav-btn salon-top-fav" 
-                            data-type="salon" 
-                            data-id="{salon.id}" 
+                    {f'<img alt="{salon.name}" src="{salon.logo_url}">' if salon.logo_url else f'<div style="width:100%;height:100%;min-height:200px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--color-primary),var(--color-accent));color:#fff;font-size:4rem;font-weight:700;border-radius:1rem">{salon.name[0].upper()}</div>'}
+                    <button class="favorite-btn top-fav-btn salon-top-fav"
+                            data-type="salon"
+                            data-id="{salon.id}"
                             data-icon-heart="{heart_svg}"
                             data-icon-heart-filled="{heart_filled_svg}"
                             title="В избранное">
@@ -236,6 +250,7 @@ async def render_salon_detail(db: AsyncSession, salon_id: int, user=None) -> str
     </section>
     """
 
+    # ----- Акции -----
     promos_html = ""
     if promotions:
         promos_html = '<section class="section-container promos-section"><h2 class="section-title">Акции</h2><div class="promos-grid">'
@@ -249,189 +264,7 @@ async def render_salon_detail(db: AsyncSession, salon_id: int, user=None) -> str
             """
         promos_html += '</div></section>'
 
-    masters_list_html_2 = ""
-    detail_html = ""
-
-    for m in masters:
-        user_result = await db.execute(select(User).where(User.id == m.user_id))
-        master_user = user_result.scalar_one_or_none()
-        user_name = master_user.full_name if master_user else "Мастер"
-        avatar = master_user.avatar_url or ""
-
-        masters_list_html_2 += f"""
-        <div class="master-card" data-master-id="{m.id}">
-            <div class="master-image-box">
-                {f'<img src="{avatar}" alt="{user_name}">' if avatar else f'<div class="master-avatar-placeholder">{user_name[0].upper()}</div>'}
-            </div>
-            <div class="master-info-box">
-                <div>
-                    <div class="master-name">{user_name}</div>
-                    <div class="master-spec">{m.specialization or "Барбер"}</div>
-                </div>
-                <div class="master-stats">
-                    <span>опыт: {m.experience_years} лет</span>
-                    <span>⭐ {m.rating or 0.0:.1f}</span>
-                </div>
-                <button class="btn-primary master-book-btn" data-master-id="{m.id}">Записаться</button>
-            </div>
-        </div>
-        """
-
-        services_result = await db.execute(select(Service).where(Service.master_id == m.id))
-        services = services_result.scalars().all()
-
-        services_html = ""
-        for s in services:
-            services_html += f"""
-            <button class="service-btn" 
-                    data-master-id="{m.id}"
-                    data-service-id="{s.id}"
-                    data-service-name="{s.name}"
-                    data-price="{s.price}"
-                    data-duration="{s.duration_minutes}">
-                <div class="service-info">
-                    <span class="service-name">{s.name}</span>
-                    <span class="service-duration">{s.duration_minutes} мин</span>
-                </div>
-                <span class="service-price">{s.price} ₽</span>
-            </button>
-            """
-
-        detail_html += f"""
-        <div class="master-detail hidden" data-master-id="{m.id}">
-            <button class="back-to-masters">← Назад к мастерам</button>
-            
-            <div class="master-detail-profile">
-                <div class="master-detail-avatar">
-                    {f'<img src="{avatar}" alt="{user_name}">' if avatar else f'<div class="master-avatar-placeholder">{user_name[0].upper()}</div>'}
-                </div>
-                <div>
-                    <div class="master-detail-name">{user_name}</div>
-                    <div class="master-spec">{m.specialization or "Барбер"}</div>
-                    <div class="master-stats">
-                        <span>опыт: {m.experience_years} лет</span>
-                        <span>⭐ {m.rating or 0.0:.1f}</span>
-                    </div>
-                </div>
-            </div>
-
-            <h3>Выберите услугу:</h3>
-            <div class="services-grid">
-                {services_html}
-            </div>
-
-            <div class="slots-container hidden" id="detail-slots-{m.id}">
-                <div class="slots-title" id="detail-slots-title-{m.id}"></div>
-                <div class="slots-grid" id="detail-slot-grid-{m.id}"></div>
-            </div>
-        </div>
-        """
-
-    masters_block = f"""
-    <section class="section-container masters-section">
-        <div class="section-header">
-            <h2 class="section-title">Выберите мастера</h2>
-        </div>
-        <div id="masters-list-container">
-            <div class="masters-list">
-                {masters_list_html_2 or '<p>В салоне пока нет мастеров.</p>'}
-            </div>
-        </div>
-        {detail_html}
-    </section>
-    """
-
-    booking_panel = """
-    <div class="booking-panel hidden" id="bookPanel">
-        <div class="booking-panel-inner">
-            <div class="booking-info">
-                <span class="booking-master" id="panelMaster"></span>
-                <span class="booking-dot"> · </span>
-                <span class="booking-time" id="panelTime"></span>
-            </div>
-            <button class="btn-primary" onclick="confirmBooking()">Записаться</button>
-        </div>
-    </div>
-    """
-
-    TARGET_LABELS = {
-        ReviewTargetType.MASTER: "👤 Мастер",
-        ReviewTargetType.SALON: "🏠 Салон",
-        ReviewTargetType.STAFF: "🧑‍💼 Сотрудник",
-    }
-
-    reviews_html = ""
-    if reviews:
-        for r in reviews:
-            client_result = await db.execute(select(User).where(User.id == r.client_id))
-            client_user = client_result.scalar_one_or_none()
-            client_name = client_user.full_name if client_user else "Клиент"
-            stars = "★" * r.rating + "☆" * (5 - r.rating)
-            date_str = r.created_at.strftime("%d.%m.%Y") if r.created_at else ""
-
-            target_label = TARGET_LABELS[r.target_type]
-            if r.target_type == ReviewTargetType.MASTER and r.master_id:
-                mu = await db.execute(
-                    select(User).join(Master, Master.user_id == User.id).where(Master.id == r.master_id)
-                )
-                mu_row = mu.scalar_one_or_none()
-                if mu_row:
-                    target_label += f": {mu_row.full_name}"
-            elif r.target_type == ReviewTargetType.STAFF and r.staff_user_id:
-                su = await db.execute(select(User).where(User.id == r.staff_user_id))
-                su_row = su.scalar_one_or_none()
-                if su_row:
-                    target_label += f": {su_row.full_name}"
-
-            verified_badge = (
-                '<span class="badge-tag" style="background:#dcfce7;color:#166534" '
-                'title="Клиент реально был на завершённой записи">✅ Подтверждено записью</span>'
-                if r.is_verified else
-                '<span class="badge-tag" style="background:#f3f4f6;color:var(--color-muted)">Без подтверждения</span>'
-            )
-
-            photos_result = await db.execute(select(ReviewPhoto).where(ReviewPhoto.review_id == r.id))
-            review_photos = photos_result.scalars().all()
-            photos_html = ""
-            if review_photos:
-                items = ""
-                for p in review_photos:
-                    delete_btn = (
-                        f'<button class="review-photo-delete" data-review-id="{r.id}" data-photo-id="{p.id}">✕</button>'
-                        if user and user.id == r.client_id else ""
-                    )
-                    report_btn = (
-                        f'<button class="review-photo-report" data-photo-id="{p.id}">⚑</button>'
-                        if user else ""
-                    )
-                    items += f"""
-                    <div class="review-photo-item">
-                        <img src="{p.url}" alt="" loading="lazy">
-                        {delete_btn}{report_btn}
-                    </div>
-                    """
-                photos_html = f'<div class="review-photos">{items}</div>'
-
-            reviews_html += f"""
-            <div class="review-item" data-target-type="{r.target_type.value}" data-verified="{'1' if r.is_verified else '0'}">
-                <div class="review-header">
-                    <strong class="review-author">{client_name}</strong>
-                    <span class="review-date">{date_str}</span>
-                </div>
-                <div class="review-meta">
-                    <span class="badge-tag">{target_label}</span>
-                    {verified_badge}
-                </div>
-                <div class="review-stars">{stars}</div>
-                <p class="review-text">{r.comment or 'Без комментария'}</p>
-                {photos_html}
-            </div>
-            """
-    else:
-        reviews_html = '<p class="empty-state">Пока нет отзывов. Будьте первым!</p>'
-
-    masters_display = "block" if masters_data else "none"
-
+    # Контейнер для пошагового процесса записи
     booking_flow_html = f"""
     <section class="section-container booking-flow">
         <div id="booking-flow-container" data-masters='{json.dumps(masters_data, ensure_ascii=False)}' data-user='{json.dumps({"id": user.id, "full_name": user.full_name, "phone": user.phone} if user else None, ensure_ascii=False)}'>
@@ -638,6 +471,83 @@ async def render_salon_detail(db: AsyncSession, salon_id: int, user=None) -> str
     </section>
     """
 
+    # ----- Отзывы -----
+    TARGET_LABELS = {
+        ReviewTargetType.MASTER: "👤 Мастер",
+        ReviewTargetType.SALON: "🏠 Салон",
+        ReviewTargetType.STAFF: "🧑‍💼 Сотрудник",
+    }
+    reviews_html = ""
+    if reviews:
+        for r in reviews:
+            client_result = await db.execute(select(User).where(User.id == r.client_id))
+            client_user = client_result.scalar_one_or_none()
+            client_name = client_user.full_name if client_user else "Клиент"
+            stars = "★" * r.rating + "☆" * (5 - r.rating)
+            date_str = r.created_at.strftime("%d.%m.%Y") if r.created_at else ""
+
+            target_label = TARGET_LABELS[r.target_type]
+            if r.target_type == ReviewTargetType.MASTER and r.master_id:
+                mu = await db.execute(
+                    select(User).join(Master, Master.user_id == User.id).where(Master.id == r.master_id)
+                )
+                mu_row = mu.scalar_one_or_none()
+                if mu_row:
+                    target_label += f": {mu_row.full_name}"
+            elif r.target_type == ReviewTargetType.STAFF and r.staff_user_id:
+                su = await db.execute(select(User).where(User.id == r.staff_user_id))
+                su_row = su.scalar_one_or_none()
+                if su_row:
+                    target_label += f": {su_row.full_name}"
+
+            verified_badge = (
+                '<span class="badge-tag" style="background:#dcfce7;color:#166534" '
+                'title="Клиент реально был на завершённой записи">✅ Подтверждено записью</span>'
+                if r.is_verified else
+                '<span class="badge-tag" style="background:#f3f4f6;color:var(--color-muted)">Без подтверждения</span>'
+            )
+
+            photos_result = await db.execute(select(ReviewPhoto).where(ReviewPhoto.review_id == r.id))
+            review_photos = photos_result.scalars().all()
+            photos_html = ""
+            if review_photos:
+                items = ""
+                for p in review_photos:
+                    delete_btn = (
+                        f'<button class="review-photo-delete" data-review-id="{r.id}" data-photo-id="{p.id}" '
+                        f'title="Удалить фото">✕</button>'
+                        if user and user.id == r.client_id else ""
+                    )
+                    report_btn = (
+                        f'<button class="review-photo-report" data-photo-id="{p.id}" title="Пожаловаться">⚑</button>'
+                        if user else ""
+                    )
+                    items += (
+                        f'<div class="review-photo-item" style="position:relative;display:inline-block">'
+                        f'<img src="{p.url}" alt="" loading="lazy" style="width:100px;height:100px;'
+                        f'object-fit:cover;border-radius:0.5rem;margin:0.25rem">{delete_btn}{report_btn}</div>'
+                    )
+                photos_html = f'<div class="review-photos" style="display:flex;flex-wrap:wrap">{items}</div>'
+
+            reviews_html += f"""
+            <div class="review-item" data-target-type="{r.target_type.value}" data-verified="{'1' if r.is_verified else '0'}">
+                <div class="review-header">
+                    <strong class="review-author">{client_name}</strong>
+                    <span class="review-date">{date_str}</span>
+                </div>
+                <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin:0.35rem 0">
+                    <span class="badge-tag">{target_label}</span>
+                    {verified_badge}
+                </div>
+                <div class="review-stars">{stars}</div>
+                <p class="review-text">{r.comment or 'Без комментария'}</p>
+                {photos_html}
+            </div>
+            """
+    else:
+        reviews_html = '<p class="empty-state">Пока нет отзывов. Будьте первым!</p>'
+
+    # ----- Форма отзыва -----
     if user:
         master_options = ""
         for m in masters:
@@ -747,6 +657,7 @@ async def render_salon_detail(db: AsyncSession, salon_id: int, user=None) -> str
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{salon.name} | руми</title>
     {get_base_styles()}
+    <link rel="stylesheet" href="/static/src/css/salon-detail.css">
 </head>
 <body class="page-body">
     {render_header("salons")}
@@ -758,6 +669,7 @@ async def render_salon_detail(db: AsyncSession, salon_id: int, user=None) -> str
             {f'<section class="section-container">{photos_strip}</section>' if photos_strip else ''}
             {promos_html}
             {booking_flow_html}
+
             <section class="section-container reviews-section">
                 <h2 class="section-title">Отзывы</h2>
                 {review_form_html}
@@ -766,6 +678,7 @@ async def render_salon_detail(db: AsyncSession, salon_id: int, user=None) -> str
                     {reviews_html}
                 </div>
             </section>
+
             {render_footer(user)}
         </main>
     </div>

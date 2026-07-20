@@ -22,8 +22,18 @@ from app.core.config import settings
 from app.core.limiter import limiter
 from app.core.middleware import SecurityHeadersMiddleware, CSRFOriginMiddleware
 from app.core.worker import close_arq_pool
+from app.core.observability import setup_logging, init_sentry
 
-from app.models.models import Salon, Master, User, Service
+# Мониторинг и логи (блок 05): настроить логи и включить трекинг ошибок
+# (Sentry/GlitchTip активируется только при заданном SENTRY_DSN).
+setup_logging()
+init_sentry()
+
+from app.models.models import Salon, Master, User, Service, SalonModerationStatus
+
+# Публичный салон = активен И заявка одобрена (pending/rejected не показываем
+# и не даём записаться — модерация регистрации бизнеса).
+_PUBLIC_SALON = (Salon.is_active == True) & (Salon.moderation_status == SalonModerationStatus.APPROVED)  # noqa: E712
 from app.schemas.salon import SalonResponse, SalonWithDistance
 from app.schemas.master import MasterResponse, ServiceResponse
 from app.api.v1.endpoints import auth
@@ -39,6 +49,7 @@ from app.api.v1.endpoints import inventory
 from app.api.v1.endpoints import payroll
 from app.api.v1.endpoints import loyalty
 from app.api.v1.endpoints import uploads
+from app.api.v1.endpoints import auth_yandex
 from app.api.v1.endpoints import schedule as schedule_endpoints
 from app.api.v1.endpoints import reports
 
@@ -97,6 +108,7 @@ app.include_router(staff.router, prefix="/api/v1/business/staff", tags=["staff"]
 app.include_router(inventory.router, prefix="/api/v1/inventory", tags=["inventory"])
 app.include_router(payroll.router, prefix="/api/v1/payroll", tags=["payroll"])
 app.include_router(uploads.router, prefix="/api/v1/upload", tags=["uploads"])
+app.include_router(auth_yandex.router, prefix="/api/v1/auth", tags=["auth-yandex"])
 app.include_router(loyalty.router, prefix="/api/v1/loyalty", tags=["loyalty"])
 app.include_router(schedule_endpoints.router, prefix="/api/v1/schedule", tags=["schedule"])
 app.include_router(reports.router, prefix="/api/v1/reports", tags=["reports"])
@@ -115,7 +127,7 @@ app.include_router(web_router, include_in_schema=False)
 @app.get("/api/v1/salons", response_model=List[SalonResponse])
 async def get_salons(db: AsyncSession = Depends(get_db)):
     """Получить список всех салонов"""
-    result = await db.execute(select(Salon).where(Salon.is_active == True))
+    result = await db.execute(select(Salon).where(_PUBLIC_SALON))
     salons = result.scalars().all()
     return salons
 
@@ -128,7 +140,7 @@ async def get_nearby_salons(
 ):
     """Получить салоны в радиусе N километров от указанных координат"""
     
-    result = await db.execute(select(Salon).where(Salon.is_active == True))
+    result = await db.execute(select(Salon).where(_PUBLIC_SALON))
     salons = result.scalars().all()
     
     user_location = (lat, lon)
@@ -148,7 +160,7 @@ async def get_nearby_salons(
 @app.get("/api/v1/salons/{salon_id}", response_model=SalonResponse)
 async def get_salon(salon_id: int, db: AsyncSession = Depends(get_db)):
     """Получить информацию о конкретном салоне"""
-    result = await db.execute(select(Salon).where(Salon.id == salon_id))
+    result = await db.execute(select(Salon).where(Salon.id == salon_id, _PUBLIC_SALON))
     salon = result.scalar_one_or_none()
     if not salon:
         raise HTTPException(status_code=404, detail="Салон не найден")

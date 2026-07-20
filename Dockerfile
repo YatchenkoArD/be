@@ -1,4 +1,20 @@
 # ─────────────────────────────────────────────────────────────
+# Stage 0 — frontend-builder: vite build → static/dist/ (main.js/main.css).
+# static/dist/ в .gitignore и не лежит в репозитории — без этого стейджа
+# get_base_styles() ссылается на несуществующие файлы (404 без стилей/JS).
+# ─────────────────────────────────────────────────────────────
+FROM node:22-alpine AS frontend-builder
+
+WORKDIR /app
+
+COPY package.json package-lock.json ./
+RUN npm ci
+
+COPY vite.config.js ./
+COPY static/src ./static/src
+RUN npm run build
+
+# ─────────────────────────────────────────────────────────────
 # Stage 1 — builder: ставим зависимости в изолированный venv
 # ─────────────────────────────────────────────────────────────
 FROM python:3.11-slim AS builder
@@ -53,6 +69,7 @@ RUN rm -rf /usr/local/lib/python3.11/site-packages/setuptools* \
 
 COPY --from=builder /opt/venv /opt/venv
 COPY . .
+COPY --from=frontend-builder /app/static/dist ./static/dist
 
 # .env и keys/ НЕ копируются (см. .dockerignore) — секреты монтируются в рантайме
 # /app/uploads создаётся заранее с владельцем app: docker инициализирует новый

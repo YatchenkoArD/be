@@ -7,6 +7,7 @@ from datetime import datetime, timedelta, timezone
 import httpx
 import pytest
 from arq import create_pool
+from sqlalchemy import select
 from arq.worker import Worker
 from zoneinfo import ZoneInfo
 
@@ -201,3 +202,226 @@ async def test_notify_booking_created_enqueues_for_all_parties(db_session, monke
     assert len(reminders) == 1
     assert reminders[0][2]["_job_id"] == f"booking-reminder:{booking.id}"
     assert reminders[0][2]["_defer_until"] is not None
+
+
+# ── Этап 1 разграничения: матрица получателей по правам ─────────────────────
+
+async def _matrix_fixture(db_session):
+    """Салон с командой разных прав + мастер + клиент (у всех привязан TG)."""
+    async with db_session() as db:
+        creator = User(phone="+79991110001", hashed_password="x", role=UserRole.BUSINESS,
+                       full_name="Создатель", tg_chat_id=1001)
+        sched_admin = User(phone="+79991110002", hashed_password="x", role=UserRole.CLIENT,
+                           full_name="Админ-расписание", tg_chat_id=1002)
+        inv_admin = User(phone="+79991110003", hashed_password="x", role=UserRole.CLIENT,
+                         full_name="Админ-склад", tg_chat_id=1003)
+        no_tg_admin = User(phone="+79991110004", hashed_password="x", role=UserRole.CLIENT,
+                           full_name="Без телеграма")  # прав много, чата нет
+        master_user = User(phone="+79991110005", hashed_password="x", role=UserRole.MASTER,
+                           full_name="Мастер", tg_chat_id=1005)
+        client_user = User(phone="+79991110006", hashed_password="x", role=UserRole.CLIENT,
+                           full_name="Клиент", tg_chat_id=1006)
+        db.add_all([creator, sched_admin, inv_admin, no_tg_admin, master_user, client_user])
+        await db.flush()
+
+        salon = Salon(name="Матрица", address="а", phone="+79991110000",
+                      latitude=1.0, longitude=1.0, timezone="Asia/Novosibirsk",
+                      creator_id=creator.id)
+        db.add(salon)
+        await db.flush()
+        db.add_all([
+            SalonMember(salon_id=salon.id, user_id=creator.id, role=SalonRole.OWNER,
+                        is_creator=True, is_active=True, permissions={}),
+            SalonMember(salon_id=salon.id, user_id=sched_admin.id, role=SalonRole.ADMIN,
+                        is_creator=False, is_active=True,
+                        permissions={"manage_schedule": True}),
+            SalonMember(salon_id=salon.id, user_id=inv_admin.id, role=SalonRole.ADMIN,
+                        is_creator=False, is_active=True,
+                        permissions={"manage_inventory": True, "manage_reviews": True}),
+            SalonMember(salon_id=salon.id, user_id=no_tg_admin.id, role=SalonRole.ADMIN,
+                        is_creator=False, is_active=True,
+                        permissions={"manage_schedule": True}),
+        ])
+        master = Master(user_id=master_user.id, salon_id=salon.id, specialization="стрижка")
+        db.add(master)
+        await db.flush()
+        service = Service(master_id=master.id, name="Стрижка", price=1000, duration_minutes=60)
+        db.add(service)
+        await db.commit()
+        return {
+            "salon_id": salon.id, "master_id": master.id, "service_id": service.id,
+            "client_id": client_user.id, "master_chat": 1005, "client_chat": 1006,
+        }
+
+
+@pytest.fixture()
+def fake_pool(monkeypatch):
+    enqueued: list[tuple] = []
+
+    class FakePool:
+        async def enqueue_job(self, fn, *args, **kwargs):
+            enqueued.append((fn, args, kwargs))
+
+    async def _pool():
+        return FakePool()
+
+    monkeypatch.setattr(notif, "get_arq_pool", _pool)
+    monkeypatch.setattr(settings, "TG_NOTIFY_ENABLED", True)
+    return enqueued
+
+
+def _chats(enqueued):
+    return sorted(e[1][0] for e in enqueued if e[0] == "send_tg_message")
+
+
+async def test_booking_notify_routes_by_schedule_permission(db_session, fake_pool):
+    ids = await _matrix_fixture(db_session)
+    async with db_session() as db:
+        booking = Booking(
+            client_id=ids["client_id"], master_id=ids["master_id"], service_id=ids["service_id"],
+            start_time=datetime.now() + timedelta(days=1),
+            end_time=datetime.now() + timedelta(days=1, hours=1),
+            status=BookingStatus.PENDING, final_price=1000,
+        )
+        db.add(booking)
+        await db.commit()
+        await db.refresh(booking)
+        await notif.notify_booking_created(db, booking)
+
+    # клиент, мастер, создатель (всегда), админ-расписание. Админ-склад — НЕТ
+    # (нет manage_schedule), без-телеграма — НЕТ (нет чата)
+    assert _chats(fake_pool) == [1001, 1002, 1005, 1006]
+    # у мастера — свой текст, у команды — свой
+    texts = {e[1][0]: e[1][1] for e in fake_pool if e[0] == "send_tg_message"}
+    assert "К вам новая запись" in texts[1005]
+    assert "Новая запись в «Матрица»" in texts[1002]
+    assert "Вы записаны" in texts[1006]
+
+
+async def test_warehouse_request_routes_by_inventory_permission(db_session, fake_pool):
+    from app.models.models import WarehouseRequest, WarehouseRequestStatus, WarehouseRequestType
+
+    ids = await _matrix_fixture(db_session)
+    async with db_session() as db:
+        master_user_id = (
+            await db.execute(select(User.id).where(User.tg_chat_id == 1005))
+        ).scalar_one()
+        req = WarehouseRequest(
+            salon_id=ids["salon_id"], type=WarehouseRequestType.EQUIPMENT_BROKEN,
+            created_by_id=master_user_id, comment="фен умер",
+            status=WarehouseRequestStatus.PENDING,
+        )
+        db.add(req)
+        await db.commit()
+        await db.refresh(req)
+        await notif.notify_warehouse_request_created(db, req)
+
+        # только создатель + админ-склад; расписание-админ и клиент — нет
+        assert _chats(fake_pool) == [1001, 1003]
+
+        fake_pool.clear()
+        req.status = WarehouseRequestStatus.RESOLVED
+        await db.commit()
+        await notif.notify_warehouse_request_resolved(db, req)
+        assert _chats(fake_pool) == [1005]  # автору-мастеру
+
+
+async def test_review_routes_by_reviews_permission(db_session, fake_pool):
+    from app.models.models import Review, ReviewTargetType
+
+    ids = await _matrix_fixture(db_session)
+    async with db_session() as db:
+        review = Review(
+            client_id=ids["client_id"], salon_id=ids["salon_id"], master_id=ids["master_id"],
+            target_type=ReviewTargetType.MASTER, rating=5, comment="топ", is_verified=True,
+        )
+        db.add(review)
+        await db.commit()
+        await db.refresh(review)
+        await notif.notify_new_review(db, review)
+
+    # мастер (отзыв о нём) + создатель + админ с manage_reviews
+    assert _chats(fake_pool) == [1001, 1003, 1005]
+
+
+# ── Этап 2: личные подписки поверх прав ─────────────────────────────────────
+
+def test_wants_defaults_on_and_respects_off():
+    u = User(phone="+70000000010", hashed_password="x", tg_chat_id=1)
+    assert notif.wants(u, notif.TOPIC_BOOKINGS) is True          # нет настройки
+    u.tg_notify_prefs = {"bookings": False}
+    assert notif.wants(u, notif.TOPIC_BOOKINGS) is False         # отключил
+    assert notif.wants(u, notif.TOPIC_WAREHOUSE) is True         # прочее не тронуто
+
+
+async def test_muted_member_not_notified_despite_permission(db_session, fake_pool):
+    """Право есть, но тема лично отключена — уведомления нет."""
+    ids = await _matrix_fixture(db_session)
+    async with db_session() as db:
+        sched_admin = (
+            await db.execute(select(User).where(User.tg_chat_id == 1002))
+        ).scalar_one()
+        sched_admin.tg_notify_prefs = {"bookings": False}
+        await db.commit()
+
+        booking = Booking(
+            client_id=ids["client_id"], master_id=ids["master_id"], service_id=ids["service_id"],
+            start_time=datetime.now() + timedelta(days=1),
+            end_time=datetime.now() + timedelta(days=1, hours=1),
+            status=BookingStatus.PENDING, final_price=1000,
+        )
+        db.add(booking)
+        await db.commit()
+        await db.refresh(booking)
+        await notif.notify_booking_created(db, booking)
+
+    # 1002 замьютил тему — выпал; остальные на месте
+    assert _chats(fake_pool) == [1001, 1005, 1006]
+
+
+async def test_available_topics_follow_roles(db_session):
+    from app.tg_bot import _available_topics
+
+    await _matrix_fixture(db_session)
+    async with db_session() as db:
+        client = (await db.execute(select(User).where(User.tg_chat_id == 1006))).scalar_one()
+        master = (await db.execute(select(User).where(User.tg_chat_id == 1005))).scalar_one()
+        inv_admin = (await db.execute(select(User).where(User.tg_chat_id == 1003))).scalar_one()
+        creator = (await db.execute(select(User).where(User.tg_chat_id == 1001))).scalar_one()
+
+        assert await _available_topics(db, client) == ["bookings", "reminders"]
+        assert set(await _available_topics(db, master)) == {"bookings", "reminders", "warehouse", "reviews"}
+        assert set(await _available_topics(db, inv_admin)) == {"bookings", "reminders", "warehouse", "reviews", "reports"}
+        assert set(await _available_topics(db, creator)) == {"bookings", "reminders", "warehouse", "reviews", "reports"}
+
+
+async def test_warehouse_respects_both_personal_filters(db_session, fake_pool):
+    """Пуш склада фильтруется И per-салонным тумблером (SalonMember),
+    И глобальной темой в боте (tg_notify_prefs)."""
+    from app.models.models import SalonMember, WarehouseRequest, WarehouseRequestStatus, WarehouseRequestType
+
+    ids = await _matrix_fixture(db_session)
+    async with db_session() as db:
+        # Создатель выключает per-салонный тумблер, админ-склад — глобальную тему
+        creator_member = (await db.execute(
+            select(SalonMember).join(User, User.id == SalonMember.user_id)
+            .where(User.tg_chat_id == 1001)
+        )).scalar_one()
+        creator_member.notify_warehouse_requests = False
+        inv_admin = (await db.execute(select(User).where(User.tg_chat_id == 1003))).scalar_one()
+        inv_admin.tg_notify_prefs = {"warehouse": False}
+        await db.commit()
+
+        master_user_id = (
+            await db.execute(select(User.id).where(User.tg_chat_id == 1005))
+        ).scalar_one()
+        req = WarehouseRequest(
+            salon_id=ids["salon_id"], type=WarehouseRequestType.EQUIPMENT_BROKEN,
+            created_by_id=master_user_id, status=WarehouseRequestStatus.PENDING,
+        )
+        db.add(req)
+        await db.commit()
+        await db.refresh(req)
+        await notif.notify_warehouse_request_created(db, req)
+
+    assert _chats(fake_pool) == []  # оба замьютились каждый своим способом

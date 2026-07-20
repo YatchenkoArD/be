@@ -4,7 +4,7 @@ from sqlalchemy import select, func
 from datetime import datetime, timedelta
 from app.models.models import (
     Salon, Master, Service, Promotion, Booking, Review, BookingStatus,
-    SalonMember, User as UserModel,
+    SalonMember, User as UserModel, SalonModerationStatus,
 )
 from app.web.components.header import render_header
 from app.web.components.footer import render_footer
@@ -244,7 +244,7 @@ async def render_business_dashboard(db: AsyncSession, user, salon: Salon, member
     # Склад (с правом manage_inventory)
     tab_buttons.append(('warehouse', ICON_PACKAGE, 'Склад', perms["manage_inventory"]))
     if perms["manage_inventory"]:
-        tabs_html.append(await render_warehouse_tab(db, salon, masters, master_ids, warehouse_filters))
+        tabs_html.append(await render_warehouse_tab(db, salon, masters, master_ids, warehouse_filters, membership))
 
     # Чат
     tab_buttons.append(('chat', ICON_MESSAGE_CIRCLE, 'Чат', True))
@@ -307,6 +307,25 @@ async def render_business_dashboard(db: AsyncSession, user, salon: Salon, member
         </select>"""
 
     # ===== ВЕРХНЯЯ ЧАСТЬ =====
+    # Баннер статуса заявки (модерация регистрации бизнеса): пока не одобрено —
+    # салон не виден клиентам и запись закрыта, но настраивать кабинет можно.
+    moderation_banner = ""
+    if salon.moderation_status == SalonModerationStatus.PENDING:
+        moderation_banner = (
+            '<div style="background:#fef3c7;border:1px solid #f59e0b;color:#92400e;'
+            'padding:0.9rem 1.1rem;border-radius:0.75rem;margin:1.5rem 0 0;font-size:0.9rem">'
+            '⏳ <b>Заявка на рассмотрении.</b> Можно настраивать салон (услуги, мастера, фото), '
+            'но клиентам он пока не виден и запись закрыта — откроются после подтверждения платформой.</div>'
+        )
+    elif salon.moderation_status == SalonModerationStatus.REJECTED:
+        import html as _html
+        reason = f' Причина: {_html.escape(salon.rejection_reason)}.' if salon.rejection_reason else ''
+        moderation_banner = (
+            '<div style="background:#fee2e2;border:1px solid #ef4444;color:#991b1b;'
+            'padding:0.9rem 1.1rem;border-radius:0.75rem;margin:1.5rem 0 0;font-size:0.9rem">'
+            f'⛔ <b>Заявка отклонена.</b>{reason} Свяжитесь с поддержкой.</div>'
+        )
+
     header_html = f"""
     <div class="dashboard-header">
         <div class="dashboard-header-inner">
@@ -336,6 +355,8 @@ async def render_business_dashboard(db: AsyncSession, user, salon: Salon, member
     {render_sidebar("business_dashboard", user)}
     <main style="margin-right:0;padding-top:0">
         {header_html}
+
+        <div class="section-container" style="padding-top: 0;">{moderation_banner}</div>
 
         <div class="section-container" style="padding-top: 1.5rem;">
             <div class="tab-nav">

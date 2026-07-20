@@ -1,5 +1,5 @@
 # app/services/booking_service.py
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, or_
 
@@ -125,7 +125,9 @@ class BookingService:
         discount = 0
         
         if user.subscription_tier and user.subscription_expires_at:
-            if user.subscription_expires_at > datetime.now():
+            # subscription_expires_at — timestamptz (tz-aware); сравнивать с
+            # tz-aware UTC, иначе naive datetime.now() даёт TypeError.
+            if user.subscription_expires_at > datetime.now(timezone.utc):
                 discount_map = {
                     'start': 30,
                     'pro': 50,

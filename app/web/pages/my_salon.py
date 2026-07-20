@@ -365,7 +365,6 @@ async def render_my_salon_page(db: AsyncSession, salon: Salon, user=None, query_
     <script>
         window.salonId = {salon.id};
     </script>
-    <script src="/static/src/js/pages/my-salon.js"></script>
 </body>
 </html>"""
     return html

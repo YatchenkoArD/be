@@ -129,6 +129,10 @@ class User(Base):
     # Привязка Telegram для уведомлений (блок 18+): chat_id из бота.
     # BigInteger — телеграмовские id не влезают в int32. NULL = не привязан.
     tg_chat_id: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True, index=True)
+    # Личные подписки на темы уведомлений {тема: bool}; NULL/нет ключа =
+    # включено. Права салона решают «кто может», это — «кто хочет».
+    # Управляется кнопками в боте (/start → «Мои уведомления»).
+    tg_notify_prefs: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
 
     subscription_tier: Mapped[Optional[SubscriptionTier]] = mapped_column(Enum(SubscriptionTier), nullable=True)
     subscription_expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -142,6 +146,19 @@ class User(Base):
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+class SalonModerationStatus(str, enum.Enum):
+    """Статус заявки салона (модерация регистрации бизнеса).
+
+    pending  — заявка подана: салон можно настраивать, но публично НЕ виден и
+               запись к нему закрыта, пока платформа не подтвердит договор;
+    approved — договор подтверждён, салон работает;
+    rejected — отклонён (причина в rejection_reason).
+    """
+    PENDING = "pending"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+
 
 class Salon(Base):
     __tablename__ = "salons"
@@ -182,6 +199,20 @@ class Salon(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
+    # Модерация регистрации бизнеса: новый салон = pending (виден только
+    # владельцу для настройки), админ подтверждает договор → approved.
+    # server_default=pending — страховка; существующие салоны миграция
+    # переводит в approved, чтобы не отрезать текущих владельцев.
+    moderation_status: Mapped[SalonModerationStatus] = mapped_column(
+        Enum(SalonModerationStatus),
+        default=SalonModerationStatus.PENDING,
+        server_default="PENDING",  # SQLAlchemy хранит ИМЯ члена (конвенция проекта)
+        nullable=False,
+    )
+    rejection_reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    # Факт и время принятия оферты при подаче заявки.
+    offer_accepted_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+
 class SalonPhoto(Base):
     __tablename__ = "salon_photos"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -201,6 +232,10 @@ class SalonMember(Base):
     is_creator: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false", nullable=False)
     permissions: Mapped[Dict[str, bool]] = mapped_column(JSON, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true", nullable=False)
+    # Личный тумблер: получать ли Telegram-пуш о заявках склада (расходник
+    # заканчивается / техника сломалась). По умолчанию включено, каждый
+    # владелец/админ переключает только за себя — не общая настройка салона.
+    notify_warehouse_requests: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true", nullable=False)
 
     invited_by_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

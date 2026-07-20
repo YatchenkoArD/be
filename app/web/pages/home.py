@@ -1,7 +1,7 @@
 # app/web/pages/home.py
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from app.models.models import Salon
+from app.models.models import Salon, SalonModerationStatus
 from app.web.components.header import render_header
 from app.web.components.footer import render_footer
 from app.web.components.sidebar import render_sidebar
@@ -24,7 +24,7 @@ async def render_home_page(db: AsyncSession, user=None) -> str:
     # Получаем популярные салоны (топ-3 по рейтингу)
     try:
         result = await db.execute(
-            select(Salon).where(Salon.is_active == True).order_by(Salon.rating.desc()).limit(3)
+            select(Salon).where(Salon.is_active == True, Salon.moderation_status == SalonModerationStatus.APPROVED).order_by(Salon.rating.desc()).limit(3)
         )
         salons = result.scalars().all()
     except Exception as e:

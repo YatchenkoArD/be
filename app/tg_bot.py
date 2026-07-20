@@ -17,8 +17,12 @@ import asyncio
 import logging
 
 from aiogram import Bot, Dispatcher, F
-from aiogram.filters import CommandObject, CommandStart
+from aiogram.filters import Command, CommandObject, CommandStart
 from aiogram.types import (
+    BotCommand,
+    CallbackQuery,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
     KeyboardButton,
     Message,
     ReplyKeyboardMarkup,
@@ -85,8 +89,135 @@ _CONTACT_KB = ReplyKeyboardMarkup(
     one_time_keyboard=True,
 )
 
+# Постоянная кнопка внизу у привязанного пользователя: открыть меню подписок,
+# не набирая /settings. Ставится после привязки и держится в чате.
+MENU_BTN_PREFS = "⚙️ Мои уведомления"
+_MENU_KB = ReplyKeyboardMarkup(
+    keyboard=[[KeyboardButton(text=MENU_BTN_PREFS)]],
+    resize_keyboard=True,
+)
+
 
 LINK_MODE = "link"  # /start без токена: привязка Telegram к существующему аккаунту
+
+
+# ── Личные подписки на уведомления (этап 2 разграничения) ────────────────────
+
+async def _find_linked_user(db, chat_id: int):
+    from sqlalchemy import select
+
+    from app.models.models import User
+
+    return (
+        await db.execute(select(User).where(User.tg_chat_id == chat_id))
+    ).scalar_one_or_none()
+
+
+async def _available_topics(db, user) -> list[str]:
+    """Темы, доступные человеку по его фактическим связям и правам.
+
+    Право пропало — тема исчезает из меню сама (и отправка всё равно
+    фильтруется правами, меню — только удобство).
+    """
+    from sqlalchemy import select
+
+    from app.models.models import Master, SalonMember, UserRole
+    from app.services.notifications import (
+        TOPIC_BOOKINGS,
+        TOPIC_REMINDERS,
+        TOPIC_REPORTS,
+        TOPIC_REVIEWS,
+        TOPIC_WAREHOUSE,
+    )
+
+    topics = [TOPIC_BOOKINGS, TOPIC_REMINDERS]  # клиентские — всем привязанным
+
+    is_master = (
+        await db.execute(select(Master.id).where(Master.user_id == user.id, Master.is_active == True))  # noqa: E712
+    ).scalars().first() is not None
+
+    memberships = (
+        await db.execute(
+            select(SalonMember).where(SalonMember.user_id == user.id, SalonMember.is_active == True)  # noqa: E712
+        )
+    ).scalars().all()
+
+    def _has(perm: str) -> bool:
+        return any(m.is_creator or bool((m.permissions or {}).get(perm)) for m in memberships)
+
+    if is_master or _has("manage_inventory"):
+        topics.append(TOPIC_WAREHOUSE)
+    if is_master or _has("manage_reviews"):
+        topics.append(TOPIC_REVIEWS)
+    if _has("manage_reviews") or user.role == UserRole.ADMIN:
+        topics.append(TOPIC_REPORTS)
+    return topics
+
+
+def _prefs_keyboard(user, topics: list[str]) -> InlineKeyboardMarkup:
+    from app.services.notifications import TOPIC_LABELS, wants
+
+    rows = [
+        [InlineKeyboardButton(
+            text=f"{'🔔' if wants(user, t) else '🔕'} {TOPIC_LABELS[t]}",
+            callback_data=f"ntf:{t}",
+        )]
+        for t in topics
+    ]
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+async def _show_prefs_menu(message: Message) -> None:
+    from app.db.session import AsyncSessionLocal
+
+    async with AsyncSessionLocal() as db:
+        user = await _find_linked_user(db, message.chat.id)
+        if user is None:
+            await message.answer(
+                "Telegram ещё не привязан к аккаунту Руми. Нажмите кнопку ниже, "
+                "чтобы привязать — и уведомления заработают.",
+                reply_markup=_CONTACT_KB,
+            )
+            r = get_redis()
+            await r.set(_pending_key(message.from_user.id), LINK_MODE,
+                        ex=settings.OTP_TTL_MINUTES * 60)
+            return
+        topics = await _available_topics(db, user)
+        await message.answer(
+            "⚙️ Мои уведомления — нажмите, чтобы включить/выключить:",
+            reply_markup=_prefs_keyboard(user, topics),
+        )
+
+
+async def on_prefs_toggle(callback: CallbackQuery) -> None:
+    """Кнопка темы: перевернуть личную подписку и перерисовать меню."""
+    from app.db.session import AsyncSessionLocal
+    from app.services.notifications import TOPIC_LABELS, wants
+
+    topic = (callback.data or "").split(":", 1)[-1]
+    if topic not in TOPIC_LABELS:
+        await callback.answer("Неизвестная тема")
+        return
+
+    async with AsyncSessionLocal() as db:
+        user = await _find_linked_user(db, callback.message.chat.id)
+        if user is None:
+            await callback.answer("Telegram не привязан")
+            return
+        # JSON-колонку меняем пересозданием словаря — иначе SQLAlchemy
+        # не заметит мутацию и ничего не сохранит
+        prefs = dict(user.tg_notify_prefs or {})
+        prefs[topic] = not wants(user, topic)
+        user.tg_notify_prefs = prefs
+        await db.commit()
+        topics = await _available_topics(db, user)
+        try:
+            await callback.message.edit_reply_markup(
+                reply_markup=_prefs_keyboard(user, topics)
+            )
+        except Exception:
+            pass  # текст/markup не изменились — Telegram кидает ошибку, не страшно
+    await callback.answer("Сохранено")
 
 
 async def on_start(message: Message, command: CommandObject) -> None:
@@ -95,18 +226,9 @@ async def on_start(message: Message, command: CommandObject) -> None:
     r = get_redis()
 
     if not token:
-        # Привязка Telegram для уведомлений: пользователь уже зарегистрирован,
-        # пришёл к боту сам. Просим контакт, дальше on_contact в LINK_MODE.
-        await r.set(
-            _pending_key(message.from_user.id), LINK_MODE,
-            ex=settings.OTP_TTL_MINUTES * 60,
-        )
-        await message.answer(
-            "Здравствуйте! Это бот Руми.\n\n"
-            "Нажмите кнопку ниже, чтобы привязать Telegram к вашему аккаунту — "
-            "будем присылать сюда уведомления о записях.",
-            reply_markup=_CONTACT_KB,
-        )
+        # Без deep link'а: привязанному — меню личных подписок, остальным —
+        # предложение привязать аккаунт (внутри _show_prefs_menu).
+        await _show_prefs_menu(message)
         return
 
     record = await r.hgetall(_key(token))
@@ -173,8 +295,9 @@ async def _link_existing_account(message: Message) -> None:
         "linked: tg_user=%s phone=%s", message.from_user.id, _mask_phone(phone)
     )
     await message.answer(
-        "Telegram привязан ✅ Теперь уведомления о записях будут приходить сюда.",
-        reply_markup=ReplyKeyboardRemove(),
+        "Telegram привязан ✅ Теперь уведомления о записях будут приходить сюда.\n\n"
+        "Кнопка «⚙️ Мои уведомления» внизу — управление подписками.",
+        reply_markup=_MENU_KB,
     )
 
 
@@ -213,8 +336,9 @@ async def on_contact(message: Message) -> None:
             _mask_phone(try_normalize_phone(message.contact.phone_number) or ""),
         )
         await message.answer(
-            "Номер подтверждён ✅\nВернитесь на сайт — регистрация продолжится сама.",
-            reply_markup=ReplyKeyboardRemove(),
+            "Номер подтверждён ✅\nВернитесь на сайт — регистрация продолжится сама.\n\n"
+            "Кнопка «⚙️ Мои уведомления» внизу — управление подписками.",
+            reply_markup=_MENU_KB,
         )
     elif verdict == VERDICT_FOREIGN_CONTACT:
         await message.answer(
@@ -252,15 +376,26 @@ async def main() -> None:
     bot = Bot(token=settings.TG_BOT_TOKEN)
     dp = Dispatcher()
     dp.message.register(on_start, CommandStart())
+    dp.message.register(_show_prefs_menu, Command("settings"))
+    # Нижняя кнопка-клавиатура: открыть меню подписок без набора /settings.
+    dp.message.register(_show_prefs_menu, F.text == MENU_BTN_PREFS)
     dp.message.register(on_contact, F.contact)
+    dp.callback_query.register(on_prefs_toggle, F.data.startswith("ntf:"))
+
+    # Пункты в кнопке «Меню» (≡) рядом с полем ввода — тапнуть, а не печатать.
+    await bot.set_my_commands([
+        BotCommand(command="settings", description="⚙️ Мои уведомления"),
+        BotCommand(command="start", description="Меню и привязка аккаунта"),
+    ])
 
     logger.info("Бот подтверждения номера запущен (long polling)")
     await dp.start_polling(bot)
 
 
 if __name__ == "__main__":
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
-    )
+    # Мониторинг и логи (блок 05): единые логи + трекинг ошибок бота.
+    from app.core.observability import init_sentry, setup_logging
+
+    setup_logging()
+    init_sentry()
     asyncio.run(main())

@@ -6,6 +6,14 @@
 #
 # Запуск (обычно через ./deploy.sh staging):
 #   docker compose -p rumi-staging -f docker-compose.staging.yml --env-file .env.staging up -d
+
+# Ротация docker-логов (блок 05): json-file, 10 МБ × 3 файла (см. прод-compose).
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   db:
     image: postgres:15-alpine
@@ -50,6 +58,8 @@ services:
       REDIS_URL: redis://redis:6379/0
       CORS_ORIGINS: '["https://${STAGING_DOMAIN:-staging.201-24-60-247.sslip.io}"]'
       WEB_CONCURRENCY: "2"
+      LOG_FORMAT: json                # структурные логи (блок 05)
+    logging: *default-logging
     volumes:
       - ./keys-staging:/app/keys:ro   # у staging СВОИ RS256-ключи (не боевые!)
       - uploads_staging:/app/uploads  # загруженные фото; переживают деплой
@@ -74,8 +84,14 @@ services:
     environment:
       ENVIRONMENT: production
       TZ: Asia/Novosibirsk
+      POSTGRES_HOST: db
+      POSTGRES_PORT: "5432"
       REDIS_URL: redis://redis:6379/0
+      LOG_FORMAT: json                # структурные логи (блок 05)
+    logging: *default-logging
     depends_on:
+      db:
+        condition: service_healthy
       redis:
         condition: service_healthy
     # HEALTHCHECK из Dockerfile проверяет HTTP /health — у бота его нет
@@ -93,8 +109,14 @@ services:
     environment:
       ENVIRONMENT: production
       TZ: Asia/Novosibirsk
+      POSTGRES_HOST: db
+      POSTGRES_PORT: "5432"
       REDIS_URL: redis://redis:6379/0
+      LOG_FORMAT: json                # структурные логи (блок 05)
+    logging: *default-logging
     depends_on:
+      db:
+        condition: service_healthy
       redis:
         condition: service_healthy
     healthcheck:
@@ -112,6 +134,8 @@ services:
       POSTGRES_HOST: db
       POSTGRES_PORT: "5432"
       REDIS_URL: redis://redis:6379/0
+      LOG_FORMAT: json                # структурные логи (блок 05)
+    logging: *default-logging
     volumes:
       - ./keys-staging:/app/keys:ro
     depends_on:

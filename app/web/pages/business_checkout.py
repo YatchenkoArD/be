@@ -109,23 +109,23 @@ def render_business_checkout_page(plan: str = "business", user=None) -> str:
                             <div class="form-fields">
                                 <div>
                                     <label class="form-label">Контактное лицо</label>
-                                    <input type="text" placeholder="Иван Петров" class="form-input">
+                                    <input type="text" id="cx-contact" placeholder="Иван Петров" class="form-input">
                                 </div>
                                 <div>
-                                    <label class="form-label">Название салона</label>
-                                    <input type="text" placeholder="Салон «Красота»" class="form-input">
+                                    <label class="form-label">Название салона *</label>
+                                    <input type="text" id="cx-salon" placeholder="Салон «Красота»" class="form-input" required>
                                 </div>
                                 <div>
-                                    <label class="form-label">Телефон</label>
-                                    <input type="tel" placeholder="+7 (999) 123-45-67" class="form-input phone-input">
+                                    <label class="form-label">Телефон *</label>
+                                    <input type="tel" id="cx-phone" placeholder="+7 (999) 123-45-67" class="form-input phone-input" required>
                                 </div>
                                 <div>
                                     <label class="form-label">Email</label>
-                                    <input type="email" placeholder="salon@example.com" class="form-input">
+                                    <input type="email" id="cx-email" placeholder="salon@example.com" class="form-input">
                                 </div>
                                 <div>
                                     <label class="form-label">Количество сотрудников</label>
-                                    <input type="text" placeholder="Например: 7" class="form-input">
+                                    <input type="text" id="cx-exp" placeholder="Например: 7" class="form-input">
                                 </div>
                                 <label class="checkbox-label">
                                     <input type="checkbox" class="checkbox-input" id="terms-checkbox">
@@ -202,20 +202,49 @@ def render_business_checkout_page(plan: str = "business", user=None) -> str:
         }});
 
         // === Обработка отправки формы ===
-        document.getElementById('submit-btn').addEventListener('click', function(e) {{
+        document.getElementById('submit-btn').addEventListener('click', async function(e) {{
             e.preventDefault();
-            // Проверяем, согласен ли пользователь
             const checkbox = document.getElementById('terms-checkbox');
             if (!checkbox.checked) {{
                 alert('Пожалуйста, согласитесь с условиями использования и политикой конфиденциальности.');
                 return;
             }}
-            // Отправляем заявку (имитация)
-            this.textContent = '✅ Заявка отправлена';
-            this.disabled = true;
-            this.style.opacity = '0.7';
-            this.style.cursor = 'default';
-            document.getElementById('submit-note').textContent = 'Мы свяжемся с вами в ближайшее время.';
+            const salon = document.getElementById('cx-salon').value.trim();
+            const phone = document.getElementById('cx-phone').value.trim();
+            if (!salon || !phone) {{
+                alert('Укажите название салона и телефон.');
+                return;
+            }}
+            const btn = this;
+            btn.disabled = true; btn.style.opacity = '0.7';
+            const fd = new FormData();
+            fd.append('salon_name', salon);
+            fd.append('phone', phone);
+            fd.append('contact_name', document.getElementById('cx-contact').value.trim());
+            fd.append('email', document.getElementById('cx-email').value.trim());
+            fd.append('experience', document.getElementById('cx-exp').value.trim());
+            fd.append('plan', new URLSearchParams(window.location.search).get('plan') || 'business');
+            fd.append('offer_accepted', '1');
+            try {{
+                const res = await fetch('/api/v1/business/apply', {{ method: 'POST', body: fd }});
+                if (res.status === 401) {{
+                    window.location = '/register?redirect=' + encodeURIComponent(window.location.pathname + window.location.search);
+                    return;
+                }}
+                const data = await res.json().catch(() => ({{}}));
+                if (res.ok) {{
+                    btn.textContent = '✅ Заявка отправлена';
+                    btn.style.cursor = 'default';
+                    document.getElementById('submit-note').textContent = 'Заявка принята — открываем кабинет...';
+                    window.location = data.redirect || '/business/dashboard';
+                }} else {{
+                    btn.disabled = false; btn.style.opacity = '1';
+                    alert(data.detail || 'Не удалось отправить заявку.');
+                }}
+            }} catch (err) {{
+                btn.disabled = false; btn.style.opacity = '1';
+                alert('Ошибка сети. Попробуйте ещё раз.');
+            }}
         }});
     </script>
 </body>

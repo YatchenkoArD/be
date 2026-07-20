@@ -9,7 +9,13 @@ from app.models.models import (
 from app.services.inventory_service import InventoryService
 
 
-async def render_warehouse_tab(db: AsyncSession, salon, masters, master_ids, warehouse_filters: dict) -> str:
+def _hint(text: str) -> str:
+    """Значок ⓘ с пояснением по наведению/тапу рядом с заголовком блока."""
+    escaped = text.replace('"', '&quot;')
+    return f'<span class="info-hint" tabindex="0" data-tooltip="{escaped}">i</span>'
+
+
+async def render_warehouse_tab(db: AsyncSession, salon, masters, master_ids, warehouse_filters: dict, membership=None) -> str:
     """Вкладка «Склад» — мини-склады мастеров, приход, инвентаризация."""
 
     master_user_names = {}
@@ -123,7 +129,7 @@ async def render_warehouse_tab(db: AsyncSession, salon, masters, master_ids, war
                 </tr>""" for ai, item in audit_items)
             audit_html = f"""
             <div class="card" style="margin-bottom:1.5rem;border:2px solid var(--color-primary)">
-                <h3 style="margin-bottom:0.25rem">📋 Инвентаризация — {master_user_names.get(audit.master_id, '—')}</h3>
+                <h3 style="margin-bottom:0.25rem">Инвентаризация — {master_user_names.get(audit.master_id, '—')} {_hint("Сверяет системные остатки с тем, что реально на руках у мастера. После подтверждения расхождения спишутся или зачислятся автоматически.")}</h3>
                 <p class="text-muted" style="margin-bottom:1rem;font-size:0.85rem">Акт #{audit.id}. Укажите фактический остаток по каждой позиции и подтвердите — расхождения спишутся/зачислятся автоматически.</p>
                 <table>
                     <thead><tr><th>Позиция</th><th>Ожидается</th><th>Факт</th></tr></thead>
@@ -131,6 +137,15 @@ async def render_warehouse_tab(db: AsyncSession, salon, masters, master_ids, war
                 </table>
                 <button id="confirmAuditBtn" class="btn-primary" style="margin-top:1rem" data-audit-id="{audit.id}">Подтвердить инвентаризацию</button>
             </div>"""
+
+    notify_toggle_html = ""
+    if membership is not None:
+        checked = "checked" if membership.notify_warehouse_requests else ""
+        notify_toggle_html = f"""
+        <label style="display:flex;align-items:center;gap:0.5rem;margin-bottom:1.5rem;font-size:0.9rem;cursor:pointer">
+            <input type="checkbox" id="notifyWarehouseToggle" {checked} onchange="toggleWarehouseNotify()">
+            Присылать мне в Telegram, когда расходник заканчивается или техника ломается
+        </label>"""
 
     return f"""
     <div id="tab-warehouse" class="tab-content">
@@ -141,13 +156,15 @@ async def render_warehouse_tab(db: AsyncSession, salon, masters, master_ids, war
             <div class="kpi-card"><div class="kpi-label">Заявок в очереди</div><div class="kpi-value" style="color:#f59e0b">{len(pending_requests)}</div></div>
         </div>
 
-        {f'<div style="margin-bottom:1.5rem"><h3 style="margin-bottom:0.75rem">📋 Заявки от мастеров</h3>{request_rows}</div>' if request_rows else ''}
+        {notify_toggle_html}
+
+        {f'<div style="margin-bottom:1.5rem"><h3 style="margin-bottom:0.75rem">Заявки от мастеров {_hint("Мастер сообщил через приложение, что расходник заканчивается или сломалась техника. Отметьте «Решено», когда разобрались, или «Отклонить», если заявка не по делу.")}</h3>{request_rows}</div>' if request_rows else ''}
 
         {audit_html}
 
         <div class="grid-2" style="margin-bottom:1.5rem">
             <div class="card">
-                <h3 style="margin-bottom:1rem">➕ Новая позиция номенклатуры</h3>
+                <h3 style="margin-bottom:1rem">Добавить новый вид расходника {_hint("Заводит совершенно новую позицию расходника в базе — с нуля, у выбранного мастера. Если такой расходник уже есть, пополните его через форму «Пополнение склада».")}</h3>
                 <form id="newItemForm">
                     <select name="master_id" required style="width:100%;padding:0.6rem;border:1px solid var(--color-border);border-radius:0.5rem;margin-bottom:0.5rem">
                         <option value="">Мастер</option>{master_options}
@@ -162,7 +179,7 @@ async def render_warehouse_tab(db: AsyncSession, salon, masters, master_ids, war
                 </form>
             </div>
             <div class="card">
-                <h3 style="margin-bottom:1rem">📥 Приход на склад</h3>
+                <h3 style="margin-bottom:1rem">Пополнение склада {_hint("Увеличивает остаток уже существующей позиции — например, мастер докупил ещё лака. Для нового вида расходника, которого раньше не было, используйте форму «Добавить новый вид расходника».")}</h3>
                 <form id="receiveForm">
                     <select name="master_id" id="receiveMaster" required style="width:100%;padding:0.6rem;border:1px solid var(--color-border);border-radius:0.5rem;margin-bottom:0.5rem">
                         <option value="">Мастер</option>{master_options}
@@ -180,7 +197,7 @@ async def render_warehouse_tab(db: AsyncSession, salon, masters, master_ids, war
         </div>
 
         <div class="card" style="overflow-x:auto;margin-bottom:1.5rem">
-            <h3 style="margin-bottom:1rem">🧰 Техника и инструменты</h3>
+            <h3 style="margin-bottom:1rem">Техника и инструменты {_hint("Общий инвентарь салона — в отличие от расходников, не закреплён за конкретным мастером.")}</h3>
             <p class="text-muted" style="margin-bottom:1rem;font-size:0.85rem">Общий склад салона — кресла, фены, инструменты и т.п. Не привязано к конкретному мастеру.</p>
             <table style="margin-bottom:1.5rem">
                 <thead><tr><th>Название</th><th>Кол-во</th><th>Статус</th><th>Детали</th><th></th></tr></thead>
@@ -198,6 +215,7 @@ async def render_warehouse_tab(db: AsyncSession, salon, masters, master_ids, war
 
         <div class="card" style="overflow-x:auto;margin-bottom:1.5rem">
             <h3 style="margin-bottom:1rem">Остатки по складам</h3>
+            <h3 style="margin-bottom:1rem">Расходники в наличии по мастерам {_hint("Сколько каждого расходника реально есть на руках у мастера прямо сейчас — по этим цифрам система понимает, когда пора пополнять.")}</h3>
             <table>
                 <thead><tr><th>Мастер</th><th>Позиция</th><th>Остаток</th><th>Мин. остаток</th><th>Цена</th></tr></thead>
                 <tbody>{stock_rows or '<tr><td colspan="5" style="text-align:center;padding:2rem;color:var(--color-muted)">Номенклатура пуста — добавьте первую позицию</td></tr>'}</tbody>
@@ -205,7 +223,7 @@ async def render_warehouse_tab(db: AsyncSession, salon, masters, master_ids, war
         </div>
 
         <div class="card" style="overflow-x:auto;margin-bottom:1.5rem">
-            <h3 style="margin-bottom:1rem">⚠️ Визиты без списания расходников</h3>
+            <h3 style="margin-bottom:1rem">Визиты без списания расходников {_hint("Мастер провёл визит, но не указал, какие расходники потратил — остатки по этим позициям могут быть неточными, пока не заполнена форма списания.")}</h3>
             <table>
                 <thead><tr><th>Дата</th><th>Клиент</th><th>Мастер</th><th>Услуга</th></tr></thead>
                 <tbody>{unreported_rows or '<tr><td colspan="4" style="text-align:center;padding:2rem;color:var(--color-muted)">Всё списано</td></tr>'}</tbody>
@@ -213,7 +231,7 @@ async def render_warehouse_tab(db: AsyncSession, salon, masters, master_ids, war
         </div>
 
         <div class="card">
-            <h3 style="margin-bottom:1rem">📋 Инвентаризация</h3>
+            <h3 style="margin-bottom:1rem">Инвентаризация {_hint("Открывает акт пересчёта для выбранного мастера — фиксирует текущие системные остатки как ожидаемые, а после подтверждения фактических цифр расхождения спишутся или зачислятся автоматически.")}</h3>
             <p class="text-muted" style="margin-bottom:1rem;font-size:0.85rem">Открывает акт пересчёта для выбранного мастера — фиксирует текущие системные остатки как ожидаемые.</p>
             <form method="post" id="startAuditForm" style="display:flex;gap:0.5rem">
                 <select name="master_id_path" id="auditMaster" required style="flex:1;padding:0.6rem;border:1px solid var(--color-border);border-radius:0.5rem">
@@ -237,6 +255,16 @@ async def render_warehouse_tab(db: AsyncSession, salon, masters, master_ids, war
         window.toggleEquipment = async function(equipmentId) {{
             const res = await fetch('/api/v1/inventory/salon/' + salonId + '/equipment/' + equipmentId + '/toggle', {{ method: 'POST' }});
             if (res.ok) location.reload(); else alert('Не удалось изменить статус');
+        }};
+
+
+        window.toggleWarehouseNotify = async function() {{
+            const checkbox = document.getElementById('notifyWarehouseToggle');
+            const res = await fetch('/api/v1/inventory/salon/' + salonId + '/notify-toggle', {{ method: 'POST' }});
+            if (!res.ok) {{
+                alert('Не удалось сохранить настройку');
+                checkbox.checked = !checkbox.checked;  // откатываем визуально
+            }}
         }};
 
         window.resolveWarehouseRequest = async function(requestId) {{
