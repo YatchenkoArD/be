@@ -61,6 +61,12 @@
     font-weight: 600;
     color: #22c55e;
 }
+.dashboard-page .stat-trend.down {
+    color: #ef4444;
+}
+.dashboard-page .stat-trend.flat {
+    color: var(--color-muted);
+}
 .dashboard-page .stat-trend svg {
     width: 0.9rem;
     height: 0.9rem;

@@ -3,7 +3,8 @@ import json
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from datetime import datetime, timedelta
-from app.models.models import Booking, BookingStatus, User
+from app.models.models import Booking, BookingStatus, User, Review
+from app.web.components.hint import hint as _hint
 from app.web.components.icons import (
     ICON_USERS_SMALL,
     ICON_CALENDAR_DAYS_SMALL,
@@ -39,16 +40,77 @@ async def render_overview_tab(
     """Вкладка Обзор со статистикой, выручкой и сегодняшними записями."""
     
     today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-    
-    # --- Количество уникальных клиентов салона ---
+    yesterday = today - timedelta(days=1)
+    week_ago = today - timedelta(days=7)
+
+    # --- Количество уникальных клиентов салона (всего и неделю назад) ---
     clients_count = 0
+    clients_count_prev = 0
     if master_ids:
         clients_result = await db.execute(
             select(func.count(func.distinct(Booking.client_id)))
             .where(Booking.master_id.in_(master_ids))
         )
         clients_count = clients_result.scalar() or 0
-    
+
+        clients_prev_result = await db.execute(
+            select(func.count(func.distinct(Booking.client_id)))
+            .where(Booking.master_id.in_(master_ids), Booking.start_time < week_ago)
+        )
+        clients_count_prev = clients_prev_result.scalar() or 0
+
+    # --- Записи: сегодня vs вчера ---
+    bookings_yesterday = 0
+    if master_ids:
+        by_result = await db.execute(
+            select(func.count(Booking.id))
+            .where(Booking.master_id.in_(master_ids), Booking.start_time >= yesterday, Booking.start_time < today)
+        )
+        bookings_yesterday = by_result.scalar() or 0
+
+    # --- Рейтинг: текущий vs средний по отзывам недельной давности ---
+    rating_prev_result = await db.execute(
+        select(func.avg(Review.rating)).where(Review.salon_id == salon.id, Review.created_at < week_ago)
+    )
+    rating_prev_raw = rating_prev_result.scalar()
+    rating_prev = float(rating_prev_raw) if rating_prev_raw is not None else None
+
+    def pct_trend(current: float, previous: float) -> tuple[str, str]:
+        """Текст и css-класс (up/down/flat) для процентного изменения current относительно previous."""
+        if previous <= 0:
+            return ("0%", "flat") if current <= 0 else ("+100%", "up")
+        pct = (current - previous) / previous * 100
+        if pct > 0.05:
+            return f"+{pct:.0f}%", "up"
+        if pct < -0.05:
+            return f"{pct:.0f}%", "down"
+        return "0%", "flat"
+
+    def trend_badge(text: str, css_class: str) -> str:
+        if css_class == "up":
+            icon = ICON_ARROW_UP_RIGHT
+        elif css_class == "down":
+            icon = f'<span style="display:inline-flex;transform:rotate(90deg)">{ICON_ARROW_UP_RIGHT}</span>'
+        else:
+            icon = ""
+        return f'<span class="stat-trend {css_class}">{icon}{text}</span>'
+
+    clients_trend = trend_badge(*pct_trend(clients_count, clients_count_prev))
+    records_trend = trend_badge(*pct_trend(today_bookings, bookings_yesterday))
+    revenue_trend_pct = trend_badge(*pct_trend(total_revenue, sum(prev_revenue_data.values())))
+
+    current_rating = salon.rating or 0.0
+    if rating_prev is None:
+        rating_trend = trend_badge("—", "flat")
+    else:
+        rating_diff = current_rating - rating_prev
+        if rating_diff > 0.05:
+            rating_trend = trend_badge(f"+{rating_diff:.1f}", "up")
+        elif rating_diff < -0.05:
+            rating_trend = trend_badge(f"{rating_diff:.1f}", "down")
+        else:
+            rating_trend = trend_badge("0.0", "flat")
+
     # --- Данные для JS (аккордеон) ---
     week_ops_serialized = []
     total_bookings_week = 0
@@ -79,49 +141,37 @@ async def render_overview_tab(
         <div class="stat-card">
             <div class="stat-card-header">
                 <div class="stat-icon">{ICON_USERS_SMALL}</div>
-                <span class="stat-trend">
-                    {ICON_ARROW_UP_RIGHT}
-                    +12%
-                </span>
+                {clients_trend}
             </div>
             <p class="stat-value">{clients_count}</p>
-            <p class="stat-label">Клиентов</p>
+            <p class="stat-label">Клиентов {_hint("Все уникальные клиенты, когда-либо записывавшиеся к мастерам салона. Процент — рост их числа за последнюю неделю.")}</p>
         </div>
-        
+
         <div class="stat-card">
             <div class="stat-card-header">
                 <div class="stat-icon">{ICON_CALENDAR_DAYS_SMALL}</div>
-                <span class="stat-trend">
-                    {ICON_ARROW_UP_RIGHT}
-                    +8%
-                </span>
+                {records_trend}
             </div>
             <p class="stat-value">{today_bookings}</p>
-            <p class="stat-label">Записей</p>
+            <p class="stat-label">Записей {_hint("Записи на сегодня (кроме отменённых). Процент — по сравнению со вчера.")}</p>
         </div>
-        
+
         <div class="stat-card">
             <div class="stat-card-header">
                 <div class="stat-icon">{ICON_TRENDING_UP}</div>
-                <span class="stat-trend">
-                    {ICON_ARROW_UP_RIGHT}
-                    +15%
-                </span>
+                {revenue_trend_pct}
             </div>
             <p class="stat-value">{f"{total_revenue:,}".replace(",", " ")} ₽</p>
-            <p class="stat-label">Выручка</p>
+            <p class="stat-label">Выручка {_hint("Сумма подтверждённых и завершённых записей за текущую неделю (Пн—Вс). Процент — по сравнению с прошлой неделей.")}</p>
         </div>
-        
+
         <div class="stat-card">
             <div class="stat-card-header">
                 <div class="stat-icon">{ICON_STAR_FILLED}</div>
-                <span class="stat-trend">
-                    {ICON_ARROW_UP_RIGHT}
-                    +0.1
-                </span>
+                {rating_trend}
             </div>
-            <p class="stat-value">{salon.rating or 0.0:.1f}</p>
-            <p class="stat-label">Рейтинг</p>
+            <p class="stat-value">{current_rating:.1f}</p>
+            <p class="stat-label">Рейтинг {_hint("Средний рейтинг салона по всем отзывам. Число рядом — изменение по сравнению со средним рейтингом отзывов недельной давности.")}</p>
         </div>
     </div>
     """

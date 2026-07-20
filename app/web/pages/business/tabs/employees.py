@@ -9,6 +9,7 @@ from app.web.components.icons import (
     ICON_USER,
     ICON_POWER,
 )
+from app.web.components.hint import hint as _hint
 
 
 async def render_employees_tab(db: AsyncSession, salon, masters) -> str:
@@ -88,7 +89,7 @@ async def render_employees_tab(db: AsyncSession, salon, masters) -> str:
                         <th>Опыт</th>
                         <th>Рейтинг</th>
                         <th>Статус</th>
-                        <th style="width:120px">Действия</th>
+                        <th style="width:120px">Действия {_hint("Отключить — временно скрыть мастера из записи, не теряя историю визитов и зарплат. Удалить — убрать мастера из салона полностью (аккаунт пользователя при этом сохраняется).")}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -101,7 +102,7 @@ async def render_employees_tab(db: AsyncSession, salon, masters) -> str:
         <div class="employee-modal-overlay" id="addEmployeeModal">
             <div class="employee-modal-box">
                 <button class="employee-modal-close" onclick="document.getElementById('addEmployeeModal').classList.remove('active')">&times;</button>
-                <h2 id="employeeModalTitle">Добавить мастера</h2>
+                <h2 id="employeeModalTitle">Добавить мастера {_hint("Если телефон уже зарегистрирован на платформе — просто привяжет этого человека мастером к салону. Если телефон новый — заведёт для него аккаунт с временным паролем (покажется один раз, передайте мастеру).")}</h2>
                 <form id="employeeForm" action="/api/v1/master/create-web" method="post">
                     <input type="hidden" name="master_id" id="employeeId">
                     <div class="employee-form-group">
