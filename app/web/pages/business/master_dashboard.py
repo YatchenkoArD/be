@@ -243,7 +243,7 @@ async def render_master_business_dashboard(db: AsyncSession, user, salon: Salon,
     )
 
     return f"""<!DOCTYPE html>
-<html lang="ru">
+<html lang="ru" class="dashboard-page">
 <head>
     <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Панель бизнеса — {salon.name} — руми</title>
