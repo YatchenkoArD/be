@@ -1,11 +1,12 @@
 # app/services/review_service.py
 """Единая бизнес-логика отзывов.
 
-Отзыв может оставить ЛЮБОЙ зарегистрированный пользователь — без гейта по
-записи. Вместо гейта — is_verified: сервер сам (не со слов клиента) проверяет,
-была ли у него реальная COMPLETED-запись к этому мастеру/в этом салоне, и
-проставляет тег подтверждения. Дёргается из единственного эндпоинта
-(дубль в bookings.py удалён).
+Отзыв можно оставить только по факту реального визита: сервер сам (не со
+слов клиента) проверяет, была ли у него COMPLETED-запись к этому мастеру/в
+этом салоне через Руми, и без неё отклоняет создание отзыва — это и есть
+единственный гейт. is_verified при этом всегда True (поле оставлено для
+обратной совместимости со старыми записями и для бейджа в UI). Дёргается
+из единственного эндпоинта (дубль в bookings.py удалён).
 """
 from __future__ import annotations
 
@@ -119,6 +120,11 @@ class ReviewService:
         verifying_booking = await ReviewService._find_verifying_booking(
             db, client_id, salon_id, target_type, master_id,
         )
+        if verifying_booking is None:
+            raise ReviewError(
+                "Отзыв можно оставить только после завершённого визита, оформленного записью через Руми",
+                status=403,
+            )
 
         review = Review(
             client_id=client_id,
@@ -128,8 +134,8 @@ class ReviewService:
             staff_user_id=staff_user_id,
             rating=rating,
             comment=comment,
-            is_verified=verifying_booking is not None,
-            booking_id=verifying_booking.id if verifying_booking else None,
+            is_verified=True,
+            booking_id=verifying_booking.id,
         )
         db.add(review)
         await db.flush()  # нужен review.id для фото, если их прикрепят следом
@@ -137,17 +143,26 @@ class ReviewService:
         if master is not None:
             avg_master = await db.execute(
                 select(func.avg(Review.rating)).where(
-                    Review.master_id == master_id, Review.target_type == ReviewTargetType.MASTER,
+                    Review.master_id == master_id,
+                    Review.target_type == ReviewTargetType.MASTER,
+                    Review.is_verified == True,
                 )
             )
             master.rating = round(float(avg_master.scalar() or 0.0), 1)
 
-        # Рейтинг салона считается по ВСЕМ отзывам (про мастера, помещение,
-        # сотрудника) — все они отражают опыт визита в этот салон. Заново от
-        # факта, не инкрементом — не расходится при рассинхроне.
-        count_salon = await db.execute(select(func.count(Review.id)).where(Review.salon_id == salon_id))
+        # Рейтинг салона считается по ВСЕМ подтверждённым отзывам (про мастера,
+        # помещение, сотрудника) — все они отражают опыт визита в этот салон.
+        # Только is_verified: непроверенные (в т.ч. старые, оставленные до
+        # введения гейта) не должны влиять на рейтинг — иначе при выключенном
+        # OTP это открытая дыра для накрутки. Заново от факта, не инкрементом —
+        # не расходится при рассинхроне.
+        count_salon = await db.execute(
+            select(func.count(Review.id)).where(Review.salon_id == salon_id, Review.is_verified == True)
+        )
         salon.reviews_count = count_salon.scalar() or 0
-        avg_salon = await db.execute(select(func.avg(Review.rating)).where(Review.salon_id == salon_id))
+        avg_salon = await db.execute(
+            select(func.avg(Review.rating)).where(Review.salon_id == salon_id, Review.is_verified == True)
+        )
         salon.rating = round(float(avg_salon.scalar() or 0.0), 1)
 
         await db.commit()

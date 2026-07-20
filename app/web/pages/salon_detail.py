@@ -495,7 +495,20 @@ async def render_salon_detail(db: AsyncSession, salon_id: int, user=None) -> str
         reviews_html = '<p class="empty-state">Пока нет отзывов. Будьте первым!</p>'
 
     # ----- Форма отзыва -----
+    # Отзыв можно оставить только после завершённого визита через Руми (см.
+    # ReviewService.create_review) — не показываем форму тем, у кого такого
+    # визита нет, иначе форма молча упирается в ошибку сервера при отправке.
+    has_completed_visit = False
     if user:
+        visit_check = await db.execute(
+            select(Booking.id)
+            .join(Master, Master.id == Booking.master_id)
+            .where(Booking.client_id == user.id, Booking.status == BookingStatus.COMPLETED, Master.salon_id == salon.id)
+            .limit(1)
+        )
+        has_completed_visit = visit_check.scalar_one_or_none() is not None
+
+    if user and has_completed_visit:
         master_options = ""
         for m in masters:
             mu = (await db.execute(select(User).where(User.id == m.user_id))).scalar_one_or_none()
@@ -557,6 +570,8 @@ async def render_salon_detail(db: AsyncSession, salon_id: int, user=None) -> str
             }}
         </script>
         """
+    elif user:
+        review_form_html = '<p class="empty-state">Отзыв можно оставить после завершённого визита, оформленного записью через Руми.</p>'
     else:
         review_form_html = '<p class="empty-state">Чтобы оставить отзыв, <a href="/login">войдите</a>.</p>'
 

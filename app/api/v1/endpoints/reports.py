@@ -5,11 +5,12 @@
 manage_reviews), либо платформенный админ — над любым фото."""
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, Form, HTTPException, status
+from fastapi import APIRouter, Depends, Form, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import check_salon_permission, get_current_user
+from app.core.limiter import limiter
 from app.db.session import get_db
 from app.models.models import (
     Master, MasterPhoto, PhotoReport, PhotoReportStatus, Review, ReviewPhoto, User, UserRole,
@@ -44,7 +45,9 @@ async def _photo_and_salon_id(db: AsyncSession, report: PhotoReport):
 
 
 @router.post("/photo")
+@limiter.limit("10/hour")  # лимит по IP — против спама жалобами
 async def create_photo_report(
+    request: Request,
     reason: str = Form(""),
     master_photo_id: int = Form(None),
     review_photo_id: int = Form(None),

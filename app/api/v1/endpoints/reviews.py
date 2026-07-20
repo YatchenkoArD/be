@@ -2,6 +2,7 @@
 from fastapi import APIRouter, Depends, Request, Form, File, UploadFile
 from fastapi.responses import RedirectResponse, HTMLResponse
 from sqlalchemy.ext.asyncio import AsyncSession
+from app.core.limiter import limiter
 from app.db.session import get_db
 from app.models.models import ReviewPhoto, ReviewTargetType
 from app.services.review_service import ReviewService, ReviewError
@@ -15,6 +16,7 @@ _TARGET_TYPES = {t.value: t for t in ReviewTargetType}
 
 
 @router.post("/reviews/create")
+@limiter.limit("5/hour")  # лимит по IP — против спама отзывами
 async def create_review_web(
     request: Request,
     salon_id: int = Form(...),
