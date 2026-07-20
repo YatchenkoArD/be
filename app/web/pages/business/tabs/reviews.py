@@ -1,9 +1,7 @@
 # app/web/pages/business/tabs/reviews.py
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from app.models.models import (
-    Master, User as UserModel, Review, ReviewPhoto, ReviewTargetType, MasterPhoto, PhotoReport, PhotoReportStatus,
-)
+from app.models.models import Master, User as UserModel, Review, ReviewPhoto, ReviewTargetType
 
 TARGET_LABELS = {
     ReviewTargetType.MASTER: "Мастер",
@@ -12,9 +10,12 @@ TARGET_LABELS = {
 }
 
 
-async def render_reviews_tab(db: AsyncSession, reviews, salon, can_moderate: bool = False) -> str:
-    """Вкладка Отзывы: список с тегами (тип цели/подтверждение), фото,
-    фильтры, и — для тех, у кого есть manage_reviews — очередь жалоб."""
+async def render_reviews_tab(db: AsyncSession, reviews, salon) -> str:
+    """Вкладка Отзывы: список с тегами (тип цели/подтверждение), фото, фильтры.
+
+    Жалобы на фото сюда намеренно не выводятся — их решает только
+    платформенный модератор (см. app/api/v1/endpoints/reports.py), у салона
+    был бы конфликт интересов при разборе жалобы на собственное фото."""
     reviews_rows = ""
     for r in reviews:
         client_result = await db.execute(select(UserModel).where(UserModel.id == r.client_id))
@@ -60,54 +61,6 @@ async def render_reviews_tab(db: AsyncSession, reviews, salon, can_moderate: boo
             <td style="font-size:0.85rem;color:var(--color-muted)">{date_str}</td>
         </tr>"""
 
-    moderation_html = ""
-    if can_moderate:
-        # Жалобы на фото из портфолио мастеров ЭТОГО салона
-        master_reports_result = await db.execute(
-            select(PhotoReport, MasterPhoto)
-            .join(MasterPhoto, MasterPhoto.id == PhotoReport.master_photo_id)
-            .join(Master, Master.id == MasterPhoto.master_id)
-            .where(PhotoReport.status == PhotoReportStatus.PENDING, Master.salon_id == salon.id)
-        )
-        # Жалобы на фото из отзывов ЭТОГО салона
-        review_reports_result = await db.execute(
-            select(PhotoReport, ReviewPhoto)
-            .join(ReviewPhoto, ReviewPhoto.id == PhotoReport.review_photo_id)
-            .join(Review, Review.id == ReviewPhoto.review_id)
-            .where(PhotoReport.status == PhotoReportStatus.PENDING, Review.salon_id == salon.id)
-        )
-        report_pairs = list(master_reports_result.all()) + list(review_reports_result.all())
-
-        report_rows = ""
-        for rep, photo in report_pairs:
-            report_rows += f"""
-            <div class="card" style="display:flex;gap:1rem;align-items:center;padding:1rem;margin-bottom:0.75rem">
-                <img src="{photo.url}" alt="" style="width:80px;height:80px;object-fit:cover;border-radius:0.5rem">
-                <div style="flex:1">
-                    <p style="font-size:0.85rem;color:var(--color-muted)">{rep.reason or 'Без указания причины'}</p>
-                </div>
-                <button class="btn-primary" style="font-size:0.8rem;padding:0.4rem 0.9rem" onclick="resolvePhotoReport({rep.id})">Удалить фото</button>
-                <button class="btn-outline" style="font-size:0.8rem;padding:0.4rem 0.9rem" onclick="dismissPhotoReport({rep.id})">Оставить</button>
-            </div>"""
-
-        moderation_html = f"""
-        <div class="card" style="margin-bottom:1.5rem;border:2px solid #f59e0b">
-            <h3 style="margin-bottom:1rem">⚠️ Жалобы на фото ({len(report_pairs)})</h3>
-            {report_rows or '<p class="text-muted">Жалоб нет</p>'}
-        </div>
-        <script>
-            async function resolvePhotoReport(id) {{
-                if (!confirm('Удалить это фото?')) return;
-                const res = await fetch(`/api/v1/reports/${{id}}/resolve`, {{ method: 'POST' }});
-                if (res.ok) location.reload(); else alert('Не удалось обработать жалобу');
-            }}
-            async function dismissPhotoReport(id) {{
-                const res = await fetch(`/api/v1/reports/${{id}}/dismiss`, {{ method: 'POST' }});
-                if (res.ok) location.reload(); else alert('Не удалось обработать жалобу');
-            }}
-        </script>
-        """
-
     return f"""
     <div id="tab-reviews" class="tab-content">
         <div class="card" style="margin-bottom:1.5rem">
@@ -119,7 +72,6 @@ async def render_reviews_tab(db: AsyncSession, reviews, salon, can_moderate: boo
                 </div>
             </div>
         </div>
-        {moderation_html}
         <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:1rem">
             <button class="btn-outline reviews-filter-btn active" data-filter="all" onclick="reviewsTabFilter('all', this)">Все</button>
             <button class="btn-outline reviews-filter-btn" data-filter="master" onclick="reviewsTabFilter('master', this)">О мастерах</button>
