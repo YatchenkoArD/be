@@ -4,6 +4,7 @@ import json
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.models.models import SalonMember, SalonRole, AdminAudit, User as UserModel, SALON_PERMISSION_KEYS
+from app.web.components.hint import hint as _hint
 
 _ERROR_MESSAGES = {
     "bad_phone": "Не удалось распознать телефон. Формат: +7 999 123-45-67 или 8 999 123-45-67.",
@@ -114,7 +115,7 @@ async def render_staff_tab(db: AsyncSession, salon, user, membership: SalonMembe
         <div class="modal-overlay" id="inviteMemberModal">
             <div class="modal-box">
                 <button class="modal-close" onclick="document.getElementById('inviteMemberModal').classList.remove('active')">&times;</button>
-                <h2 style="margin-bottom:1.5rem">Добавить сотрудника</h2>
+                <h2 style="margin-bottom:1.5rem">Добавить сотрудника {_hint("Если телефон уже зарегистрирован — просто даёт этому пользователю доступ к бизнес-панели салона. Если телефон новый — заведёт для него аккаунт с временным паролем (покажется один раз после отправки формы).")}</h2>
                 <form action="/api/v1/business/staff/add-web" method="post">
                     <input type="hidden" name="salon_id" value="{salon.id}">
                     <div style="margin-bottom:1rem">
@@ -126,7 +127,7 @@ async def render_staff_tab(db: AsyncSession, salon, user, membership: SalonMembe
                         <input type="text" name="full_name" placeholder="Имя" style="width:100%;padding:0.75rem;border:1px solid var(--color-border);border-radius:0.5rem">
                     </div>
                     <div style="margin-bottom:1rem">
-                        <label style="display:block;font-weight:500;margin-bottom:0.5rem">Роль</label>
+                        <label style="display:block;font-weight:500;margin-bottom:0.5rem">Роль {_hint("Владелец и Админ отличаются только тем, кто вправе ими управлять: снять/изменить права владельца может лишь тот, у кого есть право «Совладельцы», админа — у кого есть право «Админы». Конкретные возможности каждого настраиваются галочками ниже, отдельно для каждого участника.")}</label>
                         <select name="role" style="width:100%;padding:0.75rem;border:1px solid var(--color-border);border-radius:0.5rem">{role_options}</select>
                     </div>
                     <button type="submit" class="btn-primary" style="width:100%">Добавить</button>
@@ -143,7 +144,7 @@ async def render_staff_tab(db: AsyncSession, salon, user, membership: SalonMembe
     <div class="modal-overlay" id="editPermissionsModal">
         <div class="modal-box">
             <button class="modal-close" onclick="document.getElementById('editPermissionsModal').classList.remove('active')">&times;</button>
-            <h2 style="margin-bottom:1rem" id="permissionsModalTitle">Права участника</h2>
+            <h2 style="margin-bottom:1rem" id="permissionsModalTitle">Права участника {_hint("Определяют, какие вкладки и действия доступны этому участнику в бизнес-панели. У создателя салона права всегда полные и здесь не редактируются.")}</h2>
             <div id="permissionsCheckboxes">{permission_checkboxes}</div>
             <button type="button" class="btn-primary" style="width:100%;margin-top:1rem" onclick="submitPermissions()">Сохранить</button>
         </div>

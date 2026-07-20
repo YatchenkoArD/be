@@ -7,12 +7,7 @@ from app.models.models import (
     Service as ServiceModel, User as UserModel, WarehouseRequestType,
 )
 from app.services.inventory_service import InventoryService
-
-
-def _hint(text: str) -> str:
-    """Значок ⓘ с пояснением по наведению/тапу рядом с заголовком блока."""
-    escaped = text.replace('"', '&quot;')
-    return f'<span class="info-hint" tabindex="0" data-tooltip="{escaped}">i</span>'
+from app.web.components.hint import hint as _hint
 
 
 async def render_warehouse_tab(db: AsyncSession, salon, masters, master_ids, warehouse_filters: dict, membership=None) -> str:

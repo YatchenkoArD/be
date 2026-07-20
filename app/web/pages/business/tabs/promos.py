@@ -1,4 +1,6 @@
 # app/web/pages/business/tabs/promos.py
+from app.web.components.hint import hint as _hint
+
 
 def render_promos_tab(promotions) -> str:
     """Вкладка Акции."""
@@ -10,10 +12,11 @@ def render_promos_tab(promotions) -> str:
             <td><span class="promo-badge">{p.tag}</span></td>
             <td>{p.description or '—'}</td>
         </tr>"""
-    
+
     return f"""
     <div id="tab-promos" class="tab-content">
         <div class="card" style="overflow-x:auto">
+            <h3 style="margin-bottom:1rem">Акции салона {_hint("Метки-акции, которые видят клиенты на странице салона (например «Скидка новым клиентам»). Здесь — только просмотр списка.")}</h3>
             <table>
                 <thead>
                     <tr><th>Название</th><th>Тег</th><th>Описание</th></tr>

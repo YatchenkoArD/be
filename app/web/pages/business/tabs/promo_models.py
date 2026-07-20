@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.models.models import SalonModel, User as UserModel
+from app.web.components.hint import hint as _hint
 
 
 async def render_promo_models_tab(db: AsyncSession, salon) -> str:
@@ -30,7 +31,7 @@ async def render_promo_models_tab(db: AsyncSession, salon) -> str:
     return f"""
     <div id="tab-models" class="tab-content">
         <div class="card" style="margin-bottom:1.5rem">
-            <h3 style="margin-bottom:1rem">➕ Привязать модель</h3>
+            <h3 style="margin-bottom:1rem">➕ Привязать модель {_hint("«Модель» здесь — пользователь с ролью «Модель» (кастинг/сотрудничество для портфолио и контента), а не клиент. Привязка фиксирует её сотрудничество с вашим салоном.")}</h3>
             <p class="text-muted" style="margin-bottom:1rem;font-size:0.85rem">Модель должна быть уже зарегистрирована на платформе через «Стать моделью» — здесь вы приглашаете её к сотрудничеству с салоном.</p>
             <form id="attachModelForm" style="display:flex;gap:0.5rem;flex-wrap:wrap">
                 <input name="phone" placeholder="Телефон модели" required style="flex:1;min-width:180px;padding:0.6rem;border:1px solid var(--color-border);border-radius:0.5rem">

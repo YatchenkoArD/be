@@ -5,6 +5,7 @@ from datetime import datetime
 
 from app.models.models import User as UserModel
 from app.services.payroll_service import PayrollService
+from app.web.components.hint import hint as _hint
 
 
 def _parse_period(period: str | None) -> datetime:
@@ -71,14 +72,14 @@ async def render_cost_tab(db: AsyncSession, salon, masters, master_ids, period_r
 
         <div class="analytics-kpi">
             <div class="kpi-card"><div class="kpi-label">Выручка</div><div class="kpi-value" style="color:#22c55e">{f"{total_revenue:,}".replace(",", " ")} ₽</div></div>
-            <div class="kpi-card"><div class="kpi-label">Себестоимость расходников</div><div class="kpi-value" style="color:#ef4444">{f"{total_cogs:,}".replace(",", " ")} ₽</div></div>
-            <div class="kpi-card"><div class="kpi-label">Зарплаты</div><div class="kpi-value" style="color:#f59e0b">{f"{total_payroll:,}".replace(",", " ")} ₽</div></div>
-            <div class="kpi-card"><div class="kpi-label">Прибыль салона</div><div class="kpi-value" style="color:{profit_color}">{f"{total_profit:,}".replace(",", " ")} ₽</div></div>
+            <div class="kpi-card"><div class="kpi-label">Себестоимость расходников {_hint("Сумма реально списанных расходников по цене на момент списания — берётся из складских форм мастеров, а не из плановых норм расхода.")}</div><div class="kpi-value" style="color:#ef4444">{f"{total_cogs:,}".replace(",", " ")} ₽</div></div>
+            <div class="kpi-card"><div class="kpi-label">Зарплаты {_hint("Начисления мастерам за период: ставка/процент от выручки плюс ручные бонусы, минус штрафы — как настроено во вкладке «Зарплаты».")}</div><div class="kpi-value" style="color:#f59e0b">{f"{total_payroll:,}".replace(",", " ")} ₽</div></div>
+            <div class="kpi-card"><div class="kpi-label">Прибыль салона {_hint("Выручка минус себестоимость расходников минус зарплаты мастеров — то, что реально остаётся салону за период.")}</div><div class="kpi-value" style="color:{profit_color}">{f"{total_profit:,}".replace(",", " ")} ₽</div></div>
         </div>
 
         <div class="card" style="overflow-x:auto">
             <table>
-                <thead><tr><th>Мастер</th><th>Выручка</th><th>Себестоимость</th><th>Зарплата</th><th>Маржа</th></tr></thead>
+                <thead><tr><th>Мастер</th><th>Выручка</th><th>Себестоимость</th><th>Зарплата</th><th>Маржа {_hint("Выручка минус себестоимость расходников минус зарплата этого мастера.")}</th></tr></thead>
                 <tbody>{rows_html or '<tr><td colspan="5" style="text-align:center;padding:2rem;color:var(--color-muted)">Мастеров пока нет</td></tr>'}</tbody>
             </table>
         </div>
