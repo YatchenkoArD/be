@@ -21,6 +21,10 @@ async def get_current_user_from_cookie(request: Request, db: AsyncSession = Depe
 
     result = await db.execute(select(User).where(User.id == int(user_id)))
     user = result.scalar_one_or_none()
+    # Деактивированный аккаунт (мягкое удаление / блокировка) не аутентифицируем —
+    # cookie мог остаться на другом устройстве (ср. deps.get_current_user).
+    if user is not None and not user.is_active:
+        return None
     if user is not None:
         # role="business" не всегда синхронизирован с реальным членством в
         # SalonMember (напр. салон подключён владельцу иным путём, без

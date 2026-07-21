@@ -45,23 +45,11 @@ async def update_me(
     
     if user_data.full_name is not None:
         current_user.full_name = user_data.full_name
-    
-    if user_data.email is not None:
-        # Проверяем, не занят ли email
-        result = await db.execute(
-            select(User).where(
-                User.email == user_data.email,
-                User.id != current_user.id
-            )
-        )
-        existing = result.scalar_one_or_none()
-        if existing:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Email уже используется"
-            )
-        current_user.email = user_data.email
-    
+
+    # Email НЕ меняется здесь: смена email требует подтверждения кодом на новый
+    # адрес — единственный путь /me/email/send-code → /me/email-form (иначе
+    # это обход верификации). Поле email в теле игнорируем намеренно.
+
     if user_data.avatar_url is not None:
         current_user.avatar_url = user_data.avatar_url
     
@@ -77,38 +65,24 @@ async def update_me(
 async def update_profile_form(
     request: Request,
     full_name: str = Form(...),
-    email: str = Form(None),
     avatar_url: str = Form(None),
     portfolio_desc: str = Form(None),
     db: AsyncSession = Depends(get_db)
 ):
-    """Обновление профиля через форму (веб-интерфейс)."""
+    """Обновление профиля через форму (имя/аватар/био).
+
+    Email здесь НЕ меняется: для него отдельный верифицированный путь
+    /me/email/send-code → /me/email-form (подтверждение кодом на новый адрес).
+    """
     from app.web.auth import get_current_user_from_cookie
-    
+
     user = await get_current_user_from_cookie(request, db)
     if not user:
         return RedirectResponse(url="/login", status_code=302)
-    
+
     # Обновляем базовые поля
     user.full_name = full_name
-    
-    # Обновляем дополнительные поля если они предоставлены
-    if email and email != user.email:
-        # Проверяем, не занят ли email другим пользователем
-        result = await db.execute(
-            select(User).where(
-                User.email == email,
-                User.id != user.id
-            )
-        )
-        existing = result.scalar_one_or_none()
-        if existing:
-            return RedirectResponse(
-                url="/profile?error=email_taken", 
-                status_code=302
-            )
-        user.email = email
-    
+
     if avatar_url is not None:
         user.avatar_url = avatar_url
     

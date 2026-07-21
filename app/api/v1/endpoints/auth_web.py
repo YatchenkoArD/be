@@ -81,6 +81,14 @@ async def login_web(
             status_code=302,
         )
 
+    # Деактивированный аккаунт (мягкое удаление / блокировка админом) не пускаем —
+    # иначе is_active=False ничего не значит на веб-пути (см. deps.get_current_user).
+    if not user.is_active:
+        return RedirectResponse(
+            url=f"/login?error=locked&redirect={quote(redirect)}&phone={keep_phone}",
+            status_code=302,
+        )
+
     if norm_phone:
         await reset_login_failures(norm_phone)
 

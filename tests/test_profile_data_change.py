@@ -215,3 +215,41 @@ async def test_delete_account_soft(client, db_session):
     assert r.status_code == 302 and "account_deleted=1" in r.headers["location"]
     user = await _get_user(db_session, phone)
     assert user.is_active is False
+
+
+async def test_inactive_user_blocked_on_web(client, db_session):
+    """Деактивированный (мягко удалённый) юзер: cookie не работает и вход закрыт."""
+    phone = "+79993330020"
+    await register_user(client, phone)
+    await _login_web(client, phone)  # cookie установлена
+
+    async with db_session() as db:
+        u = (await db.execute(select(User).where(User.phone == phone))).scalar_one()
+        u.is_active = False
+        await db.commit()
+
+    # Существующая cookie больше не аутентифицирует веб-ручки
+    r = await client.post("/api/v1/users/me/city-form", data={"city": "Х"})
+    assert r.status_code == 302 and "/login" in r.headers["location"]
+
+    # И заново залогиниться нельзя
+    r = await client.post(
+        "/api/v1/auth/login-web", data={"phone": phone, "password": "Testpass1"}
+    )
+    assert r.status_code == 302 and "error=locked" in r.headers["location"]
+
+
+async def test_update_form_does_not_change_email(client, db_session):
+    """update-form (имя/аватар/био) НЕ меняет email — только верифиц. путь."""
+    phone = "+79993330021"
+    await register_user(client, phone)
+    await _login_web(client, phone)
+
+    r = await client.post(
+        "/api/v1/users/me/update-form",
+        data={"full_name": "Новое Имя", "email": "sneaky@x.ru"},
+    )
+    assert r.status_code == 302
+    user = await _get_user(db_session, phone)
+    assert user.full_name == "Новое Имя"
+    assert user.email != "sneaky@x.ru"
