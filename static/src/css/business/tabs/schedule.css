@@ -254,6 +254,33 @@
     color: white;
 }
 
+.dashboard-page .schedule-booking .seen-btn {
+    display: block;
+    margin-top: 0.15rem;
+    border: none;
+    border-radius: 0.2rem;
+    background: var(--color-border);
+    color: var(--color-muted);
+    font-size: 0.6rem;
+    padding: 0.1rem 0.25rem;
+    cursor: pointer;
+}
+
+.dashboard-page .schedule-booking .seen-indicator {
+    display: block;
+    margin-top: 0.15rem;
+    font-size: 0.6rem;
+    color: #16a34a;
+}
+
+.dashboard-page .schedule-booking .info-hint {
+    width: 0.9rem;
+    height: 0.9rem;
+    margin-left: 0;
+    margin-top: 0.15rem;
+    font-size: 0.6rem;
+}
+
 .dashboard-page .schedule-legend {
     display: flex;
     gap: 1rem;

@@ -1,8 +1,8 @@
 # tests/test_reviews.py
-"""Отзывы: оставить может любой зарегистрированный пользователь, без гейта
-по записи. Реальный визит (COMPLETED-запись) не условие допуска, а тег
-is_verified — сервер проверяет его сам, не веря клиенту на слово. Один
-отзыв на пару клиент-цель (мастер/салон/сотрудник)."""
+"""Отзывы: оставить может только тот, у кого есть COMPLETED-запись к этому
+мастеру/в этом салоне через Руми — сервер проверяет это сам (не веря
+клиенту на слово) и без неё отклоняет создание (403). Один отзыв на пару
+клиент-цель (мастер/салон/сотрудник)."""
 from datetime import datetime, timedelta
 
 from sqlalchemy import select
@@ -55,7 +55,7 @@ async def _login_cookie(client, phone, password="Testpass1"):
     client.cookies.set("access_token", r.json()["access_token"])
 
 
-async def test_review_without_booking_is_created_but_unverified(client, db_session):
+async def test_review_without_booking_is_rejected(client, db_session):
     salon_id, master_id, _svc = await _make_salon_master_service(db_session)
     await register_user(client, CLIENT_PHONE)
     await _login_cookie(client, CLIENT_PHONE)
@@ -64,12 +64,11 @@ async def test_review_without_booking_is_created_but_unverified(client, db_sessi
         "/api/v1/reviews/create",
         data={"master_id": master_id, "salon_id": salon_id, "rating": 5, "comment": "не был, но пишу"},
     )
-    assert r.status_code == 302 and "reviewed=1" in r.headers["location"]
+    assert r.status_code == 403
 
     async with db_session() as db:
         reviews = (await db.execute(select(Review))).scalars().all()
-        assert len(reviews) == 1
-        assert reviews[0].is_verified is False
+        assert len(reviews) == 0
 
 
 async def test_pending_booking_is_not_enough_for_verification(client, db_session):
@@ -82,12 +81,11 @@ async def test_pending_booking_is_not_enough_for_verification(client, db_session
         "/api/v1/reviews/create",
         data={"master_id": master_id, "salon_id": salon_id, "rating": 5, "comment": ""},
     )
-    assert r.status_code == 302
+    assert r.status_code == 403  # PENDING — не завершённый визит, не подтверждает
 
     async with db_session() as db:
         reviews = (await db.execute(select(Review))).scalars().all()
-        assert len(reviews) == 1
-        assert reviews[0].is_verified is False  # PENDING — не завершённый визит, не подтверждает
+        assert len(reviews) == 0
 
 
 async def test_review_after_completed_booking_and_only_once(client, db_session):

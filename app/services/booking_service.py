@@ -97,9 +97,10 @@ class BookingService:
     
     @staticmethod
     async def complete_booking(db: AsyncSession, booking: Booking) -> Booking:
-        """Отмечает запись выполненной. Разрешено только из CONFIRMED."""
-        if booking.status != BookingStatus.CONFIRMED:
-            raise ValueError("Отметить выполненной можно только подтверждённую запись")
+        """Отмечает запись выполненной («клиент пришёл») — из PENDING или
+        CONFIRMED. Дальше сумма (final_price) учитывается в статистике."""
+        if booking.status not in (BookingStatus.PENDING, BookingStatus.CONFIRMED):
+            raise ValueError("Отметить выполненной можно только ожидающую или подтверждённую запись")
         booking.status = BookingStatus.COMPLETED
         if booking.final_price is None:
             service = (await db.execute(select(Service).where(Service.id == booking.service_id))).scalar_one_or_none()
@@ -110,10 +111,19 @@ class BookingService:
 
     @staticmethod
     async def mark_no_show(db: AsyncSession, booking: Booking) -> Booking:
-        """Отмечает неявку клиента. Разрешено только из CONFIRMED."""
-        if booking.status != BookingStatus.CONFIRMED:
-            raise ValueError("Отметить неявкой можно только подтверждённую запись")
+        """Отмечает неявку клиента — из PENDING или CONFIRMED."""
+        if booking.status not in (BookingStatus.PENDING, BookingStatus.CONFIRMED):
+            raise ValueError("Отметить неявкой можно только ожидающую или подтверждённую запись")
         booking.status = BookingStatus.NO_SHOW
+        await db.commit()
+        await db.refresh(booking)
+        return booking
+
+    @staticmethod
+    async def mark_seen_by_master(db: AsyncSession, booking: Booking) -> Booking:
+        """Мастер подтверждает, что видел плановую запись в своём расписании —
+        чисто информационная метка, не меняет status записи."""
+        booking.master_seen_at = datetime.now(timezone.utc)
         await db.commit()
         await db.refresh(booking)
         return booking

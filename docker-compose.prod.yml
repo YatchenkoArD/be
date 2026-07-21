@@ -85,6 +85,31 @@ services:
       start_period: 20s
     restart: unless-stopped
 
+  # Бот подтверждения номера через Telegram (блок 07/18): тот же образ, вместо
+  # gunicorn — polling-бот @rumi_beauty_bot. POSTGRES_HOST НЕ переопределяем —
+  # берётся из .env (managed Timeweb); если поставить "db", бот пойдёт в
+  # localhost и упадёт на каждом хендлере с БД (ловили на staging).
+  # Спит, пока в .env пуст TG_BOT_TOKEN. Один polling-бот на токен: реальный
+  # токен — только здесь (staging переведён на отдельного тест-бота).
+  tg-bot:
+    image: rumi-app:prod
+    container_name: rumi-prod-tg-bot
+    env_file: .env
+    command: ["python", "-m", "app.tg_bot"]
+    environment:
+      ENVIRONMENT: production
+      TZ: Asia/Novosibirsk
+      REDIS_URL: redis://redis:6379/0
+      LOG_FORMAT: json
+    logging: *default-logging
+    depends_on:
+      redis:
+        condition: service_healthy
+    # у бота нет HTTP /health из Dockerfile — отключаем проверку
+    healthcheck:
+      disable: true
+    restart: unless-stopped
+
 networks:
   edge:
     external: true

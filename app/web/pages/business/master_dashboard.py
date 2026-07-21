@@ -9,7 +9,7 @@ from app.web.components.header import render_header
 from app.web.components.footer import render_footer
 from app.web.components.sidebar import render_sidebar
 from app.web.components.styles import get_base_styles
-from app.web.pages.business.utils import get_masters_data, get_master_ids
+from app.web.pages.business.utils import get_masters_data, get_master_ids, get_overview_revenue_data
 from app.web.pages.business.tabs.overview import render_overview_tab
 from app.web.pages.business.tabs.schedule import render_schedule_tab
 
@@ -33,12 +33,7 @@ async def _render_master_overview(db: AsyncSession, salon: Salon, master: Master
     tomorrow = today + timedelta(days=1)
     week_start = today - timedelta(days=today.weekday())
 
-    today_bookings = 0
-    if master_ids:
-        tb = await db.execute(select(func.count(Booking.id)).where(
-            Booking.master_id.in_(master_ids), Booking.start_time >= today, Booking.start_time < tomorrow,
-        ))
-        today_bookings = tb.scalar() or 0
+    overview_data = await get_overview_revenue_data(db, master_ids)
 
     my_today = (await db.execute(select(func.count(Booking.id)).where(
         Booking.master_id == master.id, Booking.start_time >= today, Booking.start_time < tomorrow,
@@ -50,7 +45,9 @@ async def _render_master_overview(db: AsyncSession, salon: Salon, master: Master
         Booking.master_id == master.id, Booking.status == BookingStatus.COMPLETED, Booking.consumption_reported == False,
     ))).scalar() or 0
 
-    overview_html = await render_overview_tab(db, salon, masters, master_ids, services_count, promotions, today_bookings)
+    overview_html = await render_overview_tab(
+        db, salon, masters, master_ids, services_count, promotions, **overview_data,
+    )
     personal_html = f"""
     <div class="card" style="margin-top:1.5rem">
         <h3 style="margin-bottom:1rem">Ваша статистика</h3>
@@ -127,6 +124,7 @@ async def _render_master_schedule(db: AsyncSession, salon: Salon, master: Master
     разрешено бэкендом), закрытие дат недоступно (нужен SalonMember)."""
     calendar_html = await render_schedule_tab(
         db, salon, [master], can_manage_schedule=True, schedule_master_id=master.id, can_close_dates=False,
+        viewer_master_id=master.id,
     )
 
     unreported_result = await db.execute(
@@ -245,7 +243,7 @@ async def render_master_business_dashboard(db: AsyncSession, user, salon: Salon,
     )
 
     return f"""<!DOCTYPE html>
-<html lang="ru">
+<html lang="ru" class="dashboard-page">
 <head>
     <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Панель бизнеса — {salon.name} — руми</title>

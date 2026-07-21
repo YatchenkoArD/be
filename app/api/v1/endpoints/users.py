@@ -1,6 +1,6 @@
 # app/api/v1/endpoints/users.py
 from fastapi import APIRouter, Depends, HTTPException, status, Request, Form
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
@@ -8,6 +8,7 @@ from app.db.session import get_db
 from app.models.models import User
 from app.schemas.user import UserResponse, UserUpdate
 from app.api.deps import get_current_user
+from app.core.limiter import limiter
 
 router = APIRouter()
 
@@ -158,9 +159,185 @@ async def update_password_form(
     await db.commit()
     
     return RedirectResponse(
-        url="/profile?success=password_updated", 
+        url="/profile?success=password_updated",
         status_code=302
     )
+
+@router.post("/me/email/send-code")
+@limiter.limit("3/minute")
+async def email_send_code(
+    request: Request,
+    email: str = Form(...),
+    db: AsyncSession = Depends(get_db),
+):
+    """Шлёт код подтверждения на НОВЫЙ email (шаг 1 смены email)."""
+    from app.web.auth import get_current_user_from_cookie
+    from app.services import email_verify
+
+    user = await get_current_user_from_cookie(request, db)
+    if not user:
+        return JSONResponse({"detail": "Не авторизованы"}, status_code=401)
+
+    email = (email or "").strip().lower()
+    if not email or "@" not in email or "." not in email.split("@")[-1]:
+        return JSONResponse({"detail": "Некорректный email"}, status_code=400)
+    if email == (user.email or "").lower():
+        return JSONResponse({"detail": "Это ваш текущий email"}, status_code=400)
+
+    existing = await db.execute(
+        select(User).where(User.email == email, User.id != user.id)
+    )
+    if existing.scalar_one_or_none():
+        return JSONResponse({"detail": "Этот email уже используется"}, status_code=409)
+
+    try:
+        result = await email_verify.send_email_code(email)
+    except email_verify.EmailVerifyError as e:
+        return JSONResponse({"detail": str(e)}, status_code=503)
+
+    return JSONResponse(result)
+
+
+@router.post("/me/email-form")
+async def update_email_form(
+    request: Request,
+    email: str = Form(...),
+    request_id: str = Form(""),
+    code: str = Form(""),
+    db: AsyncSession = Depends(get_db),
+):
+    """Смена email — шаг 2: применяет новый адрес после ввода кода из письма."""
+    from app.web.auth import get_current_user_from_cookie
+    from app.services import email_verify
+
+    user = await get_current_user_from_cookie(request, db)
+    if not user:
+        return RedirectResponse(url="/login", status_code=302)
+
+    email = (email or "").strip().lower()
+    if not email:
+        return RedirectResponse(url="/profile?error=update_failed", status_code=302)
+
+    if email == (user.email or "").lower():
+        return RedirectResponse(url="/profile?success=email_updated", status_code=302)
+
+    existing = await db.execute(
+        select(User).where(User.email == email, User.id != user.id)
+    )
+    if existing.scalar_one_or_none():
+        return RedirectResponse(url="/profile?error=email_taken", status_code=302)
+
+    try:
+        ok = await email_verify.verify_email_code(request_id, code, email)
+    except email_verify.EmailVerifyError:
+        return RedirectResponse(url="/profile?error=otp_unavailable", status_code=302)
+    if not ok:
+        return RedirectResponse(url="/profile?error=email_not_verified", status_code=302)
+
+    user.email = email
+    await db.commit()
+
+    return RedirectResponse(url="/profile?success=email_updated", status_code=302)
+
+
+@router.post("/me/city-form")
+async def update_city_form(
+    request: Request,
+    city: str = Form(""),
+    db: AsyncSession = Depends(get_db),
+):
+    """Смена города через веб-форму."""
+    from app.web.auth import get_current_user_from_cookie
+
+    user = await get_current_user_from_cookie(request, db)
+    if not user:
+        return RedirectResponse(url="/login", status_code=302)
+
+    user.city = (city or "").strip() or None
+    await db.commit()
+
+    return RedirectResponse(url="/profile?success=city_updated", status_code=302)
+
+
+@router.post("/me/phone-form")
+async def update_phone_form(
+    request: Request,
+    phone: str = Form(...),
+    request_id: str = Form(""),
+    db: AsyncSession = Depends(get_db),
+):
+    """Смена телефона с подтверждением владения новым номером через Telegram.
+
+    Телефон — логин-идентификатор, поэтому новый номер обязан пройти ту же
+    TG-верификацию, что и при регистрации (request_id из /register/tg-start →
+    бот подтверждает контакт). verify_code одноразовый; при OTP_ENABLED=false
+    вернёт True (fallback для окружений без OTP).
+    """
+    from app.web.auth import get_current_user_from_cookie
+    from app.schemas.user import try_normalize_phone
+    from app.services import otp
+
+    user = await get_current_user_from_cookie(request, db)
+    if not user:
+        return RedirectResponse(url="/login", status_code=302)
+
+    norm = try_normalize_phone(phone)
+    if not norm:
+        return RedirectResponse(url="/profile?error=bad_phone", status_code=302)
+
+    if norm == user.phone:
+        return RedirectResponse(url="/profile?success=phone_updated", status_code=302)
+
+    existing = await db.execute(
+        select(User).where(User.phone == norm, User.id != user.id)
+    )
+    if existing.scalar_one_or_none():
+        return RedirectResponse(url="/profile?error=phone_exists", status_code=302)
+
+    try:
+        ok = await otp.verify_code(request_id, "", norm)
+    except otp.OTPError:
+        return RedirectResponse(url="/profile?error=otp_unavailable", status_code=302)
+    if not ok:
+        return RedirectResponse(url="/profile?error=phone_not_verified", status_code=302)
+
+    user.phone = norm
+    new_chat = await otp.pop_tg_chat_id(norm)
+    if new_chat:
+        user.tg_chat_id = new_chat
+    await db.commit()
+
+    return RedirectResponse(url="/profile?success=phone_updated", status_code=302)
+
+
+@router.post("/me/delete-form")
+async def delete_account_form(
+    request: Request,
+    password: str = Form(...),
+    db: AsyncSession = Depends(get_db),
+):
+    """Мягкое удаление аккаунта: деактивация + сброс cookie (выход).
+
+    Данные (брони/отзывы/салоны) сохраняются — админ может восстановить.
+    Требует подтверждения текущим паролем.
+    """
+    from app.web.auth import get_current_user_from_cookie
+    from app.core.security import verify_password
+
+    user = await get_current_user_from_cookie(request, db)
+    if not user:
+        return RedirectResponse(url="/login", status_code=302)
+
+    if not verify_password(password, user.hashed_password):
+        return RedirectResponse(url="/profile?error=wrong_password", status_code=302)
+
+    user.is_active = False
+    await db.commit()
+
+    response = RedirectResponse(url="/?account_deleted=1", status_code=302)
+    response.delete_cookie("access_token")
+    return response
+
 
 @router.get("/{user_id}", response_model=UserResponse)
 async def get_user(

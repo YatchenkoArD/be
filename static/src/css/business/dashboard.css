@@ -398,12 +398,14 @@
     cursor: help;
     vertical-align: middle;
 }
-.dashboard-page .info-hint::after {
-    content: attr(data-tooltip);
-    position: absolute;
-    left: 50%;
-    bottom: calc(100% + 0.5rem);
-    transform: translateX(-50%);
+
+/* Сам текст подсказки рендерится JS'ом (info-hint.js) в <body>, а не через
+   CSS ::after — иначе таблицы с overflow-x:auto (карточки заявок, списки
+   сотрудников и т.п.) физически обрезают всплывающее окно по своей рамке.
+   position:fixed + расчёт координат в JS позволяет подсказке быть поверх
+   любого контейнера страницы независимо от вложенности. */
+.info-hint-tooltip {
+    position: fixed;
     width: max-content;
     max-width: 260px;
     padding: 0.6rem 0.8rem;
@@ -416,11 +418,11 @@
     text-align: left;
     opacity: 0;
     visibility: hidden;
+    pointer-events: none;
     transition: opacity 0.15s;
-    z-index: 20;
+    z-index: 9999;
 }
-.dashboard-page .info-hint:hover::after,
-.dashboard-page .info-hint:focus::after {
+.info-hint-tooltip.is-visible {
     opacity: 1;
     visibility: visible;
 }

@@ -4,6 +4,7 @@ from sqlalchemy import select
 from datetime import datetime, timedelta
 
 from app.models.models import Booking, BookingStatus, Service as ServiceModel, User as UserModel
+from app.services.schedule_utils import MAX_BOOKING_DAYS_AHEAD
 from app.web.components.icons import (
     ICON_CALENDAR_DAYS,
     ICON_USER_CHECK,
@@ -19,12 +20,15 @@ STATUS_LABELS = {
 }
 
 
-async def render_records_tab(db: AsyncSession, salon, masters, master_ids, filters: dict) -> str:
+async def render_records_tab(db: AsyncSession, salon, masters, master_ids, filters: dict, can_manage_schedule: bool = False) -> str:
     """Вкладка «Записи» — полный список броней салона с фильтрами."""
 
     today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
     default_from = today - timedelta(days=30)
-    default_to = today + timedelta(days=1)
+    # +MAX_BOOKING_DAYS_AHEAD, а не +1 день — иначе уже завтрашние (и вообще
+    # любые будущие) записи не попадают в диапазон по умолчанию и вкладка
+    # выглядит пустой, хотя записи есть (см. schedule_utils.MAX_BOOKING_DAYS_AHEAD).
+    default_to = today + timedelta(days=MAX_BOOKING_DAYS_AHEAD + 1)
 
     def parse_date(value, fallback):
         if not value:
@@ -78,6 +82,12 @@ async def render_records_tab(db: AsyncSession, salon, masters, master_ids, filte
         price = f"{(b.final_price or s.price):,}".replace(",", " ")
         needs_badge = b.status == BookingStatus.COMPLETED and not b.consumption_reported
         badge = f'<span class="not-reported-badge">не списано</span>' if needs_badge else ""
+        actions = ""
+        if can_manage_schedule and b.status in (BookingStatus.PENDING, BookingStatus.CONFIRMED):
+            actions = f"""
+            <button class="btn-mini" style="border-color:#16a34a;color:#16a34a" onclick="recordMarkBooking({b.id}, 'complete', this)">✓ Пришёл</button>
+            <button class="btn-mini btn-danger" onclick="recordMarkBooking({b.id}, 'no-show', this)">✕ Не пришёл</button>
+            """
         rows_html += f"""
         <tr>
             <td>{b.start_time.strftime('%d.%m.%Y %H:%M')}</td>
@@ -86,6 +96,7 @@ async def render_records_tab(db: AsyncSession, salon, masters, master_ids, filte
             <td>{s.name}</td>
             <td><span class="status-badge {status_class}">{label}</span>{badge}</td>
             <td>{price} ₽</td>
+            <td style="white-space:nowrap">{actions}</td>
         </tr>"""
 
     master_options = "".join(
@@ -138,12 +149,24 @@ async def render_records_tab(db: AsyncSession, salon, masters, master_ids, filte
                         <th>Услуга</th>
                         <th>Статус</th>
                         <th>Сумма</th>
+                        <th>Действия</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {rows_html or '<tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--color-muted)">Записей за период нет</td></tr>'}
+                    {rows_html or '<tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--color-muted)">Записей за период нет</td></tr>'}
                 </tbody>
             </table>
         </div>
     </div>
+    <script>
+        function recordMarkBooking(bookingId, action, btn) {{
+            const label = action === 'complete' ? 'что клиент пришёл' : 'неявку клиента';
+            if (!confirm(`Отметить ${{label}}?`)) return;
+            fetch(`/api/v1/bookings/${{bookingId}}/${{action}}`, {{ method: 'POST' }})
+                .then(r => {{
+                    if (r.ok) location.reload();
+                    else r.json().then(d => alert(d.detail || 'Ошибка'));
+                }});
+        }}
+    </script>
     """

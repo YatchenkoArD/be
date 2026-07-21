@@ -22,6 +22,7 @@ from app.web.components.icons import (
     ICON_CHEVRON_DOWN,
     ICON_SETTINGS_GEAR,
 )
+from app.core.config import settings
 
 def render_profile_page(user=None, master_profile=None, salon=None, stats=None, error=None, success=None) -> str:
     # Обработка сообщений
@@ -34,6 +35,10 @@ def render_profile_page(user=None, master_profile=None, salon=None, stats=None, 
             "password_mismatch": "Новые пароли не совпадают",
             "password_too_short": "Пароль должен быть не менее 8 символов",
             "phone_exists": "Пользователь с таким телефоном уже зарегистрирован",
+            "bad_phone": "Некорректный номер телефона",
+            "phone_not_verified": "Номер не подтверждён — подтвердите его в Telegram",
+            "email_not_verified": "Код неверный или истёк — запросите новый",
+            "otp_unavailable": "Сервис подтверждения временно недоступен, попробуйте позже",
             "update_failed": "Не удалось обновить профиль",
         }
         error_message = f'<div class="profile-alert profile-alert-error">{error_messages.get(error, "Произошла ошибка")}</div>'
@@ -42,6 +47,9 @@ def render_profile_page(user=None, master_profile=None, salon=None, stats=None, 
         success_messages = {
             "updated": "Профиль успешно обновлён",
             "password_updated": "Пароль успешно изменён",
+            "email_updated": "Email обновлён",
+            "city_updated": "Город обновлён",
+            "phone_updated": "Телефон обновлён",
             "avatar_updated": "Аватар обновлён",
         }
         success_message = f'<div class="profile-alert profile-alert-success">{success_messages.get(success, "Операция выполнена успешно")}</div>'
@@ -156,6 +164,26 @@ def render_profile_page(user=None, master_profile=None, salon=None, stats=None, 
         """
 
     # ========== БЛОКИ НАСТРОЕК (без заголовка) ==========
+    city_value = getattr(user, "city", "") or ""
+
+    # Смена телефона — только с подтверждением владения новым номером через TG
+    # (телефон = логин-идентификатор). Механика та же, что при регистрации:
+    # кнопка → /register/tg-start → бот подтверждает → request_id → сабмит.
+    if settings.TG_VERIFY_ENABLED:
+        phone_change_block = f"""
+                        <form id="phone-change-form" action="/api/v1/users/me/phone-form" method="post">
+                            <div class="settings-form-group">
+                                <label for="settings-phone">Новый телефон</label>
+                                <input type="tel" id="settings-phone" name="phone" value="{phone}" placeholder="+7XXXXXXXXXX" required>
+                            </div>
+                            <input type="hidden" id="phone-request-id" name="request_id" value="">
+                            <button type="button" id="phone-verify-btn" class="btn-outline settings-save-btn" data-start-url="/api/v1/auth/register/tg-start">Подтвердить в Telegram</button>
+                            <p class="settings-card-hint" id="phone-verify-hint">Введите новый номер и подтвердите владение им в Telegram.</p>
+                            <button type="submit" id="phone-save-btn" class="btn-primary settings-save-btn" disabled>Сохранить</button>
+                        </form>"""
+    else:
+        phone_change_block = '<p class="settings-card-hint">Смена телефона временно недоступна.</p>'
+
     settings_blocks = f"""
     <!-- Настройки -->
     <div class="profile-settings-wrapper">
@@ -219,14 +247,7 @@ def render_profile_page(user=None, master_profile=None, salon=None, stats=None, 
                         <span class="accordion-label">Сменить телефон</span>
                         <span class="accordion-chevron">{ICON_CHEVRON_DOWN}</span>
                     </button>
-                    <div class="accordion-body" id="accordion-phone">
-                        <form class="accordion-form" data-type="phone">
-                            <div class="settings-form-group">
-                                <label for="settings-phone">Новый телефон</label>
-                                <input type="tel" id="settings-phone" name="phone" value="{phone}" placeholder="+7XXXXXXXXXX" required>
-                            </div>
-                            <button type="submit" class="btn-primary settings-save-btn">Сохранить</button>
-                        </form>
+                    <div class="accordion-body" id="accordion-phone">{phone_change_block}
                     </div>
                 </div>
 
@@ -238,10 +259,10 @@ def render_profile_page(user=None, master_profile=None, salon=None, stats=None, 
                         <span class="accordion-chevron">{ICON_CHEVRON_DOWN}</span>
                     </button>
                     <div class="accordion-body" id="accordion-city">
-                        <form class="accordion-form" data-type="city">
+                        <form action="/api/v1/users/me/city-form" method="post">
                             <div class="settings-form-group">
                                 <label for="settings-city">Новый город</label>
-                                <input type="text" id="settings-city" name="city" value="{city}" placeholder="Москва" required>
+                                <input type="text" id="settings-city" name="city" value="{city_value}" placeholder="Москва">
                             </div>
                             <button type="submit" class="btn-primary settings-save-btn">Сохранить</button>
                         </form>
@@ -256,12 +277,19 @@ def render_profile_page(user=None, master_profile=None, salon=None, stats=None, 
                         <span class="accordion-chevron">{ICON_CHEVRON_DOWN}</span>
                     </button>
                     <div class="accordion-body" id="accordion-email">
-                        <form class="accordion-form" data-type="email">
+                        <form id="email-change-form" action="/api/v1/users/me/email-form" method="post">
                             <div class="settings-form-group">
                                 <label for="settings-email">Новый email</label>
                                 <input type="email" id="settings-email" name="email" value="{email}" placeholder="example@mail.ru" required>
                             </div>
-                            <button type="submit" class="btn-primary settings-save-btn">Сохранить</button>
+                            <input type="hidden" id="email-request-id" name="request_id" value="">
+                            <button type="button" id="email-send-code-btn" class="btn-outline settings-save-btn">Отправить код</button>
+                            <div class="settings-form-group" id="email-code-group" style="display:none;">
+                                <label for="settings-email-code">Код из письма</label>
+                                <input type="text" id="settings-email-code" name="code" inputmode="numeric" autocomplete="one-time-code" placeholder="0000">
+                            </div>
+                            <p class="settings-card-hint" id="email-verify-hint">Введите новый email и получите на него код подтверждения.</p>
+                            <button type="submit" id="email-save-btn" class="btn-primary settings-save-btn" disabled>Подтвердить и сохранить</button>
                         </form>
                     </div>
                 </div>
@@ -274,7 +302,7 @@ def render_profile_page(user=None, master_profile=None, salon=None, stats=None, 
                         <span class="accordion-chevron">{ICON_CHEVRON_DOWN}</span>
                     </button>
                     <div class="accordion-body" id="accordion-password">
-                        <form class="accordion-form" data-type="password">
+                        <form action="/api/v1/users/me/password-form" method="post">
                             <div class="settings-form-group">
                                 <label for="settings-current-password">Текущий пароль</label>
                                 <input type="password" id="settings-current-password" name="current_password" required>
@@ -296,11 +324,17 @@ def render_profile_page(user=None, master_profile=None, salon=None, stats=None, 
 
         <!-- Удаление аккаунта -->
         <div class="settings-delete-section">
-            <p class="settings-delete-warning">После удаления аккаунта восстановить его невозможно. Все данные будут безвозвратно удалены.</p>
-            <button class="btn-outline settings-delete-btn" id="delete-account-btn">
-                <span class="settings-icon-sm">{ICON_TRASH}</span>
-                Удалить аккаунт
-            </button>
+            <p class="settings-delete-warning">Аккаунт будет деактивирован: вы выйдете из системы и не сможете войти. Данные сохраняются — для восстановления или полного удаления обратитесь в поддержку.</p>
+            <form id="delete-account-form" action="/api/v1/users/me/delete-form" method="post" class="settings-delete-form">
+                <div class="settings-form-group">
+                    <label for="delete-password">Подтвердите паролем</label>
+                    <input type="password" id="delete-password" name="password" placeholder="Ваш пароль" required>
+                </div>
+                <button type="submit" class="btn-outline settings-delete-btn" id="delete-account-btn">
+                    <span class="settings-icon-sm">{ICON_TRASH}</span>
+                    Удалить аккаунт
+                </button>
+            </form>
         </div>
 
     </div>
@@ -381,7 +415,7 @@ def render_profile_page(user=None, master_profile=None, salon=None, stats=None, 
                     <button type="submit" style="display:none;">Сохранить</button>
                 </form>
                 <div class="profile-edit-note">
-                    <p class="text-muted">Телефон, email и город можно изменить в <a href="/settings#data" class="text-link">настройках</a>.</p>
+                    <p class="text-muted">Телефон, email и город можно изменить ниже, в разделе «Смена данных».</p>
                 </div>
             </div>
 

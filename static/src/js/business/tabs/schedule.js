@@ -30,6 +30,19 @@
             });
     };
 
+    // Мастер отмечает, что видел плановую запись — без подтверждения, чтобы
+    // не мешать быстро пробежаться по календарю
+    window.markSeen = function(bookingId, btn) {
+        fetch(`/api/v1/bookings/${bookingId}/mark-seen`, { method: 'POST' })
+            .then(r => {
+                if (r.ok) {
+                    btn.outerHTML = '<span class="seen-indicator" title="Вы отметили, что видели эту запись">👁 Видели</span>';
+                } else {
+                    r.json().then(d => alert(d.detail || 'Не удалось отметить'));
+                }
+            });
+    };
+
     // Модалка завершения
     let completeModalBookingId = null;
 

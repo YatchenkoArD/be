@@ -8,7 +8,7 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.models import (
-    User, UserRole, Salon, Master, Service, Booking, Review, BookingStatus, AdminAudit,
+    User, UserRole, Salon, SalonPhoto, Master, Service, Booking, Review, BookingStatus, AdminAudit,
     SalonModerationStatus, PhotoReport, PhotoReportStatus,
 )
 from app.web.components.header import render_header
@@ -17,7 +17,7 @@ from app.web.components.styles import get_base_styles
 
 ROLE_RU = {
     "client": "Клиент", "model": "Модель", "master": "Мастер",
-    "business": "Бизнес", "admin": "Админ",
+    "business": "Бизнес", "admin": "Модератор",
 }
 
 
@@ -44,11 +44,26 @@ def _moderation_badge(status):
 
 
 # ── ВКЛАДКА: ЗАЯВКИ (модерация регистрации бизнеса) ──────────────────────────
-def _applications_tab(pending, owner_phone_by_id):
-    rows = ""
+def _applications_tab(pending, owner_phone_by_id, extra_by_id):
+    """extra_by_id[salon.id] = {"photo": url|None, "services": [(name, price), ...]}"""
+    cards = ""
     for s in pending:
         owner = owner_phone_by_id.get(s.creator_id, "—") if s.creator_id else "нет"
         submitted = s.created_at.strftime("%d.%m.%Y") if s.created_at else "—"
+        extra = extra_by_id.get(s.id, {"photo": None, "services": []})
+
+        photo_html = (
+            f'<img src="{_esc(extra["photo"])}" style="width:88px;height:88px;object-fit:cover;border-radius:0.75rem;flex-shrink:0">'
+            if extra["photo"] else
+            '<div style="width:88px;height:88px;border-radius:0.75rem;background:var(--color-border);'
+            'display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:1.5rem;flex-shrink:0">🏢</div>'
+        )
+        services = extra["services"]
+        services_preview = ", ".join(f"{_esc(name)} ({price}₽)" for name, price in services[:3])
+        if len(services) > 3:
+            services_preview += f" и ещё {len(services) - 3}"
+        services_line = services_preview or '<span class="text-muted">Услуги ещё не добавлены</span>'
+
         approve = (
             f'<form method="post" action="/api/v1/admin/salons/{s.id}/approve" style="display:inline">'
             f'<button class="btn-mini" style="border-color:#16a34a;color:#16a34a">✓ Одобрить</button></form>'
@@ -60,24 +75,36 @@ def _applications_tab(pending, owner_phone_by_id):
             f'style="padding:0.3rem 0.5rem;border:1px solid var(--color-border);border-radius:0.4rem;width:140px">'
             f'<button class="btn-mini btn-danger">✕ Отклонить</button></form>'
         )
-        rows += f"""<tr>
-            <td>{s.id}</td>
-            <td>{_esc(s.name)}</td>
-            <td>{_esc(owner)}</td>
-            <td>{_esc(s.address)}</td>
-            <td>{submitted}</td>
-            <td style="white-space:nowrap">{approve} {reject}</td>
-        </tr>"""
-    if not rows:
-        rows = '<tr><td colspan="6" class="text-muted" style="padding:1.5rem;text-align:center">Новых заявок нет</td></tr>'
+
+        cards += f"""
+        <div class="card" style="display:flex;gap:1rem;padding:1rem;margin-bottom:0.75rem">
+            {photo_html}
+            <div style="flex:1;min-width:0">
+                <div style="display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap">
+                    <strong>{_esc(s.name)}</strong>
+                    <span class="text-muted" style="font-size:0.8rem">подана {submitted}</span>
+                </div>
+                <p class="text-muted" style="font-size:0.85rem;margin:0.25rem 0">
+                    📍 {_esc(s.address)} · ☎ {_esc(s.phone)} · владелец {_esc(owner)}
+                </p>
+                <p style="font-size:0.85rem;margin:0.25rem 0">{services_line}</p>
+                <details style="margin:0.5rem 0">
+                    <summary style="cursor:pointer;color:var(--color-primary);font-size:0.85rem">👁 Посмотреть подробнее</summary>
+                    <div style="margin-top:0.5rem;font-size:0.85rem">
+                        <p>{_esc(s.description) or '<span class="text-muted">Без описания</span>'}</p>
+                        <p style="margin-top:0.4rem"><strong>Все услуги:</strong> {", ".join(f"{_esc(n)} ({p}₽)" for n, p in services) or "—"}</p>
+                    </div>
+                </details>
+                <div style="margin-top:0.5rem">{approve} {reject}</div>
+            </div>
+        </div>"""
+    if not cards:
+        cards = '<p class="text-muted" style="padding:1.5rem;text-align:center">Новых заявок нет</p>'
     return f"""
     <div class="tab-content" id="tab-applications">
         <h2 style="margin-bottom:1rem">Заявки на регистрацию ({len(pending)})</h2>
         <p class="text-muted" style="margin-bottom:1rem;font-size:0.85rem">Салон работает только после одобрения: до этого он не виден в каталоге и запись закрыта.</p>
-        <div style="overflow-x:auto"><table>
-            <thead><tr><th>ID</th><th>Название</th><th>Владелец</th><th>Адрес</th><th>Подана</th><th>Действия</th></tr></thead>
-            <tbody>{rows}</tbody>
-        </table></div>
+        {cards}
     </div>
     """
 
@@ -158,14 +185,22 @@ def _users_tab(users, me_id):
             f'onsubmit="return confirm(\'Удалить {_esc(u.phone)}?\')">'
             f'<button class="btn-mini btn-danger" {"disabled" if is_self else ""}>Удалить</button></form>'
         )
+        senior_toggle = ""
+        if u.role.value == "admin":
+            senior_toggle = (
+                f'<form method="post" action="/api/v1/admin/users/{u.id}/toggle-senior" style="display:inline">'
+                f'<button class="btn-mini" {"disabled" if is_self else ""}>'
+                f'{"Снять старшинство" if u.is_senior_admin else "Сделать старшим"}</button></form>'
+            )
+        senior_badge = ' ' + _badge("старший", "#7c3aed") if u.role.value == "admin" and u.is_senior_admin else ""
         me_mark = ' <span class="text-muted">(вы)</span>' if is_self else ""
         rows += f"""<tr>
             <td>{u.id}</td>
             <td>{_esc(u.phone)}{me_mark}</td>
             <td>{_esc(u.full_name) or "—"}</td>
-            <td>{role_form}</td>
+            <td>{role_form}{senior_badge}</td>
             <td>{_active_badge(u.is_active)}</td>
-            <td style="white-space:nowrap">{toggle} {reset} {delete}</td>
+            <td style="white-space:nowrap">{toggle} {senior_toggle} {reset} {delete}</td>
         </tr>"""
     return f"""
     <div class="tab-content" id="tab-users">
@@ -325,13 +360,12 @@ def _banner(q):
 
 # ── СБОРКА СТРАНИЦЫ ──────────────────────────────────────────────────────────
 async def render_admin_panel(db: AsyncSession, user, q) -> str:
+    is_senior = user.is_senior_admin
+
     users = (await db.execute(select(User).order_by(User.role, User.id))).scalars().all()
     salons = (await db.execute(select(Salon).order_by(Salon.id))).scalars().all()
-    reviews = (await db.execute(select(Review).order_by(Review.created_at.desc()).limit(200))).scalars().all()
     masters = (await db.execute(select(Master))).scalars().all()
-    audits = (await db.execute(select(AdminAudit).order_by(AdminAudit.created_at.desc()).limit(100))).scalars().all()
 
-    user_by_id = {u.id: u for u in users}
     phone_by_id = {u.id: u.phone for u in users}
     name_by_uid = {u.id: (u.full_name or u.phone) for u in users}
     salon_name_by_id = {s.id: s.name for s in salons}
@@ -339,7 +373,32 @@ async def render_admin_panel(db: AsyncSession, user, q) -> str:
 
     pending = [s for s in salons if s.moderation_status == SalonModerationStatus.PENDING]
 
-    # Открытые жалобы на фото (модерация платформы)
+    # Доп. данные для карточек заявок: фото + услуги (только по заявкам)
+    extra_by_id = {}
+    if pending:
+        pending_ids = [s.id for s in pending]
+        photo_rows = (await db.execute(
+            select(SalonPhoto).where(SalonPhoto.salon_id.in_(pending_ids)).order_by(SalonPhoto.id)
+        )).scalars().all()
+        first_photo_by_salon = {}
+        for p in photo_rows:
+            first_photo_by_salon.setdefault(p.salon_id, p.url)
+
+        services_rows = (await db.execute(
+            select(Master.salon_id, Service.name, Service.price)
+            .join(Service, Service.master_id == Master.id)
+            .where(Master.salon_id.in_(pending_ids))
+        )).all()
+        services_by_salon: dict[int, list] = {}
+        for salon_id, name, price in services_rows:
+            services_by_salon.setdefault(salon_id, []).append((name, price))
+
+        extra_by_id = {
+            s.id: {"photo": first_photo_by_salon.get(s.id), "services": services_by_salon.get(s.id, [])}
+            for s in pending
+        }
+
+    # Открытые жалобы на фото — доступны обоим уровням модерации
     from app.api.v1.endpoints.reports import _photo_and_salon_id
     pending_reports_raw = (await db.execute(
         select(PhotoReport).where(PhotoReport.status == PhotoReportStatus.PENDING).order_by(PhotoReport.id.desc())
@@ -353,23 +412,49 @@ async def render_admin_panel(db: AsyncSession, user, q) -> str:
             "salon": salon_name_by_id.get(sid, "—") if sid else "—",
         })
 
-    overview = await _overview(db, users)
-    users_tab = _users_tab(users, user.id)
-    applications_tab = _applications_tab(pending, phone_by_id)
+    applications_tab = _applications_tab(pending, phone_by_id, extra_by_id)
     reports_tab = _reports_tab(reports_data)
-    salons_tab = _salons_tab(salons, phone_by_id)
-    reviews_tab = _reviews_tab(reviews, phone_by_id, master_name_by_id, salon_name_by_id)
-    audit_tab = _audit_tab(audits, phone_by_id)
-    _tab = q.get("tab", "overview")
-    active_tab = _tab if _tab in {"overview", "users", "applications", "reports", "salons", "reviews", "audit"} else "overview"
+
+    # Вкладки «Пользователи/Салоны/Отзывы/Аудит/Обзор» — только старшему
+    # модератору: базовый модератор видит и решает только заявки и жалобы.
+    overview = users_tab = salons_tab = reviews_tab = audit_tab = ""
+    if is_senior:
+        reviews = (await db.execute(select(Review).order_by(Review.created_at.desc()).limit(200))).scalars().all()
+        audits = (await db.execute(select(AdminAudit).order_by(AdminAudit.created_at.desc()).limit(100))).scalars().all()
+        overview = await _overview(db, users)
+        users_tab = _users_tab(users, user.id)
+        salons_tab = _salons_tab(salons, phone_by_id)
+        reviews_tab = _reviews_tab(reviews, phone_by_id, master_name_by_id, salon_name_by_id)
+        audit_tab = _audit_tab(audits, phone_by_id)
+
+    allowed_tabs = (
+        {"overview", "users", "applications", "reports", "salons", "reviews", "audit"}
+        if is_senior else {"applications", "reports"}
+    )
+    default_tab = "overview" if is_senior else "applications"
+    _tab = q.get("tab", default_tab)
+    active_tab = _tab if _tab in allowed_tabs else default_tab
     pending_badge = f' <span style="background:#d97706;color:#fff;border-radius:1rem;padding:0 0.4rem;font-size:0.7rem">{len(pending)}</span>' if pending else ""
     reports_badge = f' <span style="background:#dc2626;color:#fff;border-radius:1rem;padding:0 0.4rem;font-size:0.7rem">{len(reports_data)}</span>' if reports_data else ""
+
+    tab_nav = ""
+    if is_senior:
+        tab_nav += '<button class="tab-btn" data-tab="overview" onclick="switchTab(\'overview\')">📊 Обзор</button>'
+        tab_nav += '<button class="tab-btn" data-tab="users" onclick="switchTab(\'users\')">👥 Пользователи</button>'
+    tab_nav += f'<button class="tab-btn" data-tab="applications" onclick="switchTab(\'applications\')">📋 Заявки{pending_badge}</button>'
+    tab_nav += f'<button class="tab-btn" data-tab="reports" onclick="switchTab(\'reports\')">🚩 Жалобы{reports_badge}</button>'
+    if is_senior:
+        tab_nav += '<button class="tab-btn" data-tab="salons" onclick="switchTab(\'salons\')">🏢 Салоны</button>'
+        tab_nav += '<button class="tab-btn" data-tab="reviews" onclick="switchTab(\'reviews\')">💬 Отзывы</button>'
+        tab_nav += '<button class="tab-btn" data-tab="audit" onclick="switchTab(\'audit\')">📝 Аудит</button>'
+
+    role_label = "Старший модератор" if is_senior else "Модератор"
 
     return f"""<!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Админ-панель — руми</title>
+    <title>Панель модератора — руми</title>
     {get_base_styles()}
     <style>
         .admin-main {{ max-width:1280px; margin:0 auto; padding:2rem 1.5rem }}
@@ -398,17 +483,11 @@ async def render_admin_panel(db: AsyncSession, user, q) -> str:
 <body>
     {render_header("admin")}
     <main class="admin-main">
-        <h1 class="text-display" style="font-size:1.75rem">🛡️ Админ-панель</h1>
-        <p class="text-muted">{_esc(user.full_name or user.phone)} · роль ADMIN</p>
+        <h1 class="text-display" style="font-size:1.75rem">🛡️ Панель модератора</h1>
+        <p class="text-muted">{_esc(user.full_name or user.phone)} · {role_label}</p>
         {_banner(q)}
         <div class="tab-nav">
-            <button class="tab-btn" data-tab="overview" onclick="switchTab('overview')">📊 Обзор</button>
-            <button class="tab-btn" data-tab="users" onclick="switchTab('users')">👥 Пользователи</button>
-            <button class="tab-btn" data-tab="applications" onclick="switchTab('applications')">📋 Заявки{pending_badge}</button>
-            <button class="tab-btn" data-tab="reports" onclick="switchTab('reports')">🚩 Жалобы{reports_badge}</button>
-            <button class="tab-btn" data-tab="salons" onclick="switchTab('salons')">🏢 Салоны</button>
-            <button class="tab-btn" data-tab="reviews" onclick="switchTab('reviews')">💬 Отзывы</button>
-            <button class="tab-btn" data-tab="audit" onclick="switchTab('audit')">📝 Аудит</button>
+            {tab_nav}
         </div>
         {overview}
         {users_tab}

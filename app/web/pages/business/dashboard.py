@@ -25,7 +25,7 @@ from app.web.components.icons import (
     ICON_SPARKLES,
     ICON_SETTINGS_GEAR_SMALL,
 )
-from app.web.pages.business.utils import get_masters_data, get_master_ids
+from app.web.pages.business.utils import get_masters_data, get_master_ids, get_overview_revenue_data
 from app.web.pages.business.tabs.overview import render_overview_tab
 from app.web.pages.business.tabs.analytics import render_analytics_tab
 from app.web.pages.business.tabs.promos import render_promos_tab
@@ -101,101 +101,7 @@ async def render_business_dashboard(db: AsyncSession, user, salon: Salon, member
     )
     reviews = reviews_result.scalars().all()
 
-    today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-    tomorrow = today + timedelta(days=1)
-
-    today_bookings = 0
-    if master_ids:
-        tb = await db.execute(select(func.count(Booking.id)).where(
-            Booking.master_id.in_(master_ids),
-            Booking.start_time >= today,
-            Booking.start_time < tomorrow
-        ))
-        today_bookings = tb.scalar() or 0
-
-    # --- Данные для выручки (текущая и прошлая неделя) + операции по дням ---
-    revenue_data = {}
-    prev_revenue_data = {}
-    week_operations = {}  # ключ: индекс дня, значение: список (Booking, Service, User)
-    days = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
-
-    for i in range(7):
-        # Текущая неделя
-        day = today - timedelta(days=today.weekday()) + timedelta(days=i)
-        day_end = day + timedelta(days=1)
-
-        # Выручка
-        if master_ids:
-            rev = await db.execute(
-                select(func.coalesce(func.sum(Booking.final_price), 0))
-                .where(
-                    Booking.master_id.in_(master_ids),
-                    Booking.start_time >= day,
-                    Booking.start_time < day_end,
-                    Booking.status.in_([BookingStatus.CONFIRMED, BookingStatus.COMPLETED])
-                )
-            )
-            revenue_data[i] = rev.scalar() or 0
-        else:
-            revenue_data[i] = 0
-
-        # Операции за день (для выпадающего окна)
-        if master_ids:
-            ops = await db.execute(
-                select(Booking, Service, UserModel)
-                .join(Service, Service.id == Booking.service_id)
-                .join(UserModel, UserModel.id == Booking.client_id)
-                .where(
-                    Booking.master_id.in_(master_ids),
-                    Booking.start_time >= day,
-                    Booking.start_time < day_end,
-                    Booking.status != BookingStatus.CANCELLED
-                )
-                .order_by(Booking.start_time)
-            )
-            week_operations[i] = ops.all()
-        else:
-            week_operations[i] = []
-
-        # Прошлая неделя (только выручка)
-        prev_day = today - timedelta(days=today.weekday() + 7) + timedelta(days=i)
-        prev_day_end = prev_day + timedelta(days=1)
-        if master_ids:
-            prev_rev = await db.execute(
-                select(func.coalesce(func.sum(Booking.final_price), 0))
-                .where(
-                    Booking.master_id.in_(master_ids),
-                    Booking.start_time >= prev_day,
-                    Booking.start_time < prev_day_end,
-                    Booking.status.in_([BookingStatus.CONFIRMED, BookingStatus.COMPLETED])
-                )
-            )
-            prev_revenue_data[i] = prev_rev.scalar() or 0
-        else:
-            prev_revenue_data[i] = 0
-
-    total_revenue = sum(revenue_data.values())
-    prev_total_revenue = sum(prev_revenue_data.values())
-    revenue_diff = total_revenue - prev_total_revenue
-    revenue_trend = "▲" if revenue_diff > 0 else "▼" if revenue_diff < 0 else "—"
-    revenue_color = "#22c55e" if revenue_diff > 0 else "#ef4444" if revenue_diff < 0 else "var(--color-muted)"
-
-    # --- Сегодняшние записи (детальный список) ---
-    today_bookings_list = []
-    if master_ids:
-        bookings_today = await db.execute(
-            select(Booking, Service, UserModel)
-            .join(Service, Service.id == Booking.service_id)
-            .join(UserModel, UserModel.id == Booking.client_id)
-            .where(
-                Booking.master_id.in_(master_ids),
-                Booking.start_time >= today,
-                Booking.start_time < tomorrow,
-                Booking.status != BookingStatus.CANCELLED
-            )
-            .order_by(Booking.start_time)
-        )
-        today_bookings_list = bookings_today.all()
+    overview_data = await get_overview_revenue_data(db, master_ids)
 
     # Рендерим вкладки
     tabs_html = []
@@ -204,10 +110,7 @@ async def render_business_dashboard(db: AsyncSession, user, salon: Salon, member
     # Обзор (передаём все данные)
     tab_buttons.append(('overview', ICON_LAYOUT_DASHBOARD, 'Обзор', True))
     tabs_html.append(await render_overview_tab(
-        db, salon, masters, master_ids, services_count, promotions,
-        today_bookings, today_bookings_list,
-        revenue_data, prev_revenue_data, total_revenue, revenue_diff, revenue_trend, revenue_color,
-        week_operations, days
+        db, salon, masters, master_ids, services_count, promotions, **overview_data,
     ))
 
     # Аналитика (только с правом view_finances)
@@ -239,7 +142,7 @@ async def render_business_dashboard(db: AsyncSession, user, salon: Salon, member
 
     # Записи
     tab_buttons.append(('records', ICON_CALENDAR_DAYS, 'Записи', True))
-    tabs_html.append(await render_records_tab(db, salon, masters, master_ids, records_filters))
+    tabs_html.append(await render_records_tab(db, salon, masters, master_ids, records_filters, perms["manage_schedule"]))
 
     # Склад (с правом manage_inventory)
     tab_buttons.append(('warehouse', ICON_PACKAGE, 'Склад', perms["manage_inventory"]))
@@ -261,7 +164,7 @@ async def render_business_dashboard(db: AsyncSession, user, salon: Salon, member
 
     # Отзывы
     tab_buttons.append(('reviews', ICON_STAR_FILLED, f'Отзывы ({len(reviews)})', True))
-    tabs_html.append(await render_reviews_tab(db, reviews, salon, perms["manage_reviews"]))
+    tabs_html.append(await render_reviews_tab(db, reviews, salon))
 
     # CRM – Клиенты
     tab_buttons.append(('crm', ICON_USER_CHECK, 'Клиенты', True))

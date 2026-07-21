@@ -423,3 +423,20 @@ async def no_show_booking(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
+
+@router.post("/{booking_id}/mark-seen", response_model=BookingResponse)
+async def mark_booking_seen(
+    booking_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Мастер отмечает, что видел плановую запись — только сам мастер этой
+    записи (не owner/admin: это его личное подтверждение, не действие салона)."""
+    booking = (await db.execute(select(Booking).where(Booking.id == booking_id))).scalar_one_or_none()
+    if not booking:
+        raise HTTPException(status_code=404, detail="Запись не найдена")
+    master = (await db.execute(select(Master).where(Master.id == booking.master_id))).scalar_one_or_none()
+    if master is None or master.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Отметить «видел» может только сам мастер записи")
+    return await BookingService.mark_seen_by_master(db, booking)
+
