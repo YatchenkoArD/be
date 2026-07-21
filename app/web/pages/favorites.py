@@ -81,7 +81,6 @@ async def render_favorites_page(db: AsyncSession, user) -> str:
     <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Избранное — руми</title>
     {get_base_styles()}
-    <link rel="stylesheet" href="/static/src/css/favorites.css">
 </head>
 <body>
     {render_header("favorites")}

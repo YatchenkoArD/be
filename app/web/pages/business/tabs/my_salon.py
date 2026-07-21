@@ -1,4 +1,4 @@
-# app/web/pages/my_salon.py
+# app/web/pages/business/tabs/my_salon.py
 import html
 import json
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -9,20 +9,18 @@ DAY_KEYS_RU = [
     ("mon", "Понедельник"), ("tue", "Вторник"), ("wed", "Среда"), ("thu", "Четверг"),
     ("fri", "Пятница"), ("sat", "Суббота"), ("sun", "Воскресенье"),
 ]
-from app.web.components.header import render_header
-from app.web.components.footer import render_footer
-from app.web.components.sidebar import render_sidebar
-from app.web.components.styles import get_base_styles
 from app.web.components.icons import (
     ICON_TRASH,
     ICON_SAVE,
     ICON_PLUS,
     ICON_COPY,
-    ICON_CLOCK_SMALL,
-    ICON_PERCENT_SMALL,
-    ICON_GIFT_SMALL,
+    ICON_EDIT,
+    ICON_MAP_PIN,
+    ICON_PHONE,
+    ICON_STAR_FILLED,
+    ICON_X,
+    ICON_EYE,
 )
-
 
 _ERROR_MESSAGES = {
     "bad_phone": "Не удалось распознать телефон мастера. Формат: +7 999 123-45-67 или 8 999 123-45-67.",
@@ -30,16 +28,41 @@ _ERROR_MESSAGES = {
 }
 
 
-async def render_my_salon_page(db: AsyncSession, salon: Salon, user=None, query_params=None) -> str:
-    """Страница редактирования своего салона."""
+def _render_edit_card(salon: Salon, photos: list) -> str:
+    """Карточка салона с режимом редактирования и галереей фото."""
+    rating = salon.rating or 0.0
+    reviews = salon.reviews_count or 0
 
-    query_params = query_params or {}
+    if salon.logo_url:
+        photo_html = f'<img src="{salon.logo_url}" alt="{salon.name}" class="salon-edit-photo">'
+    else:
+        photo_html = f'<div class="salon-edit-photo-placeholder">{salon.name[0].upper()}</div>'
 
-    # Фото галереи
-    photos = (
-        await db.execute(select(SalonPhoto).where(SalonPhoto.salon_id == salon.id).order_by(SalonPhoto.id))
-    ).scalars().all()
+    # Статическая часть (видна всегда, кроме режима редактирования)
+    static_html = f"""
+        <div class="salon-edit-static">
+            <div class="salon-edit-photo-wrapper">
+                {photo_html}
+            </div>
+            <div class="salon-edit-info">
+                <h2 class="salon-edit-name" id="salonEditNameDisplay">{salon.name}</h2>
+                <div class="salon-edit-rating">
+                    {ICON_STAR_FILLED}
+                    <span>{rating:.1f}</span>
+                    <span class="rating-count">({reviews} отзывов)</span>
+                </div>
+                <p class="salon-edit-address">
+                    {ICON_MAP_PIN} <span id="salonEditAddressDisplay">{salon.address or 'Адрес не указан'}</span>
+                </p>
+                <p class="salon-edit-phone">
+                    {ICON_PHONE} <span id="salonEditPhoneDisplay">{salon.phone or ''}</span>
+                </p>
+                <p class="salon-edit-desc" id="salonEditDescDisplay">{salon.description or ''}</p>
+            </div>
+        </div>
+    """
 
+    # Блок галереи
     def _photo_card(p) -> str:
         is_cover = salon.logo_url == p.url
         border_class = "cover-border" if is_cover else "default-border"
@@ -60,9 +83,13 @@ async def render_my_salon_page(db: AsyncSession, salon: Salon, user=None, query_
         </div>'''
 
     photo_cards = "".join(_photo_card(p) for p in photos)
-    photos_section = f'''
-            <div class="my-salon-card">
-                <h2 class="my-salon-card-title">Фото салона</h2>
+
+    # Редактируемая часть
+    inputs_html = f"""
+        <div class="salon-edit-inputs" style="display:none;">
+            <!-- Блок фото салона -->
+            <div class="salon-edit-photos-block">
+                <div class="salon-edit-photos-label">Фото салона</div>
                 <div id="photoDropZone" data-upload-url="/api/v1/upload/salon/{salon.id}/photo" class="my-salon-dropzone">
                     <p>Перетащите фото сюда или нажмите, чтобы выбрать</p>
                     <p class="hint">Можно несколько сразу · JPG/PNG до 5 МБ · появятся на странице салона</p>
@@ -72,7 +99,63 @@ async def render_my_salon_page(db: AsyncSession, salon: Salon, user=None, query_
                 <div class="my-salon-photos">
                     {photo_cards or '<p style="color:var(--color-muted);margin:0">Пока нет фотографий</p>'}
                 </div>
-            </div>'''
+            </div>
+
+            <!-- Поля ввода -->
+            <div class="salon-edit-fields" style="margin-top: 1.5rem; border-top: 1px solid var(--color-border); padding-top: 1.5rem;">
+                <div class="salon-edit-field">
+                    <label>Название</label>
+                    <input type="text" id="salonEditNameInput" value="{salon.name}" class="salon-edit-input">
+                </div>
+                <div class="salon-edit-field">
+                    <label>Телефон</label>
+                    <input type="tel" id="salonEditPhoneInput" value="{salon.phone or ''}" class="salon-edit-input phone-input">
+                </div>
+                <div class="salon-edit-field">
+                    <label>Адрес</label>
+                    <input type="text" id="salonEditAddressInput" value="{salon.address or ''}" class="salon-edit-input">
+                </div>
+                <div class="salon-edit-field">
+                    <label>Описание</label>
+                    <textarea id="salonEditDescInput" class="salon-edit-input salon-edit-textarea">{salon.description or ''}</textarea>
+                </div>
+            </div>
+        </div>
+    """
+
+    # Скрипт с начальными данными для JS (передаём массив объектов с id и url)
+    photos_data = [{"id": p.id, "url": p.url} for p in photos]
+    initial_logo = salon.logo_url or ''
+    import json
+    init_script = f"""
+    <script>
+        window.initialPhotos = {json.dumps(photos_data)};
+        window.initialLogo = {json.dumps(initial_logo)};
+    </script>
+    """
+
+    return f"""
+    <div class="salon-edit-card" id="salonEditCard">
+        {static_html}
+        {inputs_html}
+        <div class="salon-edit-toggle" id="salonEditToggleContainer">
+            <button class="btn-outline salon-edit-toggle-btn" id="salonEditToggleBtn">
+                {ICON_EDIT} Редактировать
+            </button>
+        </div>
+        {init_script}
+    </div>
+    """
+
+
+async def render_my_salon_tab(db: AsyncSession, salon: Salon, user=None, query_params=None) -> str:
+    """Вкладка «Редактировать салон» для бизнес-панели."""
+    query_params = query_params or {}
+
+    # Загружаем фото галереи (нужны для карточки)
+    photos = (
+        await db.execute(select(SalonPhoto).where(SalonPhoto.salon_id == salon.id).order_by(SalonPhoto.id))
+    ).scalars().all()
 
     error_banner = ""
     error_code = query_params.get("error")
@@ -111,7 +194,6 @@ async def render_my_salon_page(db: AsyncSession, salon: Salon, user=None, query_
     )
     loyalty_offers = loyalty_offers_result.scalars().all()
 
-    # Таблица лояльности
     loyalty_offers_rows = ""
     for o in loyalty_offers:
         code_str = o.promo_code or "—"
@@ -156,7 +238,7 @@ async def render_my_salon_page(db: AsyncSession, salon: Salon, user=None, query_
             <input type="time" id="wh-end-{key}" value="{end_val}" {disabled}>
         </div>"""
 
-    # Акции
+    # Акции (таблица)
     promos_rows = ""
     for p in promotions:
         promos_rows += f"""
@@ -169,59 +251,35 @@ async def render_my_salon_page(db: AsyncSession, salon: Salon, user=None, query_
         </tr>
         """
 
-    html = f"""<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Мой салон — {salon.name} — руми</title>
-    {get_base_styles()}
-    <link rel="stylesheet" href="/static/src/css/pages/my-salon.css">
-</head>
-<body>
-    {render_header("business")}
-    {render_sidebar("business", user)}
+    # Подключаем иконки в глобальные переменные JS
+    icon_script = f"""
+    <script>
+        window.ICON_EDIT = `{ICON_EDIT}`;
+        window.ICON_EYE = `{ICON_EYE}`;
+        window.ICON_SAVE = `{ICON_SAVE}`;
+        window.ICON_X = `{ICON_X}`;
+    </script>
+    """
 
-    <main class="my-salon-main">
-        <div class="section-container">
-
-            <!-- Заголовок -->
+    html_content = f"""
+    <div id="tab-edit" class="tab-content">
+        {icon_script}
+        <div class="my-salon-tab">
+            <!-- Заголовок вкладки -->
             <div class="my-salon-header">
                 <div>
                     <h1>{salon.name}</h1>
                     <p>Редактирование карточки салона</p>
                 </div>
-                <a href="/business/dashboard" class="btn-outline">← К панели управления</a>
             </div>
 
             {error_banner}
             {success_banner}
 
-            <!-- Основная информация -->
+            <!-- Карточка салона с редактированием -->
             <div class="my-salon-card">
                 <h2 class="my-salon-card-title">Основная информация</h2>
-                <form action="/api/v1/business/my-salon" method="post">
-                    <input type="hidden" name="method_override" value="put">
-                    <input type="hidden" name="salon_id" value="{salon.id}">
-                    <div class="my-salon-grid-2">
-                        <div>
-                            <label for="salonName">Название салона</label>
-                            <input type="text" id="salonName" name="name" value="{salon.name}">
-                        </div>
-                        <div>
-                            <label for="salonPhone">Телефон</label>
-                            <input type="tel" id="salonPhone" name="phone" value="{salon.phone or ''}">
-                        </div>
-                    </div>
-                    <div class="my-salon-full-width">
-                        <label for="salonAddress">Адрес</label>
-                        <input type="text" id="salonAddress" name="address" value="{salon.address or ''}">
-                    </div>
-                    <div class="my-salon-full-width">
-                        <label for="salonDescription">Описание</label>
-                        <textarea id="salonDescription" name="description" rows="3" class="my-salon-textarea">{salon.description or ''}</textarea>
-                    </div>
-                    <button type="submit" class="my-salon-btn-primary">{ICON_SAVE} Сохранить изменения</button>
-                </form>
+                {_render_edit_card(salon, photos)}
             </div>
 
             <!-- Часы работы -->
@@ -253,8 +311,6 @@ async def render_my_salon_page(db: AsyncSession, salon: Salon, user=None, query_
                     <a href="/book/{salon.id}/qr" download="rumi-qr-{salon.id}.png" class="my-salon-btn-outline">Скачать QR</a>
                 </div>
             </div>
-
-            {photos_section}
 
             <!-- Акции -->
             <div class="my-salon-card">
@@ -327,59 +383,55 @@ async def render_my_salon_page(db: AsyncSession, salon: Salon, user=None, query_
                 </div>
             </div>
 
-        </div>
-    </main>
+            <!-- Модальное окно: Добавить акцию -->
+            <div class="my-salon-modal-overlay" id="addPromoModal">
+                <div class="my-salon-modal-box">
+                    <button class="my-salon-modal-close" onclick="document.getElementById('addPromoModal').classList.remove('active')">&times;</button>
+                    <h2>Добавить акцию</h2>
+                    <form action="/api/v1/business/my-salon/promotions/web" method="post">
+                        <input type="hidden" name="salon_id" value="{salon.id}">
+                        <div class="my-salon-form-group">
+                            <label for="promoTitle">Название *</label>
+                            <input type="text" id="promoTitle" name="title" required placeholder="Например: Скидка 20%">
+                        </div>
+                        <div class="my-salon-form-group">
+                            <label for="promoDesc">Описание</label>
+                            <textarea id="promoDesc" name="description" rows="2" placeholder="Условия акции..."></textarea>
+                        </div>
+                        <div class="my-salon-form-group">
+                            <label for="promoTag">Тег *</label>
+                            <input type="text" id="promoTag" name="tag" required placeholder="Новичкам, Выгода, Подарок...">
+                        </div>
+                        <button type="submit" class="my-salon-btn-primary" style="width:100%">Добавить акцию</button>
+                    </form>
+                </div>
+            </div>
 
-    <!-- Модальное окно: Добавить акцию -->
-    <div class="my-salon-modal-overlay" id="addPromoModal">
-        <div class="my-salon-modal-box">
-            <button class="my-salon-modal-close" onclick="document.getElementById('addPromoModal').classList.remove('active')">&times;</button>
-            <h2>Добавить акцию</h2>
-            <form action="/api/v1/business/my-salon/promotions/web" method="post">
-                <input type="hidden" name="salon_id" value="{salon.id}">
-                <div class="my-salon-form-group">
-                    <label for="promoTitle">Название *</label>
-                    <input type="text" id="promoTitle" name="title" required placeholder="Например: Скидка 20%">
+            <!-- Модальное окно: Добавить именную скидку/промокод -->
+            <div class="my-salon-modal-overlay" id="addLoyaltyOfferModal">
+                <div class="my-salon-modal-box">
+                    <button class="my-salon-modal-close" onclick="document.getElementById('addLoyaltyOfferModal').classList.remove('active')">&times;</button>
+                    <h2>Добавить скидку</h2>
+                    <div class="my-salon-form-group">
+                        <label for="loyaltyOfferTitle">Название *</label>
+                        <input type="text" id="loyaltyOfferTitle" required placeholder="Например: День рождения">
+                    </div>
+                    <div class="my-salon-form-group">
+                        <label for="loyaltyOfferPercent">Скидка, % *</label>
+                        <input type="number" id="loyaltyOfferPercent" min="1" max="99" required>
+                    </div>
+                    <div class="my-salon-form-group">
+                        <label for="loyaltyOfferCode">Промокод</label>
+                        <input type="text" id="loyaltyOfferCode" placeholder="Необязательно, например BDAY15">
+                    </div>
+                    <button type="button" class="my-salon-btn-primary" style="width:100%" onclick="addLoyaltyOffer({salon.id})">Добавить</button>
                 </div>
-                <div class="my-salon-form-group">
-                    <label for="promoDesc">Описание</label>
-                    <textarea id="promoDesc" name="description" rows="2" placeholder="Условия акции..."></textarea>
-                </div>
-                <div class="my-salon-form-group">
-                    <label for="promoTag">Тег *</label>
-                    <input type="text" id="promoTag" name="tag" required placeholder="Новичкам, Выгода, Подарок...">
-                </div>
-                <button type="submit" class="my-salon-btn-primary" style="width:100%">Добавить акцию</button>
-            </form>
+            </div>
         </div>
     </div>
-
-    <!-- Модальное окно: Добавить именную скидку/промокод -->
-    <div class="my-salon-modal-overlay" id="addLoyaltyOfferModal">
-        <div class="my-salon-modal-box">
-            <button class="my-salon-modal-close" onclick="document.getElementById('addLoyaltyOfferModal').classList.remove('active')">&times;</button>
-            <h2>Добавить скидку</h2>
-            <div class="my-salon-form-group">
-                <label for="loyaltyOfferTitle">Название *</label>
-                <input type="text" id="loyaltyOfferTitle" required placeholder="Например: День рождения">
-            </div>
-            <div class="my-salon-form-group">
-                <label for="loyaltyOfferPercent">Скидка, % *</label>
-                <input type="number" id="loyaltyOfferPercent" min="1" max="99" required>
-            </div>
-            <div class="my-salon-form-group">
-                <label for="loyaltyOfferCode">Промокод</label>
-                <input type="text" id="loyaltyOfferCode" placeholder="Необязательно, например BDAY15">
-            </div>
-            <button type="button" class="my-salon-btn-primary" style="width:100%" onclick="addLoyaltyOffer({salon.id})">Добавить</button>
-        </div>
-    </div>
-
-    {render_footer(user)}
 
     <script>
         window.salonId = {salon.id};
     </script>
-</body>
-</html>"""
-    return html
+    """
+    return html_content

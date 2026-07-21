@@ -158,6 +158,8 @@ def render_model_checkout_page(plan: str = "start", user=None) -> str:
     <script>
         // Данные тарифов из Python
         const tariffs = {tariffs_json};
+        // Иконка-галочка для списка (передана из Python)
+        const checkIcon = `{ICON_CIRCLE_CHECK}`;
 
         function switchTariff(planId) {{
             document.querySelectorAll('.tariff-btn').forEach(btn => {{
@@ -175,7 +177,7 @@ def render_model_checkout_page(plan: str = "start", user=None) -> str:
 
             const featuresList = document.getElementById('tariff-features');
             featuresList.innerHTML = tariff.features.map(f => 
-                `<li>${{ICON_CIRCLE_CHECK}}<span>${{f}}</span></li>`
+                `<li>${{checkIcon}}<span>${{f}}</span></li>`
             ).join('');
 
             // Обновляем текст кнопки

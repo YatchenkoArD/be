@@ -530,7 +530,6 @@ async def render_salon_detail(db: AsyncSession, salon_id: int, user=None) -> str
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{salon.name} | руми</title>
     {get_base_styles()}
-    <link rel="stylesheet" href="/static/src/css/salon-detail.css">
 </head>
 <body class="page-body">
     {render_header("salons")}

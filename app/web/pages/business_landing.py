@@ -50,7 +50,7 @@ def render_business_landing_page(user=None) -> str:
                 <div class="bl-hero-content">
                     <span class="bl-hero-badge">Коммерческое предложение</span>
                     <h1 class="bl-hero-title">руми — платформа, которая приводит клиентов и управляет салоном</h1>
-                    <p class="bl-hero-subtitle">Запись, оплаты, касса, команда и аналитика — в одном окне. Плюс поток новых клиентов из маркетплейса. Эквайринг — Т‑Банк, из коробки.</p>
+                    <p class="bl-hero-subtitle">Запись, оплаты, касса, команда и аналитика — в одном окне. Плюс поток новых клиентов из маркетплейса.</p>
                     <div class="bl-hero-buttons">
                         <a href="/business/checkout?plan=business" class="bl-hero-btn-primary">
                             Подключить салон
@@ -61,6 +61,7 @@ def render_business_landing_page(user=None) -> str:
                 </div>
 
                 <!-- Статистика -->
+                <!--
                 <div class="bl-stats">
                     <div class="bl-stat-item">
                         <p class="bl-stat-value">−50%</p>
@@ -79,6 +80,7 @@ def render_business_landing_page(user=None) -> str:
                         <p class="bl-stat-label">кешбэк клиентам</p>
                     </div>
                 </div>
+                -->
             </div>
         </section>
 
@@ -107,7 +109,7 @@ def render_business_landing_page(user=None) -> str:
                         </a>
                     </div>
 
-                    <!-- Карточка 2 -->
+                    <!-- Карточка 2
                     <div class="bl-pain-card">
                         <div class="bl-pain-header">
                             {ICON_CIRCLE_X}
@@ -123,6 +125,7 @@ def render_business_landing_page(user=None) -> str:
                             {ICON_ARROW_RIGHT}
                         </a>
                     </div>
+                    -->
 
                     <!-- Карточка 3 -->
                     <div class="bl-pain-card">
@@ -158,7 +161,7 @@ def render_business_landing_page(user=None) -> str:
                         </a>
                     </div>
 
-                    <!-- Карточка 5 -->
+                    <!-- Карточка 5 
                     <div class="bl-pain-card">
                         <div class="bl-pain-header">
                             {ICON_CIRCLE_X}
@@ -174,6 +177,7 @@ def render_business_landing_page(user=None) -> str:
                             {ICON_ARROW_RIGHT}
                         </a>
                     </div>
+                    -->
 
                     <!-- Карточка 6 -->
                     <div class="bl-pain-card">
@@ -278,7 +282,7 @@ def render_business_landing_page(user=None) -> str:
         </section>
         -->
 
-        <!-- Сравнение (белый фон) -->
+        <!-- Сравнение -->
         <section class="section-py bl-comparison">
             <div class="section-container">
                 <div class="bl-section-header">
@@ -291,16 +295,20 @@ def render_business_landing_page(user=None) -> str:
                         <span class="bl-comparison-brand">руми</span>
                         <span id="crm-title">Другие CRM</span>
                     </div>
+                    <!--
                     <div class="bl-comparison-row">
                         <span>Подключение эквайринга и кассы</span>
                         <span class="bl-comparison-rumi">{ICON_CIRCLE_CHECK} Из коробки, 0 ₽</span>
                         <span class="bl-comparison-other">Доплата + настройка</span>
                     </div>
+                    -->
+                    <!--
                     <div class="bl-comparison-row">
                         <span>Онлайн-предоплата за запись</span>
                         <span class="bl-comparison-rumi">{ICON_CIRCLE_CHECK} Да, через Т‑Банк</span>
                         <span class="bl-comparison-other">Через сторонние модули</span>
                     </div>
+                    -->
                     <div class="bl-comparison-row">
                         <span>Маркетплейс клиентов</span>
                         <span class="bl-comparison-rumi">{ICON_CIRCLE_CHECK} Встроен — поток новых клиентов</span>
@@ -316,11 +324,13 @@ def render_business_landing_page(user=None) -> str:
                         <span class="bl-comparison-rumi">{ICON_CIRCLE_CHECK} От 250 ₽ за сотрудника</span>
                         <span class="bl-comparison-other">Выше, пакеты</span>
                     </div>
+                    <!--
                     <div class="bl-comparison-row">
                         <span>Кешбэк клиентам</span>
                         <span class="bl-comparison-rumi">{ICON_CIRCLE_CHECK} 5% с Т‑Картой</span>
                         <span class="bl-comparison-other">Нет</span>
                     </div>
+                    -->
                 </div>
             </div>
         </section>

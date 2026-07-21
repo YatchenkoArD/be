@@ -76,9 +76,13 @@ def render_login_page(request: Request) -> str:
             </div>
             <button type="submit" class="btn-primary auth-btn">Войти</button>
         </form>
+
+        <!-- Кнопка регистрации (белая с розовой надписью) -->
+        <button type="button" class="auth-btn-outline" onclick="window.location.href='/register'">Регистрация</button>
+
         {yandex_block}
         <div class="auth-links">
-            <a href="/register">Регистрация</a> · <a href="/forgot-password">Забыли пароль?</a> · <a href="/">На главную</a>
+            <a href="/forgot-password">Забыли пароль?</a> · <a href="/">На главную</a>
         </div>
     </div>
 </body>

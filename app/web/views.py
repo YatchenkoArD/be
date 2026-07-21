@@ -120,16 +120,6 @@ async def favorites_page(request: Request, db: AsyncSession = Depends(get_db)):
     return HTMLResponse(content=await render_favorites_page(db, user))
 
 
-# Перенесены в профиль, возможно понадобится для бизнеса...
-# @router.get("/settings", response_class=HTMLResponse)
-# async def settings_page(request: Request, db: AsyncSession = Depends(get_db)):
-#     """Страница настроек."""
-#     from app.web.pages.settings import render_settings_page
-#     user = await get_current_user_from_cookie(request, db)
-#     return HTMLResponse(content=render_settings_page(user))
-
-
-
 @router.get("/business", response_class=HTMLResponse)
 async def business_landing_page(request: Request, db: AsyncSession = Depends(get_db)):
     """Страница «Для бизнеса» (лендинг)."""
@@ -143,8 +133,7 @@ async def business_dashboard_page(
     salon_id: int = None,
     db: AsyncSession = Depends(get_db)
 ):
-    """Бизнес-панель с аналитикой. Доступна любому активному участнику
-    салона (owner/admin), не только его создателю."""
+    """Бизнес-панель с аналитикой."""
     from app.web.pages.business import render_business_dashboard
     from app.api.deps import get_user_primary_salon_id, get_salon_membership
 
@@ -152,8 +141,6 @@ async def business_dashboard_page(
     if not user:
         return RedirectResponse(url="/login?redirect=/business/dashboard", status_code=302)
 
-    # Владелец/админ салона (SalonMember) — в приоритете, если пользователь
-    # одновременно и мастер, и владелец другого салона.
     resolved_id = await get_user_primary_salon_id(db, user.id, salon_id)
     if resolved_id is not None:
         salon = (await db.execute(select(Salon).where(Salon.id == resolved_id))).scalar_one_or_none()
@@ -161,13 +148,9 @@ async def business_dashboard_page(
         if salon and membership:
             return HTMLResponse(content=await render_business_dashboard(db, user, salon, membership, request.query_params))
 
-    # Не владелец/админ ни одного салона — проверяем, не мастер ли он
-    # (по факту записи в Master, а не по полю role — оно не всегда
-    # синхронизировано, см. has_master_profile в auth.py).
     master = (await db.execute(select(Master).where(Master.user_id == user.id, Master.is_active == True))).scalar_one_or_none()
     if master is not None:
         from app.web.pages.business.master_dashboard import render_master_business_dashboard
-
         salon = (await db.execute(select(Salon).where(Salon.id == master.salon_id))).scalar_one_or_none()
         if salon is not None:
             return HTMLResponse(content=await render_master_business_dashboard(db, user, salon, master, request.query_params))
@@ -177,8 +160,7 @@ async def business_dashboard_page(
 
 @router.get("/business/register-salon", response_class=HTMLResponse)
 async def register_salon_page(request: Request, db: AsyncSession = Depends(get_db)):
-    """Анкета регистрации салона. Маршрут потерялся при редизайне, хотя
-    страница и редиректы на неё остались — возвращаем."""
+    """Анкета регистрации салона."""
     from app.web.pages.register_salon import render_register_salon_page
 
     user = await get_current_user_from_cookie(request, db)
@@ -188,34 +170,9 @@ async def register_salon_page(request: Request, db: AsyncSession = Depends(get_d
 
 
 @router.get("/business/my-salon", response_class=HTMLResponse)
-async def my_salon_page(
-    request: Request,
-    salon_id: int = None,
-    db: AsyncSession = Depends(get_db)
-):
-    """Страница редактирования своего салона (доступна с правом manage_salon)."""
-    from app.web.pages.my_salon import render_my_salon_page
-    from app.api.deps import get_user_primary_salon_id, check_salon_permission
-    from fastapi import HTTPException
-
-    user = await get_current_user_from_cookie(request, db)
-    if not user:
-        return RedirectResponse(url="/login?redirect=/business/my-salon", status_code=302)
-
-    resolved_id = await get_user_primary_salon_id(db, user.id, salon_id)
-    if resolved_id is None:
-        return RedirectResponse(url="/business/register-salon", status_code=302)
-
-    try:
-        await check_salon_permission(db, user, resolved_id, "manage_salon")
-    except HTTPException:
-        return RedirectResponse(url="/business/dashboard", status_code=302)
-
-    salon = (await db.execute(select(Salon).where(Salon.id == resolved_id))).scalar_one_or_none()
-    if not salon:
-        return RedirectResponse(url="/business/register-salon", status_code=302)
-
-    return HTMLResponse(content=await render_my_salon_page(db, salon, user, request.query_params))
+async def my_salon_page_redirect():
+    """Редирект на панель с вкладкой редактирования."""
+    return RedirectResponse(url="/business/dashboard?tab=edit", status_code=302)
 
 
 @router.get("/business/clients/{client_id}", response_class=HTMLResponse)
@@ -225,7 +182,7 @@ async def client_card_page(
     salon_id: int = None,
     db: AsyncSession = Depends(get_db)
 ):
-    """Детальная карточка клиента (история визитов, отзывы, заметки)."""
+    """Детальная карточка клиента."""
     from app.crm.tabs.client_card import render_client_card
     from app.api.deps import get_user_primary_salon_id, get_salon_membership
 
@@ -247,13 +204,11 @@ async def client_card_page(
 
 @router.get("/master/dashboard", response_class=HTMLResponse)
 async def master_dashboard_page_route():
-    """Кабинет мастера переехал в общую «Панель бизнеса» (Обзор + Расписание)."""
     return RedirectResponse(url="/business/dashboard", status_code=302)
 
 
 @router.get("/master/inventory", response_class=HTMLResponse)
 async def master_inventory_page_route(request: Request, db: AsyncSession = Depends(get_db)):
-    """Мой склад: остатки и история движений мастера."""
     from app.web.pages.master.inventory import render_master_inventory
     from app.models.models import UserRole
 
@@ -268,7 +223,6 @@ async def master_inventory_page_route(request: Request, db: AsyncSession = Depen
 
 @router.get("/admin", response_class=HTMLResponse)
 async def admin_page(request: Request, db: AsyncSession = Depends(get_db)):
-    """Админ-панель (только роль ADMIN)."""
     from app.web.pages.admin_panel import render_admin_panel
 
     user = await get_current_user_from_cookie(request, db)
@@ -288,18 +242,15 @@ async def business_checkout_page(request: Request, db: AsyncSession = Depends(ge
 
 @router.get("/salons/{salon_id}/book", response_class=HTMLResponse)
 async def book_service_page(salon_id: int, request: Request, db: AsyncSession = Depends(get_db)):
-    """Страница записи в салон."""
     user = await get_current_user_from_cookie(request, db)
     if not user:
         return RedirectResponse(url=f"/login?redirect=/salons/{salon_id}/book", status_code=302)
     
-    # Получаем салон
     result = await db.execute(select(Salon).where(Salon.id == salon_id))
     salon = result.scalar_one_or_none()
     if not salon:
         return HTMLResponse(content="<h1>Салон не найден</h1>", status_code=404)
     
-    # Получаем мастеров с услугами
     masters_result = await db.execute(select(Master).where(Master.salon_id == salon_id, Master.is_active == True))
     masters = masters_result.scalars().all()
     
@@ -346,7 +297,6 @@ async def book_service_page(salon_id: int, request: Request, db: AsyncSession = 
     </div>
     
     <script>
-        // Функция для загрузки услуг мастера
         document.querySelector('select[name="master_id"]').addEventListener('change', async function() {{
             const masterId = this.value;
             const serviceSelect = document.querySelector('select[name="service_id"]');
@@ -382,7 +332,6 @@ async def book_service_page(salon_id: int, request: Request, db: AsyncSession = 
 
 
 def _alert(msg: str) -> str:
-    """Баннер-уведомление об ошибке вверху карточки (msg — фиксированный текст)."""
     if not msg:
         return ""
     return (
@@ -394,19 +343,16 @@ def _alert(msg: str) -> str:
 
 @router.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request):
-    """Страница входа."""
     return HTMLResponse(content=render_login_page(request))
 
 
 @router.get("/register", response_class=HTMLResponse)
 async def register_page(request: Request):
-    """Страница регистрации."""
     return HTMLResponse(content=render_register_page(request))
 
 
 @router.get("/logout", response_class=HTMLResponse)
 async def logout_page():
-    """Выход из системы."""
     response = RedirectResponse(url="/", status_code=302)
     response.delete_cookie("access_token")
     return response
@@ -414,14 +360,12 @@ async def logout_page():
 
 @router.get("/about", response_class=HTMLResponse)
 async def about_page(request: Request, db: AsyncSession = Depends(get_db)):
-    """Страница «Манифест»."""
     user = await get_current_user_from_cookie(request, db)
     return HTMLResponse(content=render_about_page(user))
 
 
 @router.get("/model", response_class=HTMLResponse)
 async def model_landing_page(request: Request, db: AsyncSession = Depends(get_db)):
-    """Страница «Стань моделью»."""
     user = await get_current_user_from_cookie(request, db)
     return HTMLResponse(content=render_model_landing_page(user))
 
@@ -432,14 +376,12 @@ async def model_checkout_page(
     plan: str = "start",
     db: AsyncSession = Depends(get_db)
 ):
-    """Страница оформления подписки модели."""
     user = await get_current_user_from_cookie(request, db)
     return HTMLResponse(content=render_model_checkout_page(plan, user))
 
 
 @router.get("/model/dashboard", response_class=HTMLResponse)
 async def model_dashboard_page(request: Request, db: AsyncSession = Depends(get_db)):
-    """Дашборд модели."""
     user = await get_current_user_from_cookie(request, db)
     from app.web.pages.model_dashboard import render_model_dashboard
     return HTMLResponse(content=render_model_dashboard(user))
@@ -447,7 +389,6 @@ async def model_dashboard_page(request: Request, db: AsyncSession = Depends(get_
 
 @router.get("/book", response_class=HTMLResponse)
 async def book_page(request: Request, db: AsyncSession = Depends(get_db)):
-    """Страница подтверждения записи."""
     params = dict(request.query_params)
     master_id = int(params.get("master_id", 0))
     service_id = int(params.get("service_id", 0))
@@ -455,7 +396,6 @@ async def book_page(request: Request, db: AsyncSession = Depends(get_db)):
     
     user = await get_current_user_from_cookie(request, db)
     
-    # Получаем данные мастера и услуги
     master = (await db.execute(select(Master).where(Master.id == master_id))).scalar_one_or_none()
     service = (await db.execute(select(ServiceModel).where(ServiceModel.id == service_id))).scalar_one_or_none()
     
@@ -502,15 +442,9 @@ async def book_page(request: Request, db: AsyncSession = Depends(get_db)):
     return HTMLResponse(content=html)
 
 
-# ── SEO: robots.txt и sitemap.xml (появился домен rrumi.ru) ─────────────────
-# ВАЖНО: строго ВЫШЕ catch-all «/{path:path}» — иначе перехватит 404-страница
-
 @router.get("/robots.txt", include_in_schema=False)
 async def robots_txt():
     from fastapi.responses import PlainTextResponse
-
-    # Приватные разделы поисковикам не нужны; staging закрыт basic_auth
-    # и X-Robots-Tag на уровне edge — сюда доходит только прод
     return PlainTextResponse(
         "User-agent: *\n"
         "Disallow: /admin\n"
@@ -531,7 +465,7 @@ async def sitemap_xml(db: AsyncSession = Depends(get_db)):
     static_pages = ["", "salons", "business", "model", "login", "register"]
     urls = [f"https://rrumi.ru/{p}" for p in static_pages]
 
-    salons = (await db.execute(select(Salon.id).where(Salon.is_active == True))).scalars().all()  # noqa: E712
+    salons = (await db.execute(select(Salon.id).where(Salon.is_active == True))).scalars().all()
     urls += [f"https://rrumi.ru/salons/{sid}" for sid in salons]
 
     body = "".join(f"<url><loc>{u}</loc></url>" for u in urls)
@@ -541,7 +475,6 @@ async def sitemap_xml(db: AsyncSession = Depends(get_db)):
         f"{body}</urlset>"
     )
     return Response(content=xml, media_type="application/xml")
-
 
 
 @router.get("/forgot-password", response_class=HTMLResponse)
@@ -558,7 +491,6 @@ async def reset_password_page(request: Request):
 
 @router.get("/{path:path}", response_class=HTMLResponse)
 async def not_found_page(request: Request, path: str):
-    """Страница 404 — для всех несуществующих маршрутов."""
     return HTMLResponse(content=f"""<!DOCTYPE html>
 <html lang="ru">
 <head>

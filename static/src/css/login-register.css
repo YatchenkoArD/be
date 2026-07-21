@@ -102,3 +102,27 @@
 .auth-links a:hover {
     text-decoration: underline;
 }
+
+.auth-btn-outline {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    padding: 0.5rem 1.5rem;  /* уменьшили вертикальный padding на 2px (0.75rem → 0.6rem) */
+    border: 2px solid var(--color-primary);
+    border-radius: 50px;
+    background: var(--color-surface);
+    color: var(--color-primary);
+    font-weight: 600;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.2s;
+    margin-top: 0.5rem;
+    text-decoration: none;
+    line-height: 1.2;
+}
+
+.auth-btn-outline:hover {
+    background: var(--color-accent-light);
+    transform: scale(1.02);
+}

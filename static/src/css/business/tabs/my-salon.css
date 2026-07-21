@@ -1,15 +1,7 @@
-/* static/src/css/pages/my-salon.css */
+/* static/src/css/business/tabs/my-salon.css */
 
-.my-salon-main {
-    margin-right: 16rem;
-    padding-top: 100px;
-}
-
-@media (max-width: 1023px) {
-    .my-salon-main {
-        margin-right: 0;
-        padding-top: 80px;
-    }
+.my-salon-tab {
+    padding: 0;
 }
 
 .my-salon-header {
@@ -32,7 +24,6 @@
     margin: 0.25rem 0 0;
 }
 
-/* Карточки */
 .my-salon-card {
     background: var(--color-surface);
     border: 1px solid var(--color-border);
@@ -62,7 +53,6 @@
     margin-bottom: 1rem;
 }
 
-/* Сетка 2 колонки */
 .my-salon-grid-2 {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -167,7 +157,6 @@
     }
 }
 
-/* Часы работы */
 .hours-container {
     margin-bottom: 1rem;
 }
@@ -221,7 +210,6 @@
     flex-wrap: wrap;
 }
 
-/* Таблицы */
 .table-wrap {
     overflow-x: auto;
 }
@@ -265,7 +253,6 @@
     color: #dc2626;
 }
 
-/* Лояльность */
 .loyalty-offers-header {
     display: flex;
     justify-content: space-between;
@@ -279,7 +266,6 @@
     color: var(--color-heading);
 }
 
-/* Фото галерея */
 .my-salon-photos {
     display: flex;
     gap: 0.75rem;
@@ -348,7 +334,6 @@
     border: 1px solid var(--color-border);
 }
 
-/* Drop zone */
 .my-salon-dropzone {
     border: 2px dashed var(--color-border);
     border-radius: 0.75rem;
@@ -375,7 +360,6 @@
     color: var(--color-muted);
 }
 
-/* Модалки */
 .my-salon-modal-overlay {
     display: none;
     position: fixed;
@@ -460,7 +444,6 @@
     box-shadow: 0 0 0 3px rgba(192, 129, 184, 0.15);
 }
 
-/* Кнопки */
 .my-salon-btn-primary {
     display: inline-flex;
     align-items: center;
@@ -502,7 +485,6 @@
     border-color: var(--color-primary);
 }
 
-/* Алерты */
 .alert {
     padding: 0.75rem 1rem;
     border-radius: 0.5rem;
@@ -529,31 +511,210 @@
     font-weight: 700;
 }
 
-/* Адаптив */
+/* ===== Стили карточки салона ===== */
+.salon-edit-card {
+    position: relative;
+}
+
+.salon-edit-static {
+    display: flex;
+    gap: 1.5rem;
+    align-items: flex-start;
+}
+
+.salon-edit-photo-wrapper {
+    flex-shrink: 0;
+    width: 180px;
+    height: 180px;
+    border-radius: 1rem;
+    overflow: hidden;
+    background: var(--color-surface-alt);
+    position: relative;
+}
+
+.salon-edit-photo-wrapper img,
+.salon-edit-photo-placeholder {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.salon-edit-photo-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 4rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--color-primary), var(--color-accent));
+    color: #fff;
+}
+
+.salon-edit-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.salon-edit-name {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin: 0 0 0.25rem 0;
+    color: var(--color-heading);
+}
+
+.salon-edit-rating {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    color: var(--color-primary);
+    margin-bottom: 0.5rem;
+}
+
+.salon-edit-rating .rating-count {
+    color: var(--color-muted);
+    font-size: 0.8rem;
+}
+
+.salon-edit-address,
+.salon-edit-phone {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    color: var(--color-muted);
+    font-size: 0.9rem;
+    margin: 0.25rem 0;
+}
+
+.salon-edit-address svg,
+.salon-edit-phone svg {
+    color: var(--color-primary);
+    width: 1rem;
+    height: 1rem;
+    flex-shrink: 0;
+}
+
+.salon-edit-desc {
+    margin-top: 0.75rem;
+    color: var(--color-body);
+    font-size: 0.95rem;
+    line-height: 1.5;
+}
+
+.salon-edit-toggle {
+    margin-top: 1.5rem;
+    text-align: right;
+}
+
+.salon-edit-inputs {
+    margin-top: 0.5rem;
+}
+
+.salon-edit-field {
+    margin-bottom: 1rem;
+}
+
+.salon-edit-field label {
+    display: block;
+    font-weight: 500;
+    font-size: 0.85rem;
+    color: var(--color-muted);
+    margin-bottom: 0.25rem;
+}
+
+.salon-edit-input {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.5rem;
+    font-size: 1rem;
+    background: var(--color-surface);
+    color: var(--color-heading);
+    transition: border-color 0.2s;
+}
+
+.salon-edit-input:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(192, 129, 184, 0.15);
+}
+
+.salon-edit-textarea {
+    resize: vertical;
+    min-height: 80px;
+    font-family: var(--font-body);
+}
+
+.salon-edit-photo-upload {
+    position: absolute;
+    bottom: 0.5rem;
+    right: 0.5rem;
+    background: rgba(0, 0, 0, 0.6);
+    color: #fff;
+    padding: 0.25rem 0.6rem;
+    border-radius: 2rem;
+    font-size: 0.75rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    backdrop-filter: blur(4px);
+    transition: background 0.2s;
+}
+
+.salon-edit-photo-upload:hover {
+    background: rgba(0, 0, 0, 0.8);
+}
+
+.salon-edit-photo-upload svg {
+    width: 1rem;
+    height: 1rem;
+}
+
+.salon-edit-actions {
+    display: flex;
+    gap: 0.75rem;
+    margin-top: 1rem;
+    flex-wrap: wrap;
+}
+
+.salon-edit-preview-btn.active {
+    background: var(--color-primary);
+    color: #fff;
+    border-color: var(--color-primary);
+}
+
 @media (max-width: 640px) {
-    .my-salon-main {
-        padding-top: 80px;
-    }
-    .my-salon-header {
+    .salon-edit-static {
         flex-direction: column;
-        align-items: flex-start;
-        gap: 0.75rem;
+        align-items: center;
+        text-align: center;
     }
-    .my-salon-header h1 {
-        font-size: 1.5rem;
+    .salon-edit-photo-wrapper {
+        width: 120px;
+        height: 120px;
     }
-    .my-salon-card {
-        padding: 1rem;
+    .salon-edit-address,
+    .salon-edit-phone {
+        justify-content: center;
     }
-    .my-salon-hours-row .day-label {
-        width: 100px;
+    .salon-edit-actions {
+        justify-content: center;
     }
-    .my-salon-hours-row .closed-label {
-        width: 80px;
-    }
-    .loyalty-offers-header {
-        flex-direction: column;
-        align-items: stretch;
-        gap: 0.75rem;
-    }
+}
+
+.salon-edit-toggle .btn-outline,
+.salon-edit-toggle .btn-primary {
+    height: 40px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 1.2rem;
+    line-height: 1;
+    font-size: 0.875rem;
+}
+.salon-edit-toggle {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    margin-top: 1.5rem;
 }

@@ -72,7 +72,6 @@ async def render_home_page(db: AsyncSession, user=None) -> str:
     <title>Руми — мастера и салоны красоты рядом</title>
     <meta name="description" content="Платформа для клиентов и бизнеса: находите лучших мастеров, становитесь моделью или управляйте своим салоном.">
     {get_base_styles()}
-    <link rel="stylesheet" href="/static/src/css/home.css">
 </head>
 <body>
     {render_header("home")}

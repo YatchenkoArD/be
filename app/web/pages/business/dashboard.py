@@ -40,6 +40,7 @@ from app.web.pages.business.tabs.cost import render_cost_tab
 from app.web.pages.business.tabs.promo_models import render_promo_models_tab
 from app.web.pages.business.tabs.chat import render_chat_tab
 from app.web.pages.business.tabs.staff import render_staff_tab
+from app.web.pages.business.tabs.my_salon import render_my_salon_tab   # <-- НОВЫЙ ИМПОРТ
 from app.crm.tabs.clients import render_crm_tab
 
 
@@ -170,16 +171,9 @@ async def render_business_dashboard(db: AsyncSession, user, salon: Salon, member
     tab_buttons.append(('crm', ICON_USER_CHECK, 'Клиенты', True))
     tabs_html.append(await render_crm_tab(db, salon, masters, master_ids))
 
-    # Редактировать салон (всегда видна, в конце)
+    # Редактировать салон (всегда видна, в конце) — теперь реальная вкладка
     tab_buttons.append(('edit', ICON_SETTINGS_GEAR_SMALL, 'Редактировать салон', True))
-    tabs_html.append("""
-    <div id="tab-edit" class="tab-content">
-        <div class="card" style="padding:2rem;text-align:center;">
-            <p style="margin-bottom:1rem;color:var(--color-muted);">Перенаправление на страницу редактирования салона...</p>
-            <a href="/business/my-salon" class="btn-primary">Перейти к редактированию</a>
-        </div>
-    </div>
-    """)
+    tabs_html.append(await render_my_salon_tab(db, salon, user, query_params))   # <-- ИЗМЕНЕНО
 
     visible_slugs = [slug for slug, _, _, visible in tab_buttons if visible]
     if active_tab not in visible_slugs:
@@ -250,8 +244,6 @@ async def render_business_dashboard(db: AsyncSession, user, salon: Salon, member
     <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Бизнес-панель — {salon.name} — руми</title>
     {get_base_styles()}
-    <link rel="stylesheet" href="/static/src/css/business/dashboard.css">
-    <link rel="stylesheet" href="/static/src/css/business/tabs/overview.css">
 </head>
 <body>
     {render_header("business")}

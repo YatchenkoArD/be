@@ -1,4 +1,4 @@
-# app/web/pages/register.py
+# app/web/register.py
 import html
 from fastapi import Request
 from app.core.config import settings

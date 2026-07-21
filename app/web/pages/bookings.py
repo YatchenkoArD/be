@@ -182,7 +182,6 @@ async def render_bookings_page(db: AsyncSession, user) -> str:
     <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Мои записи — руми</title>
     {get_base_styles()}
-    <link rel="stylesheet" href="/static/src/css/bookings.css">
 </head>
 <body>
     {render_header("bookings")}
