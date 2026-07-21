@@ -305,7 +305,11 @@ async def render_my_salon_tab(db: AsyncSession, salon: Salon, user=None, query_p
                     <input type="checkbox" id="guestToggle" data-salon-id="{salon.id}" {"checked" if salon.guest_booking_enabled else ""}>
                     Принимать записи без регистрации
                 </label>
-                <p style="margin:0.5rem 0">Ссылка: <a href="/book/{salon.id}" target="_blank" class="text-link">…/book/{salon.id}</a></p>
+                <p style="margin:0.5rem 0;display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap">
+                    Ссылка: <a href="/book/{salon.id}" target="_blank" class="text-link">…/book/{salon.id}</a>
+                    <button type="button" class="my-salon-btn-outline" id="guestCopyLink" data-salon-id="{salon.id}" style="padding:0.2rem 0.7rem">Копировать</button>
+                    <span id="guestCopyMsg" style="color:var(--color-success,#27ae60)"></span>
+                </p>
                 <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap">
                     <img src="/book/{salon.id}/qr" alt="QR-код записи" style="width:150px;height:150px;border:1px solid var(--color-border,#eee);border-radius:8px">
                     <a href="/book/{salon.id}/qr" download="rumi-qr-{salon.id}.png" class="my-salon-btn-outline">Скачать QR</a>

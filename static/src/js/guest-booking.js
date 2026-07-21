@@ -13,6 +13,22 @@
         });
     }
 
+    // ---- Копирование ссылки записи без регистрации (панель салона) ----
+    const copyBtn = document.getElementById('guestCopyLink');
+    if (copyBtn) {
+        copyBtn.addEventListener('click', async function () {
+            const link = location.origin + '/book/' + copyBtn.dataset.salonId;
+            const msg = document.getElementById('guestCopyMsg');
+            try {
+                await navigator.clipboard.writeText(link);
+                if (msg) { msg.textContent = 'Скопировано ✓'; setTimeout(() => { msg.textContent = ''; }, 2000); }
+            } catch (e) {
+                // clipboard API недоступен (http/старый браузер) — показываем для ручного копирования
+                window.prompt('Скопируйте ссылку:', link);
+            }
+        });
+    }
+
     // ---- Управление бронью (отмена по токену) ----
     const cancelBtn = document.getElementById('gb-cancel');
     if (cancelBtn) {
