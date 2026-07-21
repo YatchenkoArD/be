@@ -19,11 +19,13 @@ async def _salon_bookable(db, master_id: int) -> bool:
     (модерация регистрации бизнеса).
     """
     row = (await db.execute(
-        select(Salon.is_active, Salon.moderation_status)
+        select(Salon.is_active, Salon.moderation_status, Master.is_active)
         .join(Master, Master.salon_id == Salon.id)
         .where(Master.id == master_id)
     )).first()
-    return bool(row) and row[0] and row[1] == SalonModerationStatus.APPROVED
+    # Салон одобрен и активен И сам мастер активен (мягко удалённый —
+    # is_active=False — записи не принимает).
+    return bool(row) and row[0] and row[1] == SalonModerationStatus.APPROVED and row[2]
 from app.schemas.booking import BookingCreate, BookingResponse, BookingCancel
 from app.api.deps import get_current_user, get_salon_membership
 from app.services.notifications import notify_booking_cancelled, notify_booking_created
@@ -128,7 +130,9 @@ async def get_available_slots(
 ):
     """Возвращает доступные слоты с учётом графика салона, услуги и перерыва."""
     
-    master = (await db.execute(select(Master).where(Master.id == master_id))).scalar_one_or_none()
+    master = (await db.execute(
+        select(Master).where(Master.id == master_id, Master.is_active == True)
+    )).scalar_one_or_none()
     if not master:
         return {"slots": [], "message": "Мастер не найден"}
     

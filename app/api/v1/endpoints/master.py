@@ -194,9 +194,12 @@ async def delete_master_web(
     except HTTPException:
         return HTMLResponse(content="Недостаточно прав для управления мастерами", status_code=403)
 
-    await db.delete(master)
+    # Мягкое удаление: мастер скрывается (is_active=False), но его услуги,
+    # брони и отзывы (история записей клиентов) сохраняются. Hard-delete ронял
+    # 500 (ORM обнулял services.master_id NOT NULL) и снёс бы историю клиентов.
+    master.is_active = False
     await db.commit()
-    
+
     return RedirectResponse(url="/business/my-salon?deleted=1", status_code=302)
 
 
