@@ -20,3 +20,4 @@ import './business/tabs/analytics.js';
 import './business/tabs/my-salon.js';
 import './info-hint.js';
 import './guest-booking.js';
+import './pwa.js';
