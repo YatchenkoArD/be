@@ -61,7 +61,7 @@ if ('serviceWorker' in navigator) {
         showBanner(
             ICON +
             '<div class="pwa-txt"><b>Добавьте Руми на главный экран</b>' +
-            '<small>Откройте меню «Поделиться» и выберите «На экран „Домой“»</small></div>' +
+            '<small>Нажмите ⋮ (три точки) → «Поделиться» → «Показать больше» → «Добавить на экран Домой»</small></div>' +
             '<button class="pwa-close" aria-label="Закрыть">×</button>'
         );
     } else {
